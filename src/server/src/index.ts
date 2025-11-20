@@ -1,28 +1,49 @@
 import cors from "cors";
 import express from "express";
+
 const app = express();
 
+// NECESARIO para leer JSON en POST
+app.use(express.json());
+
+// CORS: permitir frontend local + Vercel
 const allowedOrigins = [
-  'http://localhost:5173',
-  'https://family-planner-tau.vercel.app/',
+  "http://localhost:5173",
+  "https://family-planner-tau.vercel.app",
 ];
 
 app.use(
   cors({
     origin: allowedOrigins,
-  }),
+  })
 );
 
-app.get('/api/tasks', (req, res) => {
-  res.json([]); // de momento vacío si estás probando
+// GET tasks
+app.get("/api/tasks", (req, res) => {
+  res.json([]); 
 });
 
-// --- Servidor ---
+// POST tasks
+app.post("/api/tasks", (req, res) => {
+  console.log("POST /api/tasks => body:", req.body);
+  res.status(201).json({
+    success: true,
+    received: req.body,
+  });
+});
+
+// DELETE tasks
+app.delete("/api/tasks/:id", (req, res) => {
+  console.log("DELETE /api/tasks/:id =>", req.params.id);
+  res.status(200).json({ ok: true });
+});
+
+// Servidor
 const PORT = process.env.PORT ?? 4000;
-
 app.listen(PORT, () => {
-  console.log(`Server running on port: ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
+
 
 
 /* config para testing backend en local
