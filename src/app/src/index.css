@@ -1,7 +1,30 @@
+/* Importa Tailwind 4 (esto sí funciona con @tailwindcss/postcss) */
 @import "tailwindcss";
 
-/* Si quieres, puedes dejar algún ajuste básico "normal" */
-html, body {
+/* --- BASE LAYOUT --- */
+
+html,
+body,
+#root {
   margin: 0;
-  padding: 2px;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  background-color: #f8fafc; /* similar a bg-slate-50 */
+  color: #020617; /* similar a text-slate-950 */
+}
+
+/* Contenedor “tipo Tailwind” pero en CSS normal */
+.container {
+  max-width: 28rem;          /* ~ max-w-md */
+  margin-left: auto;         /* mx-auto */
+  margin-right: auto;
+  padding-left: 0.75rem;     /* px-3 */
+  padding-right: 0.75rem;
 }
