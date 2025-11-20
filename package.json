@@ -1,0 +1,12 @@
+{
+  "name": "family-planner",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm:app\" \"npm:server\"",
+    "app": "cd src/app && npm run dev",
+    "server": "cd src/server && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
