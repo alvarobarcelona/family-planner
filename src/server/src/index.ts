@@ -1,19 +1,28 @@
 import cors from "cors";
 import express from "express";
-
 const app = express();
-const PORT = process.env.PORT ?? 4000;
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://family-planner-tau.vercel.app/',
+];
 
-app.use(cors());
-app.use(express.json());
+app.use(
+  cors({
+    origin: allowedOrigins,
+  }),
+);
 
-
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
+app.get('/api/tasks', (req, res) => {
+  res.json([]); // de momento vacío si estás probando
 });
 
+// --- Servidor ---
+const PORT = process.env.PORT ?? 4000;
 
+app.listen(PORT, () => {
+  console.log(`Server running on port: ${PORT}`);
+});
 
 
 /* config para testing backend en local
