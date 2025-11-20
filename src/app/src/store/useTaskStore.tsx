@@ -141,10 +141,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   // ✅ Versión BACKEND: estado simple, se llena desde la API
   const [tasks, setTasks] = useState<Task[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isLoading, setIsLoading] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [error, setError] = useState<string | null>(null);
+  const [, setIsLoading] = useState(false);
+  const [, setError] = useState<string | null>(null);
 
   // Cargar tareas desde el backend al montar
   useEffect(() => {
