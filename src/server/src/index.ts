@@ -3,51 +3,9 @@ import express from "express";
 
 const app = express();
 
-// NECESARIO para leer JSON en POST
 app.use(express.json());
 
-// CORS: permitir frontend local + Vercel
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://family-planner-tau.vercel.app",
-];
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-  })
-);
-
-// GET tasks
-app.get("/api/tasks", (req, res) => {
-  res.json([]); 
-});
-
-// POST tasks
-app.post("/api/tasks", (req, res) => {
-  console.log("POST /api/tasks => body:", req.body);
-  res.status(201).json({
-    success: true,
-    received: req.body,
-  });
-});
-
-// DELETE tasks
-app.delete("/api/tasks/:id", (req, res) => {
-  console.log("DELETE /api/tasks/:id =>", req.params.id);
-  res.status(200).json({ ok: true });
-});
-
-// Servidor
-const PORT = process.env.PORT ?? 4000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-
-
-/* config para testing backend en local
-
+// Tipos compartidos con el frontend
 type Priority = "LOW" | "MEDIUM" | "HIGH";
 type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
 
@@ -68,7 +26,7 @@ interface Task {
   description?: string;
 }
 
-// Mock de miembros de la familia (más adelante: tabla en BBDD)
+// Mock de miembros de la familia
 const familyMembers: Record<string, Assignee> = {
   mama: { id: "mama", name: "Mamá", color: "#f97316" },
   papa: { id: "papa", name: "Papá", color: "#22c55e" },
@@ -76,13 +34,10 @@ const familyMembers: Record<string, Assignee> = {
   familia: { id: "familia", name: "Todos", color: "#6366f1" },
 };
 
-// “BBDD” en memoria temporal (más adelante la pasamos a real)
+// "BBDD" en memoria
 let tasks: Task[] = [];
 
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
+// Helpers de fechas
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
@@ -95,38 +50,46 @@ function addMonths(dateStr: string, months: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// ---- ENDPOINTS ----
+// CORS: permitir frontend local + Vercel
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://family-planner-tau.vercel.app",
+];
 
-// miembros de la familia
-app.get("/api/family-members", (_req, res) => {
-  res.json(Object.values(familyMembers));
-});
+app.use(
+  cors({
+    origin: allowedOrigins,
+  })
+);
 
-// todas las tareas
+// ---- RUTAS ----
+
+// GET todas las tareas
 app.get("/api/tasks", (_req, res) => {
   res.json(tasks);
 });
 
-// tareas de hoy
-app.get("/api/tasks/today", (_req, res) => {
-  const today = todayStr();
-  const todayTasks = tasks.filter((t) => t.date === today);
-  res.json(todayTasks);
-});
-
-// crear tarea (con recurrencia)
+// POST crear tarea(s) con recurrencia
 app.post("/api/tasks", (req, res) => {
-  const { title, date, time, assigneeId, priority, recurrence, description } =
-    req.body as {
-      title?: string;
-      date?: string;
-      time?: string;
-      assigneeId?: string;
-      priority?: Priority;
-      recurrence?: Recurrence;
-      description?: string;
-    };
+  const {
+    title,
+    date,
+    time,
+    assigneeId,
+    priority,
+    recurrence,
+    description,
+  } = req.body as {
+    title?: string;
+    date?: string;
+    time?: string;
+    assigneeId?: string;
+    priority?: Priority;
+    recurrence?: Recurrence;
+    description?: string;
+  };
 
+  // Validación básica
   if (!title || !date || !assigneeId || !priority || !recurrence) {
     return res.status(400).json({ message: "Faltan campos obligatorios" });
   }
@@ -136,7 +99,7 @@ app.post("/api/tasks", (req, res) => {
     return res.status(400).json({ message: "Miembro de familia no válido" });
   }
 
-  const base = {
+  const base: Omit<Task, "id"> = {
     title: title.trim(),
     date,
     timeLabel: time || undefined,
@@ -146,47 +109,49 @@ app.post("/api/tasks", (req, res) => {
     description: description?.trim() || undefined,
   };
 
-  const newTasks: Task[] = [];
+  const tasksToAdd: Task[] = [];
 
   // tarea base
-  newTasks.push({
-    id: crypto.randomUUID?.() ?? Date.now().toString(),
+  tasksToAdd.push({
     ...base,
+    id: crypto.randomUUID?.() ?? Date.now().toString(),
   });
 
-  // recurrencias igual que en el front
+  // Generar repeticiones igual que en el front
   if (recurrence === "DAILY") {
     for (let i = 1; i <= 6; i++) {
-      newTasks.push({
-        id: crypto.randomUUID?.() ?? `${Date.now()}-d${i}`,
+      tasksToAdd.push({
         ...base,
+        id: crypto.randomUUID?.() ?? `${Date.now()}-d${i}`,
         date: addDays(date, i),
       });
     }
   } else if (recurrence === "WEEKLY") {
     for (let i = 1; i <= 3; i++) {
-      newTasks.push({
-        id: crypto.randomUUID?.() ?? `${Date.now()}-w${i}`,
+      tasksToAdd.push({
         ...base,
+        id: crypto.randomUUID?.() ?? `${Date.now()}-w${i}`,
         date: addDays(date, i * 7),
       });
     }
   } else if (recurrence === "MONTHLY") {
-    for (let i = 1; i <= 5; i++) {
-      newTasks.push({
-        id: crypto.randomUUID?.() ?? `${Date.now()}-m${i}`,
+    for (let i = 1; i <= 11; i++) {
+      tasksToAdd.push({
         ...base,
+        id: crypto.randomUUID?.() ?? `${Date.now()}-m${i}`,
         date: addMonths(date, i),
       });
     }
   }
 
-  tasks.push(...newTasks);
+  // Guardar en "BBDD" en memoria
+  tasks.push(...tasksToAdd);
 
-  res.status(201).json(newTasks);
+  // devolver las tareas creadas
+  return res.status(201).json(tasksToAdd);
 });
 
-// borrar tarea
+// DELETE tarea por id
 app.delete("/api/tasks/:id", (req, res) => {
   const { id } = req.params;
   const prevLength = tasks.length;
@@ -196,10 +161,11 @@ app.delete("/api/tasks/:id", (req, res) => {
     return res.status(404).json({ message: "Tarea no encontrada" });
   }
 
-  res.status(204).send();
+  return res.status(200).json({ ok: true });
 });
 
+// Servidor
+const PORT = process.env.PORT ?? 4000;
 app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
- */
