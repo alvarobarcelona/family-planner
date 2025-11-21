@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { pool } from "./db";
 
 const app = express();
 
@@ -62,15 +63,73 @@ app.use(
   })
 );
 
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id          uuid PRIMARY KEY,
+      title       text        NOT NULL,
+      date        date        NOT NULL,
+      time_label  text,
+      priority    text        NOT NULL,
+      recurrence  text,
+      description text,
+      assignees   jsonb       NOT NULL
+    );
+  `);
+}
+
+initDb()
+  .then(() => {
+    const PORT = process.env.PORT ?? 4000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Error inicializando la BBDD", err);
+    process.exit(1);
+  });
+
+
+
+
 // ---- RUTAS ----
 
 // GET todas las tareas
-app.get("/api/tasks", (_req, res) => {
-  res.json(tasks);
+app.get("/api/tasks", async (_req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, title, date, time_label, priority, recurrence, description, assignees
+      FROM tasks
+      ORDER BY date, time_label NULLS FIRST, title;
+    `);
+
+    const rows = result.rows;
+
+    const tasks: Task[] = rows.map((row): {
+      id: any; title: any; date: any; // YYYY-MM-DD
+      timeLabel: any; priority: any; recurrence: any; description: any; assignees: any;
+    } => ({
+      id: row.id,
+      title: row.title,
+      date: row.date.toISOString().slice(0, 10), // YYYY-MM-DD
+      timeLabel: row.time_label ?? undefined,
+      priority: row.priority,
+      recurrence: row.recurrence ?? undefined,
+      description: row.description ?? undefined,
+      assignees: row.assignees, // jsonb → array de { id, name, color }
+    }));
+
+    res.json(tasks);
+  } catch (err) {
+    console.error("Error en GET /api/tasks", err);
+    res.status(500).json({ message: "Error interno" });
+  }
 });
 
+
 // POST crear tarea(s) con recurrencia
-app.post("/api/tasks", (req, res) => {
+app.post("/api/tasks", async (req, res) => {
   const {
     title,
     date,
@@ -89,7 +148,6 @@ app.post("/api/tasks", (req, res) => {
     description?: string;
   };
 
-  // Validación básica
   if (!title || !date || !assigneeId || !priority || !recurrence) {
     return res.status(400).json({ message: "Faltan campos obligatorios" });
   }
@@ -117,7 +175,6 @@ app.post("/api/tasks", (req, res) => {
     id: crypto.randomUUID?.() ?? Date.now().toString(),
   });
 
-  // Generar repeticiones igual que en el front
   if (recurrence === "DAILY") {
     for (let i = 1; i <= 6; i++) {
       tasksToAdd.push({
@@ -144,28 +201,58 @@ app.post("/api/tasks", (req, res) => {
     }
   }
 
-  // Guardar en "BBDD" en memoria
-  tasks.push(...tasksToAdd);
+  try {
+    // Insertar todas las tareas en DB
+    const insertPromises = tasksToAdd.map((t) =>
+      pool.query(
+        `
+        INSERT INTO tasks (id, title, date, time_label, priority, recurrence, description, assignees)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `,
+        [
+          t.id,
+          t.title,
+          t.date,
+          t.timeLabel ?? null,
+          t.priority,
+          t.recurrence ?? null,
+          t.description ?? null,
+          JSON.stringify(t.assignees),
+        ]
+      )
+    );
 
-  // devolver las tareas creadas
-  return res.status(201).json(tasksToAdd);
+    await Promise.all(insertPromises);
+
+    res.status(201).json(tasksToAdd);
+  } catch (err) {
+    console.error("Error en POST /api/tasks", err);
+    res.status(500).json({ message: "Error interno" });
+  }
 });
+
 
 // DELETE tarea por id
-app.delete("/api/tasks/:id", (req, res) => {
+app.delete("/api/tasks/:id", async (req, res) => {
   const { id } = req.params;
-  const prevLength = tasks.length;
-  tasks = tasks.filter((t) => t.id !== id);
 
-  if (tasks.length === prevLength) {
-    return res.status(404).json({ message: "Tarea no encontrada" });
+  try {
+    const result = await pool.query("DELETE FROM tasks WHERE id = $1", [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Tarea no encontrada" });
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("Error en DELETE /api/tasks/:id", err);
+    res.status(500).json({ message: "Error interno" });
   }
-
-  return res.status(200).json({ ok: true });
 });
+
 
 // Servidor
-const PORT = process.env.PORT ?? 4000;
+/* const PORT = process.env.PORT ?? 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
+}); */

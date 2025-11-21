@@ -51,7 +51,7 @@ function todayStr(): string {
 }
 
 // Mock de miembros de la familia (frontend)
-// TODO: más adelante podemos cargarlos desde /api/family-members
+
 const familyMembersMap: Record<string, Assignee> = {
   mama: { id: "mama", name: "Mamá", color: "#f97316" },
   papa: { id: "papa", name: "Papá", color: "#22c55e" },

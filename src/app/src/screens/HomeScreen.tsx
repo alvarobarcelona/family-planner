@@ -24,7 +24,7 @@ export function HomeScreen() {
           Esto es lo que tiene la familia para hoy
         </p>
       </header>
-
+      <div>Filtros</div>
       {/* Filtros por miembro */}
       <div className="flex gap-1 overflow-x-auto pb-1">
         <button
@@ -114,7 +114,7 @@ export function HomeScreen() {
               {task.priority === "LOW" && (
                 <span className="text[10px] text-gray-400">Baja</span>
               )}
-            
+
               <button
                 type="button"
                 onClick={() => removeTask(task.id)}
@@ -125,7 +125,6 @@ export function HomeScreen() {
                 </span>
                 <span>Borrar</span>
               </button>
-              
             </div>
           </li>
         ))}
