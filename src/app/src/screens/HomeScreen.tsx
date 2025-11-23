@@ -81,9 +81,7 @@ export function HomeScreen() {
                 </p>
 
                 {task.timeLabel && (
-                  <p className="text[5px] text-gray-500">
-                    {task.timeLabel} h
-                  </p>
+                  <p className="text[5px] text-gray-500">{task.timeLabel} h</p>
                 )}
               </div>
 

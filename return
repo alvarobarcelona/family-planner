@@ -1,0 +1,439 @@
+[1mdiff --git a/src/app/src/App.tsx b/src/app/src/App.tsx[m
+[1mindex 6d7d4be..cb338cf 100644[m
+[1m--- a/src/app/src/App.tsx[m
+[1m+++ b/src/app/src/App.tsx[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-import { Routes, Route, Link } from "react-router-dom";[m
+[32m+[m[32mimport { Routes, Route, NavLink } from "react-router-dom";[m
+ import { HomeScreen } from "./screens/HomeScreen";[m
+ import { CalendarScreen } from "./screens/CalendarScreen";[m
+ import { NewTaskScreen } from "./screens/NewTaskScreen";[m
+[36m@@ -11,21 +11,30 @@[m [mexport default function App() {[m
+         <main className="flex-1 max-w-md w-full mx-auto px-3 py-2">[m
+           <nav className="border bg-white max-w-md w-full mx-auto">[m
+             <div className="flex justify-around items-center py-2 text-xs">[m
+[31m-              <Link to="/" className="flex flex-col items-center gap-0.5">[m
+[32m+[m[32m              <NavLink[m
+[32m+[m[32m                to="/"[m
+[32m+[m[32m                className={({ isActive }) =>`flex flex-col items-center gap-0.5 transition[m[41m [m
+[32m+[m[32m                        ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`[m
+[32m+[m[32m                }[m
+[32m+[m[32m              >[m
+                 <span className="text-sm">Hoy</span>[m
+[31m-              </Link>[m
+[31m-              <Link[m
+[31m-                to="/calendar"[m
+[31m-                className="flex flex-col items-center gap-0.5"[m
+[32m+[m[32m              </NavLink>[m
+[32m+[m
+[32m+[m[32m              <NavLink[m
+[32m+[m[32m                to="/calendar" className={({ isActive }) => `flex flex-col items-center gap-0.5 transition[m[41m [m
+[32m+[m[32m                ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`[m
+[32m+[m[32m                }[m
+               >[m
+                 <span className="text-sm">Calendario</span>[m
+[31m-              </Link>[m
+[31m-              <Link[m
+[31m-                to="/new"[m
+[31m-                className="flex flex-col items-center rounded-full px-5 py-2 shadow-md text-sm font-medium bg-slate-900 text-white"[m
+[32m+[m[32m              </NavLink>[m
+[32m+[m
+[32m+[m[32m              <NavLink[m
+[32m+[m[32m                to="/new" className={({ isActive }) => `flex flex-col items-center rounded-full px-5 py-2 shadow-md text-sm font-medium transition[m[41m [m
+[32m+[m[32m                ${isActive ? "bg-slate-800" : "bg-slate-900"} text-white hover:bg-slate-800`[m
+[32m+[m[32m                }[m
+               >[m
+                 ➕ Nuevo[m
+[31m-              </Link>[m
+[32m+[m[32m              </NavLink>[m
+             </div>[m
+           </nav>[m
+ [m
+[1mdiff --git a/src/app/src/screens/CalendarScreen.tsx b/src/app/src/screens/CalendarScreen.tsx[m
+[1mindex c8696f3..12ad653 100644[m
+[1m--- a/src/app/src/screens/CalendarScreen.tsx[m
+[1m+++ b/src/app/src/screens/CalendarScreen.tsx[m
+[36m@@ -54,6 +54,8 @@[m [mexport function CalendarScreen() {[m
+         </p>[m
+       </header>[m
+ [m
+[32m+[m[32m      <div>Filtros</div>[m
+[32m+[m
+       {/* Filtros por miembro (igual que en Hoy) */}[m
+       <div className="flex gap-1 overflow-x-auto pb-1">[m
+         <button[m
+[36m@@ -116,21 +118,24 @@[m [mexport function CalendarScreen() {[m
+                   className="bg-amber-200 rounded-xl shadow-sm px-3 py-2 flex flex-col gap-2"[m
+                 >[m
+                   <div className="flex-1">[m
+[31m-                    <p[m
+[31m-                      className={[m
+[31m-                        "text-sm font-medium leading-snug " +[m
+[31m-                        (task.title.length > 30[m
+[31m-                          ? "whitespace-normal wrap-break-word"[m
+[31m-                          : "whitespace-nowrap")[m
+[31m-                      }[m
+[31m-                    >[m
+[31m-                      {task.title}[m
+[31m-                    </p>[m
+[31m-                    {task.timeLabel && ([m
+[31m-                      <p className="text-[5px] text-gray-500">[m
+[31m-                        {task.timeLabel}[m
+[32m+[m[32m                    <div className="flex justify-between">[m
+[32m+[m[32m                      <p[m
+[32m+[m[32m                        className={[m
+[32m+[m[32m                          "text-sm font-medium leading-snug " +[m
+[32m+[m[32m                          (task.title.length > 30[m
+[32m+[m[32m                            ? "whitespace-normal wrap-break-word"[m
+[32m+[m[32m                            : "whitespace-nowrap")[m
+[32m+[m[32m                        }[m
+[32m+[m[32m                      >[m
+[32m+[m[32m                        {task.title}[m
+                       </p>[m
+[31m-                    )}[m
+[32m+[m[32m                      {task.timeLabel && ([m
+[32m+[m[32m                        <p className="text[5px] text-gray-500">[m
+[32m+[m[32m                          {task.timeLabel} h[m
+[32m+[m[32m                        </p>[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                    </div>[m
+[32m+[m
+                     <div className="flex gap-1 mt-1 flex-wrap">[m
+                       {task.assignees.map((a) => ([m
+                         <span[m
+[36m@@ -145,12 +150,13 @@[m [mexport function CalendarScreen() {[m
+                   </div>[m
+ [m
+                   {task.description && ([m
+[31m-                    <p className="mt-1 text-[11px] text-gray-600 whitespace-pre-line">[m
+[32m+[m[32m                    <p className="mt-1 text-[10px] text-gray-600 whitespace-pre-line">[m
+                       {task.description}[m
+                     </p>[m
+                   )}[m
+ [m
+[31m-                  <div className="mt-auto flex justify-between">[m
+[32m+[m[32m                  <div className="mt-auto flex">[m
+[32m+[m[32m                    <span className="mr-1">Prioridad:</span>[m
+                     {task.priority === "HIGH" && ([m
+                       <span className="text[10px] text-red-500 font-semibold">[m
+                         Alta[m
+[36m@@ -162,18 +168,17 @@[m [mexport function CalendarScreen() {[m
+                     {task.priority === "LOW" && ([m
+                       <span className="text[10px] text-gray-400">Baja</span>[m
+                     )}[m
+[31m-[m
+[31m-                    <button[m
+[31m-                      type="button"[m
+[31m-                      onClick={() => removeTask(task.id)}[m
+[31m-                      className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text-[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"[m
+[31m-                    >[m
+[31m-                      <span className="text-[12px]" aria-hidden="true">[m
+[31m-                        🗑️[m
+[31m-                      </span>[m
+[31m-                      <span>Borrar</span>[m
+[31m-                    </button>[m
+                   </div>[m
+[32m+[m[32m                  <button[m
+[32m+[m[32m                    type="button"[m
+[32m+[m[32m                    onClick={() => removeTask(task.id)}[m
+[32m+[m[32m                    className=" items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"[m
+[32m+[m[32m                  >[m
+[32m+[m[32m                    <span className="text-[12px]" aria-hidden="true">[m
+[32m+[m[32m                      🗑️[m
+[32m+[m[32m                    </span>[m
+[32m+[m[32m                    <span>Borrar</span>[m
+[32m+[m[32m                  </button>[m
+                 </li>[m
+               ))}[m
+             </ul>[m
+[1mdiff --git a/src/app/src/screens/HomeScreen.tsx b/src/app/src/screens/HomeScreen.tsx[m
+[1mindex e7ac967..250dbcc 100644[m
+[1m--- a/src/app/src/screens/HomeScreen.tsx[m
+[1m+++ b/src/app/src/screens/HomeScreen.tsx[m
+[36m@@ -68,20 +68,24 @@[m [mexport function HomeScreen() {[m
+             className="bg-amber-200 rounded-xl shadow-sm px-3 py-2 flex flex-col gap-2"[m
+           >[m
+             <div className="flex-1">[m
+[31m-              <p[m
+[31m-                className={[m
+[31m-                  "text-sm font-medium leading-snug " +[m
+[31m-                  (task.title.length > 30[m
+[31m-                    ? "whitespace-normal wrap-break-word"[m
+[31m-                    : "whitespace-nowrap")[m
+[31m-                }[m
+[31m-              >[m
+[31m-                {task.title}[m
+[31m-              </p>[m
+[32m+[m[32m              <div className="flex justify-between">[m
+[32m+[m[32m                <p[m
+[32m+[m[32m                  className={[m
+[32m+[m[32m                    "text-sm font-medium leading-snug " +[m
+[32m+[m[32m                    (task.title.length > 30[m
+[32m+[m[32m                      ? "whitespace-normal wrap-break-word"[m
+[32m+[m[32m                      : "whitespace-nowrap")[m
+[32m+[m[32m                  }[m
+[32m+[m[32m                >[m
+[32m+[m[32m                  {task.title}[m
+[32m+[m[32m                </p>[m
+ [m
+[31m-              {task.timeLabel && ([m
+[31m-                <p className="text-[5px] text-gray-500">{task.timeLabel}</p>[m
+[31m-              )}[m
+[32m+[m[32m                {task.timeLabel && ([m
+[32m+[m[32m                  <p className="text[5px] text-gray-500">[m
+[32m+[m[32m                    {task.timeLabel} h[m
+[32m+[m[32m                  </p>[m
+[32m+[m[32m                )}[m
+[32m+[m[32m              </div>[m
+ [m
+               <div className="flex gap-1 mt-1 flex-wrap">[m
+                 {task.assignees.map((a) => ([m
+[36m@@ -97,12 +101,13 @@[m [mexport function HomeScreen() {[m
+             </div>[m
+ [m
+             {task.description && ([m
+[31m-              <p className="mt-1 text-[11px] text-gray-600 whitespace-pre-line">[m
+[32m+[m[32m              <p className="mt-1 text-[10px] text-gray-600 whitespace-pre-line">[m
+                 {task.description}[m
+               </p>[m
+             )}[m
+ [m
+[31m-            <div className="mt-auto flex justify-between">[m
+[32m+[m[32m            <div className="mt-auto flex">[m
+[32m+[m[32m              <span className="mr-1">Prioridad:</span>[m
+               {task.priority === "HIGH" && ([m
+                 <span className="text[10px] text-red-500 font-semibold">[m
+                   Alta[m
+[36m@@ -114,18 +119,17 @@[m [mexport function HomeScreen() {[m
+               {task.priority === "LOW" && ([m
+                 <span className="text[10px] text-gray-400">Baja</span>[m
+               )}[m
+[31m-[m
+[31m-              <button[m
+[31m-                type="button"[m
+[31m-                onClick={() => removeTask(task.id)}[m
+[31m-                className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text-[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"[m
+[31m-              >[m
+[31m-                <span className="text-[12px]" aria-hidden="true">[m
+[31m-                  🗑️[m
+[31m-                </span>[m
+[31m-                <span>Borrar</span>[m
+[31m-              </button>[m
+             </div>[m
+[32m+[m[32m            <button[m
+[32m+[m[32m              type="button"[m
+[32m+[m[32m              onClick={() => removeTask(task.id)}[m
+[32m+[m[32m              className="mt-auto items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"[m
+[32m+[m[32m            >[m
+[32m+[m[32m              <span className="text-[12px]" aria-hidden="true">[m
+[32m+[m[32m                🗑️[m
+[32m+[m[32m              </span>[m
+[32m+[m[32m              <span>Borrar</span>[m
+[32m+[m[32m            </button>[m
+           </li>[m
+         ))}[m
+ [m
+[1mdiff --git a/src/app/src/screens/NewTaskScreen.tsx b/src/app/src/screens/NewTaskScreen.tsx[m
+[1mindex bdbb3cb..bf8154f 100644[m
+[1m--- a/src/app/src/screens/NewTaskScreen.tsx[m
+[1m+++ b/src/app/src/screens/NewTaskScreen.tsx[m
+[36m@@ -58,6 +58,7 @@[m [mexport function NewTaskScreen() {[m
+       setError("No se ha podido crear la tarea");[m
+     } finally {[m
+       setIsSubmitting(false);[m
+[32m+[m[32m      window.alert("Tarea creada existosamente!");[m[41m [m
+     }[m
+   };[m
+ [m
+[36m@@ -85,7 +86,7 @@[m [mexport function NewTaskScreen() {[m
+           />[m
+         </div>[m
+ [m
+[31m-        <div className="flex gap-2">[m
+[32m+[m[32m        <div className="flex gap-4">[m
+           <div className="flex-1 space-y-1">[m
+             <label className="block text-xs text-gray-600" htmlFor="date">[m
+               Fecha[m
+[36m@@ -191,8 +192,8 @@[m [mexport function NewTaskScreen() {[m
+             ))}[m
+           </div>[m
+           <div>[m
+[31m-           <b>Leyenda:</b>  Diariamente: próximos 7 dias. <br /> [m
+[31m-             Semanalmente: próximas 4 semanas. <br />[m
+[32m+[m[32m            <b>Leyenda:</b> Diariamente: próximos 7 dias. <br />[m
+[32m+[m[32m            Semanalmente: próximas 4 semanas. <br />[m
+             Mensualmente: próximos 12 meses.[m
+           </div>[m
+         </div>[m
+[1mdiff --git a/src/app/src/store/useTaskStore.tsx b/src/app/src/store/useTaskStore.tsx[m
+[1mindex 8b28686..56eaf64 100644[m
+[1m--- a/src/app/src/store/useTaskStore.tsx[m
+[1m+++ b/src/app/src/store/useTaskStore.tsx[m
+[36m@@ -6,7 +6,9 @@[m [mimport {[m
+   useEffect,[m
+   type ReactNode,[m
+ } from "react";[m
+[31m-import { getTasks, createTasks, deleteTask } from "../api/tasksApi";[m
+[32m+[m
+[32m+[m[32m// 🚫 No usamos API en MODO LOCAL[m
+[32m+[m[32m// import { getTasks, createTasks, deleteTask } from "../api/tasksApi";[m
+ [m
+ export type Priority = "LOW" | "MEDIUM" | "HIGH";[m
+ export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";[m
+[36m@@ -30,7 +32,7 @@[m [mexport interface Task {[m
+ [m
+ export interface CreateTaskInput {[m
+   title: string;[m
+[31m-  date: string; // YYYY-MM-DD[m
+[32m+[m[32m  date: string;[m
+   time?: string;[m
+   assigneeId: string;[m
+   priority: Priority;[m
+[36m@@ -50,57 +52,60 @@[m [mfunction todayStr(): string {[m
+   return new Date().toISOString().slice(0, 10);[m
+ }[m
+ [m
+[31m-// Mock de miembros de la familia (frontend)[m
+[32m+[m[32m// -----------------------------------------[m
+[32m+[m[32m//  MOCK DE FAMILIA[m
+[32m+[m[32m// -----------------------------------------[m
+ [m
+ const familyMembersMap: Record<string, Assignee> = {[m
+[31m-  mama: { id: "mama", name: "Mamá", color: "#f97316" },[m
+[31m-  papa: { id: "papa", name: "Papá", color: "#22c55e" },[m
+[31m-  hugo: { id: "hugo", name: "Hugo", color: "#3b82f6" },[m
+[32m+[m[32m  mama: { id: "mama", name: "Maria", color: "#f97316" },[m
+[32m+[m[32m  papa: { id: "papa", name: "Alvaro", color: "#22c55e" },[m
+   familia: { id: "familia", name: "Todos", color: "#6366f1" },[m
+ };[m
+ [m
+[31m-// 🔴 BLOQUE SOLO PARA TEST LOCAL / DEMO (sin backend)[m
+[31m-//     Lo dejamos comentado, por si quieres volver a usarlo luego.[m
+[31m-/*[m
+[32m+[m[32m// -----------------------------------------[m
+[32m+[m[32m//  MODO LOCAL — TAREAS INICIALES[m
+[32m+[m[32m// -----------------------------------------[m
+[32m+[m
+ const initialTasks: Task[] = [[m
+   {[m
+[31m-    id: '1',[m
+[31m-    title: 'Pediatra Hugo',[m
+[32m+[m[32m    id: "1",[m
+[32m+[m[32m    title: "Pediatra Hugo",[m
+     date: todayStr(),[m
+[31m-    timeLabel: '09:30',[m
+[31m-    priority: 'HIGH',[m
+[32m+[m[32m    timeLabel: "09:30",[m
+[32m+[m[32m    priority: "HIGH",[m
+     assignees: [familyMembersMap.mama, familyMembersMap.hugo],[m
+[31m-    recurrence: 'NONE',[m
+[31m-    description: 'Revisión rutinaria de los ojos',[m
+[32m+[m[32m    recurrence: "NONE",[m
+[32m+[m[32m    description: "Revisión rutinaria de los ojos",[m
+   },[m
+   {[m
+[31m-    id: '2',[m
+[31m-    title: 'Reunión en Kita',[m
+[32m+[m[32m    id: "2",[m
+[32m+[m[32m    title: "Reunión en Kita",[m
+     date: todayStr(),[m
+[31m-    timeLabel: '16:00',[m
+[31m-    priority: 'MEDIUM',[m
+[32m+[m[32m    timeLabel: "16:00",[m
+[32m+[m[32m    priority: "MEDIUM",[m
+     assignees: [familyMembersMap.papa],[m
+[31m-    recurrence: 'NONE',[m
+[31m-    description: 'Revisión rutinaria de los ojos',[m
+[32m+[m[32m    recurrence: "NONE",[m
+[32m+[m[32m    description: "Revisión rutinaria de los ojos",[m
+   },[m
+   {[m
+[31m-    id: '3',[m
+[31m-    title: 'Compra semanal',[m
+[32m+[m[32m    id: "3",[m
+[32m+[m[32m    title: "Compra semanal",[m
+     date: todayStr(),[m
+[31m-    priority: 'LOW',[m
+[32m+[m[32m    priority: "LOW",[m
+     assignees: [familyMembersMap.familia],[m
+[31m-    recurrence: 'NONE',[m
+[31m-    description: 'Revisión rutinaria de los ojos',[m
+[32m+[m[32m    recurrence: "NONE",[m
+[32m+[m[32m    description: "Revisión rutinaria de los ojos",[m
+   },[m
+ ];[m
+ [m
+[31m-const STORAGE_KEY = 'family-planner-tasks';[m
+[31m-*/[m
+[32m+[m[32mconst STORAGE_KEY = "family-planner-tasks";[m
+ [m
+ const TaskContext = createContext<TaskContextValue | undefined>(undefined);[m
+ [m
+[31m-// 🔴 Helper de recurrencia SOLO usado en versión local (lo dejamos comentado)[m
+[31m-/*[m
+[32m+[m[32m// -----------------------------------------[m
+[32m+[m[32m//  HELPERS LOCAL — RECURRENCIA[m
+[32m+[m[32m// -----------------------------------------[m
+[32m+[m
+ function addDays(dateStr: string, days: number): string {[m
+   const d = new Date(dateStr);[m
+   d.setDate(d.getDate() + days);[m
+[36m@@ -112,81 +117,63 @@[m [mfunction addMonths(dateStr: string, months: number): string {[m
+   d.setMonth(d.getMonth() + months);[m
+   return d.toISOString().slice(0, 10);[m
+ }[m
+[31m-*/[m
+[32m+[m
+[32m+[m[32m// -----------------------------------------[m
+[32m+[m[32m//  PROVIDER — TODO LOCAL[m
+[32m+[m[32m// -----------------------------------------[m
+ [m
+ export function TaskProvider({ children }: { children: ReactNode }) {[m
+[31m-  // 🔴 Versión SOLO LOCAL (sin backend, con localStorage)[m
+[31m-  /*[m
+[32m+[m[32m  // Carga desde localStorage[m
+   const [tasks, setTasks] = useState<Task[]>(() => {[m
+[31m-    if (typeof window === 'undefined') return initialTasks;[m
+[32m+[m[32m    if (typeof window === "undefined") return initialTasks;[m
+[32m+[m
+     try {[m
+       const raw = window.localStorage.getItem(STORAGE_KEY);[m
+       if (!raw) return initialTasks;[m
+[31m-      const parsed = JSON.parse(raw) as Task[];[m
+[31m-      if (!Array.isArray(parsed)) return initialTasks;[m
+[31m-      return parsed;[m
+[32m+[m[32m      const parsed = JSON.parse(raw);[m
+[32m+[m[32m      return Array.isArray(parsed) ? parsed : initialTasks;[m
+     } catch {[m
+       return initialTasks;[m
+     }[m
+   });[m
+ [m
+[32m+[m[32m  // Guarda en localStorage[m
+   useEffect(() => {[m
+     try {[m
+       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));[m
+     } catch {[m
+[31m-      // podríamos loguear el error, pero no rompemos la app[m
+[32m+[m[32m      /* empty */[m
+     }[m
+   }, [tasks]);[m
+[31m-  */[m
+ [m
+[31m-  // ✅ Versión BACKEND: estado simple, se llena desde la API[m
+[31m-  const [tasks, setTasks] = useState<Task[]>([]);[m
+[31m-  const [, setIsLoading] = useState(false);[m
+[31m-  const [, setError] = useState<string | null>(null);[m
+[32m+[m[32m  // -----------------------------------------[m
+[32m+[m[32m  //  ADD TASK LOCAL (con recurrencias)[m
+[32m+[m[32m  // -----------------------------------------[m
+ [m
+[31m-  // Cargar tareas desde el backend al montar[m
+[31m-  useEffect(() => {[m
+[31m-    const loadTasks = async () => {[m
+[31m-      setIsLoading(true);[m
+[31m-      setError(null);[m
+[31m-      try {[m
+[31m-        const data = await getTasks();[m
+[31m-        setTasks(data);[m
+[31m-      }
