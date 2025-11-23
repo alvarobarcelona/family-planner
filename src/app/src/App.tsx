@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, NavLink } from "react-router-dom";
 import { HomeScreen } from "./screens/HomeScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { NewTaskScreen } from "./screens/NewTaskScreen";
@@ -11,21 +11,30 @@ export default function App() {
         <main className="flex-1 max-w-md w-full mx-auto px-3 py-2">
           <nav className="border bg-white max-w-md w-full mx-auto">
             <div className="flex justify-around items-center py-2 text-xs">
-              <Link to="/" className="flex flex-col items-center gap-0.5">
+              <NavLink
+                to="/"
+                className={({ isActive }) =>`flex flex-col items-center gap-0.5 transition 
+                        ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
+                }
+              >
                 <span className="text-sm">Hoy</span>
-              </Link>
-              <Link
-                to="/calendar"
-                className="flex flex-col items-center gap-0.5"
+              </NavLink>
+
+              <NavLink
+                to="/calendar" className={({ isActive }) => `flex flex-col items-center gap-0.5 transition 
+                ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
+                }
               >
                 <span className="text-sm">Calendario</span>
-              </Link>
-              <Link
-                to="/new"
-                className="flex flex-col items-center rounded-full px-5 py-2 shadow-md text-sm font-medium bg-slate-900 text-white"
+              </NavLink>
+
+              <NavLink
+                to="/new" className={({ isActive }) => `flex flex-col items-center rounded-full px-5 py-2 shadow-md text-sm font-medium transition 
+                ${isActive ? "bg-slate-800" : "bg-slate-900"} text-white hover:bg-slate-800`
+                }
               >
                 ➕ Nuevo
-              </Link>
+              </NavLink>
             </div>
           </nav>
 

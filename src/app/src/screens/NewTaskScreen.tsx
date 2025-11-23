@@ -58,6 +58,7 @@ export function NewTaskScreen() {
       setError("No se ha podido crear la tarea");
     } finally {
       setIsSubmitting(false);
+      window.alert("Tarea creada existosamente!"); 
     }
   };
 
@@ -85,7 +86,7 @@ export function NewTaskScreen() {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-4">
           <div className="flex-1 space-y-1">
             <label className="block text-xs text-gray-600" htmlFor="date">
               Fecha
@@ -191,8 +192,8 @@ export function NewTaskScreen() {
             ))}
           </div>
           <div>
-           <b>Leyenda:</b>  Diariamente: próximos 7 dias. <br /> 
-             Semanalmente: próximas 4 semanas. <br />
+            <b>Leyenda:</b> Diariamente: próximos 7 dias. <br />
+            Semanalmente: próximas 4 semanas. <br />
             Mensualmente: próximos 12 meses.
           </div>
         </div>

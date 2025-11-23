@@ -6,7 +6,9 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { getTasks, createTasks, deleteTask } from "../api/tasksApi";
+
+// 🚫 No usamos API en MODO LOCAL
+// import { getTasks, createTasks, deleteTask } from "../api/tasksApi";
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
 export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
@@ -30,7 +32,7 @@ export interface Task {
 
 export interface CreateTaskInput {
   title: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   time?: string;
   assigneeId: string;
   priority: Priority;
@@ -50,57 +52,60 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Mock de miembros de la familia (frontend)
+// -----------------------------------------
+//  MOCK DE FAMILIA
+// -----------------------------------------
 
 const familyMembersMap: Record<string, Assignee> = {
-  mama: { id: "mama", name: "Mamá", color: "#f97316" },
-  papa: { id: "papa", name: "Papá", color: "#22c55e" },
-  hugo: { id: "hugo", name: "Hugo", color: "#3b82f6" },
+  mama: { id: "mama", name: "Maria", color: "#f97316" },
+  papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
   familia: { id: "familia", name: "Todos", color: "#6366f1" },
 };
 
-// 🔴 BLOQUE SOLO PARA TEST LOCAL / DEMO (sin backend)
-//     Lo dejamos comentado, por si quieres volver a usarlo luego.
-/*
+// -----------------------------------------
+//  MODO LOCAL — TAREAS INICIALES
+// -----------------------------------------
+
 const initialTasks: Task[] = [
   {
-    id: '1',
-    title: 'Pediatra Hugo',
+    id: "1",
+    title: "Pediatra Hugo",
     date: todayStr(),
-    timeLabel: '09:30',
-    priority: 'HIGH',
+    timeLabel: "09:30",
+    priority: "HIGH",
     assignees: [familyMembersMap.mama, familyMembersMap.hugo],
-    recurrence: 'NONE',
-    description: 'Revisión rutinaria de los ojos',
+    recurrence: "NONE",
+    description: "Revisión rutinaria de los ojos",
   },
   {
-    id: '2',
-    title: 'Reunión en Kita',
+    id: "2",
+    title: "Reunión en Kita",
     date: todayStr(),
-    timeLabel: '16:00',
-    priority: 'MEDIUM',
+    timeLabel: "16:00",
+    priority: "MEDIUM",
     assignees: [familyMembersMap.papa],
-    recurrence: 'NONE',
-    description: 'Revisión rutinaria de los ojos',
+    recurrence: "NONE",
+    description: "Revisión rutinaria de los ojos",
   },
   {
-    id: '3',
-    title: 'Compra semanal',
+    id: "3",
+    title: "Compra semanal",
     date: todayStr(),
-    priority: 'LOW',
+    priority: "LOW",
     assignees: [familyMembersMap.familia],
-    recurrence: 'NONE',
-    description: 'Revisión rutinaria de los ojos',
+    recurrence: "NONE",
+    description: "Revisión rutinaria de los ojos",
   },
 ];
 
-const STORAGE_KEY = 'family-planner-tasks';
-*/
+const STORAGE_KEY = "family-planner-tasks";
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
-// 🔴 Helper de recurrencia SOLO usado en versión local (lo dejamos comentado)
-/*
+// -----------------------------------------
+//  HELPERS LOCAL — RECURRENCIA
+// -----------------------------------------
+
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
@@ -112,81 +117,63 @@ function addMonths(dateStr: string, months: number): string {
   d.setMonth(d.getMonth() + months);
   return d.toISOString().slice(0, 10);
 }
-*/
+
+// -----------------------------------------
+//  PROVIDER — TODO LOCAL
+// -----------------------------------------
 
 export function TaskProvider({ children }: { children: ReactNode }) {
-  // 🔴 Versión SOLO LOCAL (sin backend, con localStorage)
-  /*
+  // Carga desde localStorage
   const [tasks, setTasks] = useState<Task[]>(() => {
-    if (typeof window === 'undefined') return initialTasks;
+    if (typeof window === "undefined") return initialTasks;
+
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return initialTasks;
-      const parsed = JSON.parse(raw) as Task[];
-      if (!Array.isArray(parsed)) return initialTasks;
-      return parsed;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : initialTasks;
     } catch {
       return initialTasks;
     }
   });
 
+  // Guarda en localStorage
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     } catch {
-      // podríamos loguear el error, pero no rompemos la app
+      /* empty */
     }
   }, [tasks]);
-  */
 
-  // ✅ Versión BACKEND: estado simple, se llena desde la API
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [, setIsLoading] = useState(false);
-  const [, setError] = useState<string | null>(null);
+  // -----------------------------------------
+  //  ADD TASK LOCAL (con recurrencias)
+  // -----------------------------------------
 
-  // Cargar tareas desde el backend al montar
-  useEffect(() => {
-    const loadTasks = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await getTasks();
-        setTasks(data);
-      } catch (err) {
-        console.error(err);
-        setError("No se han podido cargar las tareas");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTasks();
-  }, []);
-
-  // 🔴 Versión LOCAL de addTask (con generación de recurrencias en frontend)
-  /*
   const addTask = (input: CreateTaskInput) => {
     const member = familyMembersMap[input.assigneeId];
     if (!member) return;
 
-    const base: Omit<Task, 'id'> = {
+    const base: Omit<Task, "id"> = {
       title: input.title.trim(),
       date: input.date,
-      timeLabel: input.time || undefined,
-      priority: input.priority,
+      timeLabel: input.time,
       assignees: [member],
+      priority: input.priority,
       recurrence: input.recurrence,
-      description: input.description?.trim() || undefined,
+      description: input.description?.trim(),
     };
 
     const tasksToAdd: Task[] = [];
 
+    // tarea original
     tasksToAdd.push({
       ...base,
       id: crypto.randomUUID?.() ?? Date.now().toString(),
     });
 
-    if (input.recurrence === 'DAILY') {
+    
+    if (input.recurrence === "DAILY") {
       for (let i = 1; i <= 6; i++) {
         tasksToAdd.push({
           ...base,
@@ -194,15 +181,21 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           date: addDays(input.date, i),
         });
       }
-    } else if (input.recurrence === 'WEEKLY') {
+    }
+
+    
+    if (input.recurrence === "WEEKLY") {
       for (let i = 1; i <= 3; i++) {
         tasksToAdd.push({
           ...base,
           id: crypto.randomUUID?.() ?? `${Date.now()}-w${i}`,
-          date: addDays(input.date, i * 7),
+          date: addDays(input.date, 7 * i),
         });
       }
-    } else if (input.recurrence === 'MONTHLY') {
+    }
+
+    
+    if (input.recurrence === "MONTHLY") {
       for (let i = 1; i <= 11; i++) {
         tasksToAdd.push({
           ...base,
@@ -214,73 +207,47 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
     setTasks((prev) => [...prev, ...tasksToAdd]);
   };
-  */
 
-  //  Versión BACKEND de addTask: manda los datos al servidor,
-  //    el backend se encarga de generar las recurrencias y devuelve
-  //    el array de tareas creadas.
-  const addTask = (input: CreateTaskInput) => {
-    (async () => {
-      try {
-        const created = await createTasks({
-          title: input.title.trim(),
-          date: input.date,
-          time: input.time,
-          assigneeId: input.assigneeId,
-          priority: input.priority,
-          recurrence: input.recurrence,
-          description: input.description?.trim() || undefined,
-        });
+  // -----------------------------------------
+  //  REMOVE TASK LOCAL
+  // -----------------------------------------
 
-        // created es un array de Task que viene del backend
-        setTasks((prev) => [...prev, ...created]);
-      } catch (err) {
-        console.error("Error al crear tarea(s)", err);
-        // aquí podrías poner un estado de error global o un toast
-      }
-    })();
-  };
-
-  //  Versión LOCAL de removeTask
-  /*
   const removeTask = (id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
-  };
-  */
+    const ok = window.confirm("¿Seguro que deseas borrar esta tarea?");
+    if (!ok) return;
 
-  // ✅ Versión BACKEND de removeTask
-  const removeTask = (id: string) => {
-    (async () => {
-      try {
-        await deleteTask(id);
-        setTasks((prev) => prev.filter((task) => task.id !== id));
-      } catch (err) {
-        console.error("Error al borrar tarea", err);
-      }
-    })();
+    setTasks((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // -----------------------------------------
+  //  TAREAS DE HOY
+  // -----------------------------------------
 
   const tasksToday = useMemo(
     () => tasks.filter((t) => t.date === todayStr()),
     [tasks]
   );
 
-  const value: TaskContextValue = {
-    tasks,
-    tasksToday,
-    addTask,
-    familyMembers: Object.values(familyMembersMap),
-    removeTask,
-  };
-
-  return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
+  return (
+    <TaskContext.Provider
+      value={{
+        tasks,
+        tasksToday,
+        addTask,
+        familyMembers: Object.values(familyMembersMap),
+        removeTask,
+      }}
+    >
+      {children}
+    </TaskContext.Provider>
+  );
 }
 
+//  Hook
 // eslint-disable-next-line react-refresh/only-export-components
 export function useTaskStore(): TaskContextValue {
   const ctx = useContext(TaskContext);
-  if (!ctx) {
+  if (!ctx)
     throw new Error("useTaskStore debe usarse dentro de <TaskProvider>");
-  }
   return ctx;
 }

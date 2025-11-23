@@ -54,6 +54,8 @@ export function CalendarScreen() {
         </p>
       </header>
 
+      <div>Filtros</div>
+
       {/* Filtros por miembro (igual que en Hoy) */}
       <div className="flex gap-1 overflow-x-auto pb-1">
         <button
@@ -116,21 +118,24 @@ export function CalendarScreen() {
                   className="bg-amber-200 rounded-xl shadow-sm px-3 py-2 flex flex-col gap-2"
                 >
                   <div className="flex-1">
-                    <p
-                      className={
-                        "text-sm font-medium leading-snug " +
-                        (task.title.length > 30
-                          ? "whitespace-normal wrap-break-word"
-                          : "whitespace-nowrap")
-                      }
-                    >
-                      {task.title}
-                    </p>
-                    {task.timeLabel && (
-                      <p className="text-[5px] text-gray-500">
-                        {task.timeLabel}
+                    <div className="flex justify-between">
+                      <p
+                        className={
+                          "text-sm font-medium leading-snug " +
+                          (task.title.length > 30
+                            ? "whitespace-normal wrap-break-word"
+                            : "whitespace-nowrap")
+                        }
+                      >
+                        {task.title}
                       </p>
-                    )}
+                      {task.timeLabel && (
+                        <p className="text[5px] text-gray-500">
+                          {task.timeLabel} h
+                        </p>
+                      )}
+                    </div>
+
                     <div className="flex gap-1 mt-1 flex-wrap">
                       {task.assignees.map((a) => (
                         <span
@@ -145,12 +150,13 @@ export function CalendarScreen() {
                   </div>
 
                   {task.description && (
-                    <p className="mt-1 text-[11px] text-gray-600 whitespace-pre-line">
+                    <p className="mt-1 text-[10px] text-gray-600 whitespace-pre-line">
                       {task.description}
                     </p>
                   )}
 
-                  <div className="mt-auto flex justify-between">
+                  <div className="mt-auto flex">
+                    <span className="mr-1">Prioridad:</span>
                     {task.priority === "HIGH" && (
                       <span className="text[10px] text-red-500 font-semibold">
                         Alta
@@ -162,18 +168,17 @@ export function CalendarScreen() {
                     {task.priority === "LOW" && (
                       <span className="text[10px] text-gray-400">Baja</span>
                     )}
-
-                    <button
-                      type="button"
-                      onClick={() => removeTask(task.id)}
-                      className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text-[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"
-                    >
-                      <span className="text-[12px]" aria-hidden="true">
-                        🗑️
-                      </span>
-                      <span>Borrar</span>
-                    </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => removeTask(task.id)}
+                    className=" items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"
+                  >
+                    <span className="text-[12px]" aria-hidden="true">
+                      🗑️
+                    </span>
+                    <span>Borrar</span>
+                  </button>
                 </li>
               ))}
             </ul>
