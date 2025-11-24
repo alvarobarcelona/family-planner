@@ -10,7 +10,8 @@ export interface CreateTaskDto {
   description?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
+const rawBaseUrl = import.meta.env.VITE_API_URL ?? "";
+const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
 
 function buildUrl(path: string) {
