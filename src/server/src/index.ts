@@ -1,14 +1,15 @@
 import cors from "cors";
 import express from "express";
+import { randomUUID } from "crypto";
 import { pool } from "./db";
 
 const app = express();
 
 app.use(express.json());
 
-// Tipos compartidos con el frontend
+// Tipos
 type Priority = "LOW" | "MEDIUM" | "HIGH";
-type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM_WEEKLY";
 
 interface Assignee {
   id: string;
@@ -29,14 +30,10 @@ interface Task {
 
 // Mock de miembros de la familia
 const familyMembers: Record<string, Assignee> = {
-  mama: { id: "mama", name: "Mamá", color: "#f97316" },
-  papa: { id: "papa", name: "Papá", color: "#22c55e" },
-  hugo: { id: "hugo", name: "Hugo", color: "#3b82f6" },
+  mama: { id: "mama", name: "Maria", color: "#f97316" },
+  papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
   familia: { id: "familia", name: "Todos", color: "#6366f1" },
 };
-
-// "BBDD" en memoria
-let tasks: Task[] = [];
 
 // Helpers de fechas
 function addDays(dateStr: string, days: number): string {
@@ -51,7 +48,7 @@ function addMonths(dateStr: string, months: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// CORS: permitir frontend local + Vercel
+// CORS
 const allowedOrigins = [
   "http://localhost:5173",
   "https://family-planner-tau.vercel.app",
@@ -63,6 +60,7 @@ app.use(
   })
 );
 
+// Init DB
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tasks (
@@ -90,11 +88,6 @@ initDb()
     process.exit(1);
   });
 
-
-
-
-// ---- RUTAS ----
-
 // GET todas las tareas
 app.get("/api/tasks", async (_req, res) => {
   try {
@@ -104,20 +97,17 @@ app.get("/api/tasks", async (_req, res) => {
       ORDER BY date, time_label NULLS FIRST, title;
     `);
 
-    const rows = result.rows;
+    const rows = result.rows as any[];
 
-    const tasks: Task[] = rows.map((row): {
-      id: any; title: any; date: any; // YYYY-MM-DD
-      timeLabel: any; priority: any; recurrence: any; description: any; assignees: any;
-    } => ({
-      id: row.id,
-      title: row.title,
-      date: row.date.toISOString().slice(0, 10), // YYYY-MM-DD
-      timeLabel: row.time_label ?? undefined,
-      priority: row.priority,
-      recurrence: row.recurrence ?? undefined,
-      description: row.description ?? undefined,
-      assignees: row.assignees, // jsonb → array de { id, name, color }
+    const tasks: Task[] = rows.map((row) => ({
+      id: row.id as string,
+      title: row.title as string,
+      date: row.date as string, // "YYYY-MM-DD"
+      timeLabel: (row.time_label ?? undefined) as string | undefined,
+      priority: row.priority as Priority,
+      recurrence: (row.recurrence ?? undefined) as Recurrence | undefined,
+      description: (row.description ?? undefined) as string | undefined,
+      assignees: row.assignees as Assignee[],
     }));
 
     res.json(tasks);
@@ -127,8 +117,7 @@ app.get("/api/tasks", async (_req, res) => {
   }
 });
 
-
-// POST crear tarea(s) con recurrencia
+// POST crear tarea(s)
 app.post("/api/tasks", async (req, res) => {
   const {
     title,
@@ -138,6 +127,8 @@ app.post("/api/tasks", async (req, res) => {
     priority,
     recurrence,
     description,
+    daysOfWeek,
+    durationWeeks,
   } = req.body as {
     title?: string;
     date?: string;
@@ -146,6 +137,8 @@ app.post("/api/tasks", async (req, res) => {
     priority?: Priority;
     recurrence?: Recurrence;
     description?: string;
+    daysOfWeek?: number[];
+    durationWeeks?: number;
   };
 
   if (!title || !date || !assigneeId || !priority || !recurrence) {
@@ -169,40 +162,64 @@ app.post("/api/tasks", async (req, res) => {
 
   const tasksToAdd: Task[] = [];
 
-  // tarea base
-  tasksToAdd.push({
-    ...base,
-    id: crypto.randomUUID?.() ?? Date.now().toString(),
-  });
+  if (recurrence === "CUSTOM_WEEKLY" && Array.isArray(daysOfWeek) && daysOfWeek.length) {
+    const weeks = durationWeeks && durationWeeks > 0 ? durationWeeks : 4;
 
-  if (recurrence === "DAILY") {
-    for (let i = 1; i <= 6; i++) {
-      tasksToAdd.push({
-        ...base,
-        id: crypto.randomUUID?.() ?? `${Date.now()}-d${i}`,
-        date: addDays(date, i),
-      });
+    for (let week = 0; week < weeks; week++) {
+      for (const weekday of daysOfWeek) {
+        const jsTarget = weekday === 7 ? 0 : weekday;
+
+        const baseDate = new Date(date);
+        baseDate.setHours(12, 0, 0, 0);
+        baseDate.setDate(baseDate.getDate() + week * 7);
+
+        const diff = (jsTarget - baseDate.getDay() + 7) % 7;
+        baseDate.setDate(baseDate.getDate() + diff);
+
+        const taskDate = baseDate.toISOString().slice(0, 10);
+
+        tasksToAdd.push({
+          ...base,
+          id: randomUUID(),
+          date: taskDate,
+        });
+      }
     }
-  } else if (recurrence === "WEEKLY") {
-    for (let i = 1; i <= 3; i++) {
-      tasksToAdd.push({
-        ...base,
-        id: crypto.randomUUID?.() ?? `${Date.now()}-w${i}`,
-        date: addDays(date, i * 7),
-      });
-    }
-  } else if (recurrence === "MONTHLY") {
-    for (let i = 1; i <= 11; i++) {
-      tasksToAdd.push({
-        ...base,
-        id: crypto.randomUUID?.() ?? `${Date.now()}-m${i}`,
-        date: addMonths(date, i),
-      });
+  } else {
+    const baseTask: Task = {
+      ...base,
+      id: randomUUID(),
+    };
+    tasksToAdd.push(baseTask);
+
+    if (recurrence === "DAILY") {
+      for (let i = 1; i <= 6; i++) {
+        tasksToAdd.push({
+          ...base,
+          id: randomUUID(),
+          date: addDays(date, i),
+        });
+      }
+    } else if (recurrence === "WEEKLY") {
+      for (let i = 1; i <= 3; i++) {
+        tasksToAdd.push({
+          ...base,
+          id: randomUUID(),
+          date: addDays(date, i * 7),
+        });
+      }
+    } else if (recurrence === "MONTHLY") {
+      for (let i = 1; i <= 11; i++) {
+        tasksToAdd.push({
+          ...base,
+          id: randomUUID(),
+          date: addMonths(date, i),
+        });
+      }
     }
   }
 
   try {
-    // Insertar todas las tareas en DB
     const insertPromises = tasksToAdd.map((t) =>
       pool.query(
         `
@@ -231,8 +248,7 @@ app.post("/api/tasks", async (req, res) => {
   }
 });
 
-
-// DELETE tarea por id
+// DELETE
 app.delete("/api/tasks/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -249,10 +265,3 @@ app.delete("/api/tasks/:id", async (req, res) => {
     res.status(500).json({ message: "Error interno" });
   }
 });
-
-
-// Servidor
-/* const PORT = process.env.PORT ?? 4000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); */
