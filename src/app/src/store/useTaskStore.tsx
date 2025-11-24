@@ -10,7 +10,7 @@ import {
 import { getTasks, createTasks, deleteTask } from "../api/tasksApi";
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
-export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY"| 'CUSTOM_WEEKLY';
 
 export interface Assignee {
   id: string;
@@ -37,6 +37,8 @@ export interface CreateTaskInput {
   priority: Priority;
   recurrence: Recurrence;
   description?: string;
+  daysOfWeek?: number[];
+  durationWeeks?: number;
 }
 
 interface TaskContextValue {
@@ -57,6 +59,44 @@ const familyMembersMap: Record<string, Assignee> = {
   papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
   familia: { id: "familia", name: "Todos", color: "#6366f1" },
 };
+
+// -----------------------------------------
+//  MODO LOCAL — TAREAS INICIALES
+// -----------------------------------------
+
+const initialTasks: Task[] = [
+  {
+    id: "1",
+    title: "Pediatra Ariadna",
+    date: todayStr(),
+    timeLabel: "09:30",
+    priority: "HIGH",
+    assignees: [familyMembersMap.mama],
+    recurrence: "NONE",
+    description: "Revisión rutinaria de los ojos",
+  },
+  {
+    id: "2",
+    title: "Reunión en Kita",
+    date: todayStr(),
+    timeLabel: "16:00",
+    priority: "MEDIUM",
+    assignees: [familyMembersMap.papa],
+    recurrence: "NONE",
+    description: "Laternefest",
+  },
+  {
+    id: "3",
+    title: "Compra semanal",
+    date: todayStr(),
+    priority: "LOW",
+    assignees: [familyMembersMap.familia],
+    recurrence: "NONE",
+    description: "Revisión rutinaria de los ojos",
+  },
+];
+
+const STORAGE_KEY = "family-planner-tasks";
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
@@ -87,26 +127,96 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   
   const addTask = (input: CreateTaskInput) => {
-    (async () => {
-      try {
-        const created = await createTasks({
-          title: input.title.trim(),
-          date: input.date,
-          time: input.time,
-          assigneeId: input.assigneeId,
-          priority: input.priority,
-          recurrence: input.recurrence,
-          description: input.description?.trim() || undefined,
-        });
+  const member = familyMembersMap[input.assigneeId];
+  if (!member) return;
 
-        // `created` es un array de Task que viene del backend
-        setTasks((prev) => [...prev, ...created]);
-      } catch (err) {
-        console.error("Error al crear tarea(s)", err);
-        
-      }
-    })();
+  const base: Omit<Task, "id"> = {
+    title: input.title.trim(),
+    date: input.date,
+    timeLabel: input.time || undefined,
+    assignees: [member],
+    priority: input.priority,
+    recurrence: input.recurrence,
+    description: input.description?.trim(),
   };
+
+  const tasksToAdd: Task[] = [];
+
+  // ---- CASO CUSTOM_WEEKLY (días concretos) ----
+  if (
+    input.recurrence === "CUSTOM_WEEKLY" &&
+    Array.isArray(input.daysOfWeek) &&
+    input.daysOfWeek.length > 0
+  ) {
+    const weeks =
+      input.durationWeeks && input.durationWeeks > 0
+        ? input.durationWeeks
+        : 4; // por defecto 4 semanas
+
+    for (let week = 0; week < weeks; week++) {
+      for (const weekday of input.daysOfWeek) {
+        const jsTarget = weekday === 7 ? 0 : weekday;
+
+        const baseDate = new Date(input.date);
+        baseDate.setHours(12, 0, 0, 0);
+        baseDate.setDate(baseDate.getDate() + week * 7);
+
+        const diff = (jsTarget - baseDate.getDay() + 7) % 7;
+        baseDate.setDate(baseDate.getDate() + diff);
+
+        const taskDate = baseDate.toISOString().slice(0, 10);
+
+        tasksToAdd.push({
+          ...base,
+          id: crypto.randomUUID?.() ?? `${Date.now()}-cw-${week}-${weekday}`,
+          date: taskDate,
+        });
+      }
+    }
+  } else {
+    // ---- CASOS NORMALES (NONE / DAILY / WEEKLY / MONTHLY) ----
+
+    // tarea original
+    const baseTask: Task = {
+      ...base,
+      id: crypto.randomUUID?.() ?? Date.now().toString(),
+    };
+    tasksToAdd.push(baseTask);
+
+    if (input.recurrence === "DAILY") {
+      for (let i = 1; i <= 6; i++) {
+        tasksToAdd.push({
+          ...base,
+          id: crypto.randomUUID?.() ?? `${Date.now()}-d${i}`,
+          date: addDays(input.date, i),
+        });
+      }
+    }
+
+    if (input.recurrence === "WEEKLY") {
+      for (let i = 1; i <= 3; i++) {
+        tasksToAdd.push({
+          ...base,
+          id: crypto.randomUUID?.() ?? `${Date.now()}-w${i}`,
+          date: addDays(input.date, 7 * i),
+        });
+      }
+    }
+
+    if (input.recurrence === "MONTHLY") {
+      for (let i = 1; i <= 11; i++) {
+        tasksToAdd.push({
+          ...base,
+          id: crypto.randomUUID?.() ?? `${Date.now()}-m${i}`,
+          date: addMonths(input.date, i),
+        });
+      }
+    }
+  }
+
+  setTasks((prev) => [...prev, ...tasksToAdd]);
+};
+
 
   // Borrar tarea con confirmación + backend
   const removeTask = (id: string) => {

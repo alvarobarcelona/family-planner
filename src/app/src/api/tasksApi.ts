@@ -8,6 +8,9 @@ export interface CreateTaskDto {
   priority: Priority;
   recurrence: Recurrence;
   description?: string;
+  daysOfWeek?: number[];
+  durationWeeks?: number;
+  
 }
 
 const rawBaseUrl = import.meta.env.VITE_API_URL ?? "";
