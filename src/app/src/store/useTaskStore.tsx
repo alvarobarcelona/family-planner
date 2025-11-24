@@ -11,7 +11,7 @@ import {
 // import { getTasks, createTasks, deleteTask } from "../api/tasksApi";
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
-export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY"| 'CUSTOM_WEEKLY';
 
 export interface Assignee {
   id: string;
@@ -38,6 +38,8 @@ export interface CreateTaskInput {
   priority: Priority;
   recurrence: Recurrence;
   description?: string;
+  daysOfWeek?: number[];
+  durationWeeks?: number;
 }
 
 interface TaskContextValue {
@@ -69,11 +71,11 @@ const familyMembersMap: Record<string, Assignee> = {
 const initialTasks: Task[] = [
   {
     id: "1",
-    title: "Pediatra Hugo",
+    title: "Pediatra Ariadna",
     date: todayStr(),
     timeLabel: "09:30",
     priority: "HIGH",
-    assignees: [familyMembersMap.mama, familyMembersMap.hugo],
+    assignees: [familyMembersMap.mama],
     recurrence: "NONE",
     description: "Revisión rutinaria de los ojos",
   },
@@ -85,7 +87,7 @@ const initialTasks: Task[] = [
     priority: "MEDIUM",
     assignees: [familyMembersMap.papa],
     recurrence: "NONE",
-    description: "Revisión rutinaria de los ojos",
+    description: "Laternefest",
   },
   {
     id: "3",
@@ -151,28 +153,62 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   // -----------------------------------------
 
   const addTask = (input: CreateTaskInput) => {
-    const member = familyMembersMap[input.assigneeId];
-    if (!member) return;
+  const member = familyMembersMap[input.assigneeId];
+  if (!member) return;
 
-    const base: Omit<Task, "id"> = {
-      title: input.title.trim(),
-      date: input.date,
-      timeLabel: input.time,
-      assignees: [member],
-      priority: input.priority,
-      recurrence: input.recurrence,
-      description: input.description?.trim(),
-    };
+  const base: Omit<Task, "id"> = {
+    title: input.title.trim(),
+    date: input.date,
+    timeLabel: input.time || undefined,
+    assignees: [member],
+    priority: input.priority,
+    recurrence: input.recurrence,
+    description: input.description?.trim(),
+  };
 
-    const tasksToAdd: Task[] = [];
+  const tasksToAdd: Task[] = [];
+
+  // ---- CASO CUSTOM_WEEKLY (días concretos) ----
+  if (
+    input.recurrence === "CUSTOM_WEEKLY" &&
+    Array.isArray(input.daysOfWeek) &&
+    input.daysOfWeek.length > 0
+  ) {
+    const weeks =
+      input.durationWeeks && input.durationWeeks > 0
+        ? input.durationWeeks
+        : 4; // por defecto 4 semanas
+
+    for (let week = 0; week < weeks; week++) {
+      for (const weekday of input.daysOfWeek) {
+        const jsTarget = weekday === 7 ? 0 : weekday;
+
+        const baseDate = new Date(input.date);
+        baseDate.setHours(12, 0, 0, 0);
+        baseDate.setDate(baseDate.getDate() + week * 7);
+
+        const diff = (jsTarget - baseDate.getDay() + 7) % 7;
+        baseDate.setDate(baseDate.getDate() + diff);
+
+        const taskDate = baseDate.toISOString().slice(0, 10);
+
+        tasksToAdd.push({
+          ...base,
+          id: crypto.randomUUID?.() ?? `${Date.now()}-cw-${week}-${weekday}`,
+          date: taskDate,
+        });
+      }
+    }
+  } else {
+    // ---- CASOS NORMALES (NONE / DAILY / WEEKLY / MONTHLY) ----
 
     // tarea original
-    tasksToAdd.push({
+    const baseTask: Task = {
       ...base,
       id: crypto.randomUUID?.() ?? Date.now().toString(),
-    });
+    };
+    tasksToAdd.push(baseTask);
 
-    
     if (input.recurrence === "DAILY") {
       for (let i = 1; i <= 6; i++) {
         tasksToAdd.push({
@@ -183,7 +219,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    
     if (input.recurrence === "WEEKLY") {
       for (let i = 1; i <= 3; i++) {
         tasksToAdd.push({
@@ -194,7 +229,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    
     if (input.recurrence === "MONTHLY") {
       for (let i = 1; i <= 11; i++) {
         tasksToAdd.push({
@@ -204,9 +238,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         });
       }
     }
+  }
 
-    setTasks((prev) => [...prev, ...tasksToAdd]);
-  };
+  setTasks((prev) => [...prev, ...tasksToAdd]);
+};
+
 
   // -----------------------------------------
   //  REMOVE TASK LOCAL

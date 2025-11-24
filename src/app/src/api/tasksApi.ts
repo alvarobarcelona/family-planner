@@ -8,12 +8,12 @@ export interface CreateTaskDto {
   priority: Priority;
   recurrence: Recurrence;
   description?: string;
+  daysOfWeek?: number[];
+  durationWeeks?: number;
+  
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
-// En dev, con el proxy de Vite, podemos dejarlo vacío y usar rutas relativas: '/api/...'
-// Si más adelante tienes un backend desplegado (Render / Railway), aquí pondrías por ejemplo:
-// const API_BASE_URL = 'https://tu-backend.onrender.com';
 
 function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`;
