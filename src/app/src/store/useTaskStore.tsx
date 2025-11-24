@@ -57,7 +57,6 @@ function todayStr(): string {
 const familyMembersMap: Record<string, Assignee> = {
   mama: { id: "mama", name: "Maria", color: "#f97316" },
   papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
-  hugo: { id: "hugo", name: "Hugo", color: "#3b82f6" },
   familia: { id: "familia", name: "Todos", color: "#6366f1" },
 };
 
