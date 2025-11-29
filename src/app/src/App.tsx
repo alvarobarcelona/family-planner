@@ -1,6 +1,7 @@
 import { Routes, Route, NavLink } from "react-router-dom";
 import { HomeScreen } from "./screens/HomeScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
+import { VisualCalendarScreen } from "./screens/VisualCalendarScreen";
 import { NewTaskScreen } from "./screens/NewTaskScreen";
 import { EditTaskScreen } from "./screens/EditTaskScreen";
 import { TaskProvider } from "./store/useTaskStore";
@@ -26,6 +27,14 @@ export default function App() {
                 ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
                 }
               >
+                <span className="text-sm">Eventos</span>
+              </NavLink>
+
+              <NavLink
+                to="/visual-calendar" className={({ isActive }) => `flex flex-col items-center gap-0.5 transition 
+                ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
+                }
+              >
                 <span className="text-sm">Calendario</span>
               </NavLink>
 
@@ -42,6 +51,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomeScreen />} />
             <Route path="/calendar" element={<CalendarScreen />} />
+            <Route path="/visual-calendar" element={<VisualCalendarScreen />} />
             <Route path="/new" element={<NewTaskScreen />} />
             <Route path="/edit/:taskId" element={<EditTaskScreen />} />
           </Routes>
