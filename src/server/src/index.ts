@@ -395,7 +395,7 @@ app.put("/api/tasks/:id", async (req, res) => {
         recurrence || null,
         description?.trim() || null,
         JSON.stringify([member]),
-        daysOfWeek ? JSON.stringify(daysOfWeek) : null,
+        daysOfWeek ?? null,
         durationWeeks || null,
         id,
       ]
