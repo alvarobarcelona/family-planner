@@ -10,10 +10,12 @@ export interface CreateTaskDto {
   description?: string;
   daysOfWeek?: number[];
   durationWeeks?: number;
-  
+  seriesId?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
+const rawBaseUrl = import.meta.env.VITE_API_URL ?? "";
+const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
+
 
 function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`;
@@ -41,12 +43,28 @@ export async function createTasks(payload: CreateTaskDto): Promise<Task[]> {
   return res.json();
 }
 
-export async function deleteTask(id: string): Promise<void> {
-  const res = await fetch(buildUrl(`/api/tasks/${id}`), {
+export async function deleteTask(id: string, deleteAll?: boolean): Promise<void> {
+  const query = deleteAll ? "?deleteAll=true" : "";
+  const res = await fetch(buildUrl(`/api/tasks/${id}${query}`), {
     method: "DELETE",
   });
 
   if (!res.ok && res.status !== 404) {
     throw new Error("Error al borrar tarea");
   }
+}
+
+export async function updateTask(id: string, payload: CreateTaskDto, updateAll?: boolean): Promise<Task> {
+  const query = updateAll ? "?updateAll=true" : "";
+  const res = await fetch(buildUrl(`/api/tasks/${id}${query}`), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al actualizar tarea");
+  }
+
+  return res.json();
 }
