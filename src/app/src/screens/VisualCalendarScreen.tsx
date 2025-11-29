@@ -5,6 +5,14 @@ import { useTaskStore } from "../store/useTaskStore";
 type ViewMode = "week" | "month" | "year";
 type FilterAssigneeId = "all" | string;
 
+// Helper for local date string YYYY-MM-DD
+const toLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export function VisualCalendarScreen() {
   const navigate = useNavigate();
   const { tasks, familyMembers } = useTaskStore();
@@ -182,7 +190,7 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
             </div>
             <div className="flex-1 grid grid-cols-7 gap-1 overflow-y-auto">
                 {weekDays.map(d => {
-                    const dateStr = d.toISOString().slice(0, 10);
+                    const dateStr = toLocalDateString(d);
                     const dayTasks = tasks.filter(t => t.date === dateStr).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
                     
                     return (
@@ -253,7 +261,7 @@ function MiniMonthGrid({ year, month, tasks }: { year: number, month: number, ta
             {cells.map((day, idx) => {
                 if (!day) return <div key={idx} className="w-full pt-[100%]" />;
                 
-                const dateStr = new Date(year, month, day).toISOString().slice(0, 10);
+                const dateStr = toLocalDateString(new Date(year, month, day));
                 const hasTask = tasks.some(t => t.date === dateStr);
                 
                 return (
@@ -308,9 +316,9 @@ function MonthView({ currentDate, tasks, onDayClick }: { currentDate: Date, task
             </div>
             <div className="grid grid-cols-7 grid-rows-6 flex-1 gap-1">
                 {days.map((d, idx) => {
-                    const dateStr = d.date.toISOString().slice(0, 10);
+                    const dateStr = toLocalDateString(d.date);
                     const dayTasks = tasks.filter(t => t.date === dateStr);
-                    const isToday = new Date().toISOString().slice(0, 10) === dateStr;
+                    const isToday = toLocalDateString(new Date()) === dateStr;
 
                     return (
                         <div 
