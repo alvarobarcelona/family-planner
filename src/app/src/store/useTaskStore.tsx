@@ -65,6 +65,12 @@ function todayStr(): string {
   return `${year}-${month}-${day}`;
 }
 
+function normalizeDate(dateStr: string): string {
+  if (!dateStr) return "";
+  // Take only the first 10 characters (YYYY-MM-DD)
+  return dateStr.slice(0, 10);
+}
+
 // -----------------------------------------
 //  MOCK DE FAMILIA
 // -----------------------------------------
@@ -258,7 +264,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         try {
           const data = await getTasks();
           if (!isMounted) return;
-          setTasks(data);
+          // Normalize dates
+          const normalized = data.map(t => ({ ...t, date: normalizeDate(t.date) }));
+          setTasks(normalized);
         } catch (err) {
           console.error("Error cargando tareas", err);
           if (isMounted) setError("No se han podido cargar las tareas");
@@ -297,7 +305,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     */
       try {
         const created = await createTasks(input);
-        setTasks((prev) => [...prev, ...created]);
+        const normalized = created.map(t => ({ ...t, date: normalizeDate(t.date) }));
+        setTasks((prev) => [...prev, ...normalized]);
       } catch (err) {
         console.error("Error creando tarea(s)", err);
         throw err;
@@ -378,9 +387,16 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         
         if (updateAll) {
           const allTasks = await getTasks();
-          setTasks(allTasks);
+          const normalized = allTasks.map(t => ({ ...t, date: normalizeDate(t.date) }));
+          setTasks(normalized);
         } else {
-          setTasks((prev) => prev.map((t) => (t.id === id ? (result as Task) : t)));
+          setTasks((prev) => prev.map((t) => {
+            if (t.id === id) {
+                const updated = result as Task;
+                return { ...updated, date: normalizeDate(updated.date) };
+            }
+            return t;
+          }));
         }
       } catch (err) {
         console.error("Error actualizando tarea", err);
