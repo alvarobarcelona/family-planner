@@ -249,7 +249,7 @@ app.post("/api/tasks", async (req, res) => {
           t.description ?? null,
           JSON.stringify(t.assignees),
           t.seriesId ?? null,
-          t.daysOfWeek ? JSON.stringify(t.daysOfWeek) : null,
+          t.daysOfWeek ?? null,
           t.durationWeeks ?? null,
         ]
       )
