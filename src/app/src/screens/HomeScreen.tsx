@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 
 type FilterAssigneeId = "all" | string;
 
 export function HomeScreen() {
+  const navigate = useNavigate();
   const { tasksToday, familyMembers, removeTask } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
@@ -65,7 +67,8 @@ export function HomeScreen() {
         {filteredTasks.map((task) => (
           <li
             key={task.id}
-            className="bg-amber-200 rounded-xl shadow-sm px-3 py-2 flex flex-col gap-2"
+            onClick={() => navigate(`/edit/${task.id}`)}
+            className="bg-amber-200 rounded-xl shadow-sm px-3 py-2 flex flex-col gap-2 cursor-pointer hover:bg-amber-300 transition-colors"
           >
             <div className="flex-1">
               <div className="flex justify-between">
@@ -120,7 +123,27 @@ export function HomeScreen() {
             </div>
             <button
               type="button"
-              onClick={() => removeTask(task.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (task.seriesId) {
+                  const deleteAll = window.confirm(
+                    "Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?\n(Aceptar = Toda la serie, Cancelar = Solo este evento)"
+                  );
+                  if (deleteAll) {
+                    removeTask(task.id, true);
+                  } else {
+                    const deleteSingle = window.confirm(
+                      "¿Borrar solo este evento de la serie?"
+                    );
+                    if (deleteSingle) {
+                      removeTask(task.id, false);
+                    }
+                  }
+                } else {
+                  const ok = window.confirm("¿Borrar tarea?");
+                  if (ok) removeTask(task.id);
+                }
+              }}
               className="mt-auto items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"
             >
               <span className="text-[12px]" aria-hidden="true">

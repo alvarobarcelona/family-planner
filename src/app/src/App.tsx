@@ -2,6 +2,7 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import { HomeScreen } from "./screens/HomeScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { NewTaskScreen } from "./screens/NewTaskScreen";
+import { EditTaskScreen } from "./screens/EditTaskScreen";
 import { TaskProvider } from "./store/useTaskStore";
 
 export default function App() {
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/" element={<HomeScreen />} />
             <Route path="/calendar" element={<CalendarScreen />} />
             <Route path="/new" element={<NewTaskScreen />} />
+            <Route path="/edit/:taskId" element={<EditTaskScreen />} />
           </Routes>
         </main>
       </div>
