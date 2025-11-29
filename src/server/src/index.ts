@@ -76,7 +76,7 @@ async function initDb() {
       description text,
       assignees   jsonb       NOT NULL,
       series_id   text,
-      days_of_week jsonb,
+      days_of_week integer[],
       duration_weeks integer
     );
   `);
@@ -98,7 +98,7 @@ initDb()
 app.get("/api/tasks", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, title, date, time_label, priority, recurrence, description, assignees
+      SELECT id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks
       FROM tasks
       ORDER BY date, time_label NULLS FIRST, title;
     `);
@@ -168,14 +168,18 @@ app.post("/api/tasks", async (req, res) => {
     assignees: [member],
     recurrence,
     description: description?.trim() || undefined,
-    seriesId: recurrence !== "NONE" ? (randomUUID()) : undefined,
+    seriesId: recurrence !== "NONE" ? randomUUID() : undefined,
     daysOfWeek,
     durationWeeks,
   };
 
   const tasksToAdd: Task[] = [];
 
-  if (recurrence === "CUSTOM_WEEKLY" && Array.isArray(daysOfWeek) && daysOfWeek.length) {
+  if (
+    recurrence === "CUSTOM_WEEKLY" &&
+    Array.isArray(daysOfWeek) &&
+    daysOfWeek.length
+  ) {
     const weeks = durationWeeks && durationWeeks > 0 ? durationWeeks : 4;
 
     for (let week = 0; week < weeks; week++) {
@@ -302,10 +306,13 @@ app.put("/api/tasks/:id", async (req, res) => {
   try {
     // SERIES UPDATE
     if (updateAll === "true") {
-      const taskRes = await pool.query("SELECT series_id FROM tasks WHERE id = $1", [id]);
+      const taskRes = await pool.query(
+        "SELECT series_id FROM tasks WHERE id = $1",
+        [id]
+      );
       if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
         const seriesId = taskRes.rows[0].series_id;
-        
+
         // 1. Delete old series
         await pool.query("DELETE FROM tasks WHERE series_id = $1", [seriesId]);
 
@@ -326,7 +333,11 @@ app.put("/api/tasks/:id", async (req, res) => {
 
         const tasksToAdd: Task[] = [];
 
-        if (recurrence === "CUSTOM_WEEKLY" && Array.isArray(daysOfWeek) && daysOfWeek.length) {
+        if (
+          recurrence === "CUSTOM_WEEKLY" &&
+          Array.isArray(daysOfWeek) &&
+          daysOfWeek.length
+        ) {
           const weeks = durationWeeks && durationWeeks > 0 ? durationWeeks : 4;
           for (let week = 0; week < weeks; week++) {
             for (const weekday of daysOfWeek) {
@@ -341,22 +352,34 @@ app.put("/api/tasks/:id", async (req, res) => {
             }
           }
         } else {
-           // Normal recurrence logic
-           const baseTask: Task = { ...base, id: randomUUID() };
-           tasksToAdd.push(baseTask);
-           if (recurrence === "DAILY") {
-             for (let i = 1; i <= 6; i++) {
-               tasksToAdd.push({ ...base, id: randomUUID(), date: addDays(date, i) });
-             }
-           } else if (recurrence === "WEEKLY") {
-             for (let i = 1; i <= 3; i++) {
-               tasksToAdd.push({ ...base, id: randomUUID(), date: addDays(date, 7 * i) });
-             }
-           } else if (recurrence === "MONTHLY") {
-             for (let i = 1; i <= 11; i++) {
-               tasksToAdd.push({ ...base, id: randomUUID(), date: addMonths(date, i) });
-             }
-           }
+          // Normal recurrence logic
+          const baseTask: Task = { ...base, id: randomUUID() };
+          tasksToAdd.push(baseTask);
+          if (recurrence === "DAILY") {
+            for (let i = 1; i <= 6; i++) {
+              tasksToAdd.push({
+                ...base,
+                id: randomUUID(),
+                date: addDays(date, i),
+              });
+            }
+          } else if (recurrence === "WEEKLY") {
+            for (let i = 1; i <= 3; i++) {
+              tasksToAdd.push({
+                ...base,
+                id: randomUUID(),
+                date: addDays(date, 7 * i),
+              });
+            }
+          } else if (recurrence === "MONTHLY") {
+            for (let i = 1; i <= 11; i++) {
+              tasksToAdd.push({
+                ...base,
+                id: randomUUID(),
+                date: addMonths(date, i),
+              });
+            }
+          }
         }
 
         // Insert all
@@ -365,14 +388,23 @@ app.put("/api/tasks/:id", async (req, res) => {
             `INSERT INTO tasks (id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
             [
-              t.id, t.title, t.date, t.timeLabel ?? null, t.priority, t.recurrence ?? null, t.description ?? null,
-              JSON.stringify(t.assignees), t.seriesId ?? null, t.daysOfWeek ? JSON.stringify(t.daysOfWeek) : null, t.durationWeeks ?? null
+              t.id,
+              t.title,
+              t.date,
+              t.timeLabel ?? null,
+              t.priority,
+              t.recurrence ?? null,
+              t.description ?? null,
+              JSON.stringify(t.assignees),
+              t.seriesId ?? null,
+              t.daysOfWeek ?? null,
+              t.durationWeeks ?? null,
             ]
           )
         );
         await Promise.all(insertPromises);
-        
-        // Return the first task or all? Let's return the first one to satisfy the client expecting a single task, 
+
+        // Return the first task or all? Let's return the first one to satisfy the client expecting a single task,
         // or we could return the list. The client currently expects a single Task return for update.
         // But since we refreshed the list in the client, it might not matter much what we return as long as it's valid.
         return res.json(tasksToAdd[0]);
@@ -435,7 +467,10 @@ app.delete("/api/tasks/:id", async (req, res) => {
   try {
     if (deleteAll === "true") {
       // Get series_id first
-      const taskRes = await pool.query("SELECT series_id FROM tasks WHERE id = $1", [id]);
+      const taskRes = await pool.query(
+        "SELECT series_id FROM tasks WHERE id = $1",
+        [id]
+      );
       if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
         const seriesId = taskRes.rows[0].series_id;
         await pool.query("DELETE FROM tasks WHERE series_id = $1", [seriesId]);
