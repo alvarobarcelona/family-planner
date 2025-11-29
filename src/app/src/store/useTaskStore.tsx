@@ -56,112 +56,27 @@ interface TaskContextValue {
   updateTask: (id: string, input: CreateTaskInput, updateAll?: boolean) => Promise<void>;
 }
 
-// Fecha de hoy
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Mock de miembros de la familia (frontend)
+// -----------------------------------------
+//  MOCK DE FAMILIA
+// -----------------------------------------
+
 const familyMembersMap: Record<string, Assignee> = {
   mama: { id: "mama", name: "Maria", color: "#f97316" },
   papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
   familia: { id: "familia", name: "Todos", color: "#6366f1" },
 };
 
-const TaskContext = createContext<TaskContextValue | undefined>(undefined);
+/* ============================================
+   MODO LOCAL — SOLO PARA TESTING
+   (Descomentado cuando VITE_USE_LOCAL_STORAGE=true)
+   ============================================ */
 
-export function TaskProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [, setIsLoading] = useState(false);
-  const [, setError] = useState<string | null>(null);
-
-  // Cargar tareas desde la API al montar
-  useEffect(() => {
-    let isMounted = true;
-
-    const load = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await getTasks();
-        if (!isMounted) return;
-
-        setTasks(data);
-      } catch (err) {
-        console.error("Error cargando tareas", err);
-        if (isMounted) setError("No se han podido cargar las tareas");
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // Crear tarea(s) vía backend (incluye recurrencias)
-  const addTask = async (input: CreateTaskInput) => {
-    const member = familyMembersMap[input.assigneeId];
-    if (!member) {
-      console.warn("Miembro de familia no válido:", input.assigneeId);
-      return;
-    }
-
-    try {
-      const created = await createTasks(input);
-      // El backend ya devuelve TODAS las tareas generadas (base + recurrencias)
-      setTasks((prev) => [...prev, ...created]);
-    } catch (err) {
-      console.error("Error creando tarea(s)", err);
-      throw err;
-    }
-  };
-
-  // Borrar tarea vía backend
-  const removeTask = async (id: string) => {
-    try {
-      await deleteTask(id);
-      setTasks((prev) => prev.filter((t) => t.id !== id));
-    } catch (err) {
-      console.error("Error borrando tarea", err);
-      throw err;
-    }
-  };
-
-  // Tareas de hoy
-  const tasksToday = useMemo(
-    () => tasks.filter((t) => t.date === todayStr()),
-    [tasks]
-  );
-
-  const value: TaskContextValue = {
-    tasks,
-    tasksToday,
-    addTask,
-    familyMembers: Object.values(familyMembersMap),
-    removeTask,
-  };
-
-  return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
-}
-
-// Hook
-// eslint-disable-next-line react-refresh/only-export-components
-export function useTaskStore(): TaskContextValue {
-  const ctx = useContext(TaskContext);
-  if (!ctx) {
-    throw new Error("useTaskStore debe usarse dentro de <TaskProvider>");
-  }
-  return ctx;
-}
-
-/* 
- //  MODO LOCAL (para tests)
- //  código con localStorage, initialTasks, addDays, addMonths, etc.)
-
- const initialTasks: Task[] = [
+/*
+const initialTasks: Task[] = [
   {
     id: "1",
     title: "Pediatra Ariadna",
@@ -195,12 +110,6 @@ export function useTaskStore(): TaskContextValue {
 
 const STORAGE_KEY = "family-planner-tasks";
 
-const TaskContext = createContext<TaskContextValue | undefined>(undefined);
-
-// -----------------------------------------
-//  HELPERS LOCAL — RECURRENCIA
-// -----------------------------------------
-
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
@@ -213,9 +122,6 @@ function addMonths(dateStr: string, months: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// -----------------------------------------
-//  HELPER: GENERATE SERIES
-// -----------------------------------------
 function generateSeriesTasks(
   input: CreateTaskInput,
   member: Assignee,
@@ -242,7 +148,6 @@ function generateSeriesTasks(
 
   const tasksToAdd: Task[] = [];
 
-  // ---- CASO CUSTOM_WEEKLY (días concretos) ----
   if (
     input.recurrence === "CUSTOM_WEEKLY" &&
     Array.isArray(input.daysOfWeek) &&
@@ -254,16 +159,12 @@ function generateSeriesTasks(
     for (let week = 0; week < weeks; week++) {
       for (const weekday of input.daysOfWeek) {
         const jsTarget = weekday === 7 ? 0 : weekday;
-
         const baseDate = new Date(input.date);
         baseDate.setHours(12, 0, 0, 0);
         baseDate.setDate(baseDate.getDate() + week * 7);
-
         const diff = (jsTarget - baseDate.getDay() + 7) % 7;
         baseDate.setDate(baseDate.getDate() + diff);
-
         const taskDate = baseDate.toISOString().slice(0, 10);
-
         tasksToAdd.push({
           ...base,
           id: crypto.randomUUID?.() ?? `${Date.now()}-cw-${week}-${weekday}`,
@@ -272,9 +173,6 @@ function generateSeriesTasks(
       }
     }
   } else {
-    // ---- CASOS NORMALES (NONE / DAILY / WEEKLY / MONTHLY) ----
-
-    // tarea original
     const baseTask: Task = {
       ...base,
       id: crypto.randomUUID?.() ?? Date.now().toString(),
@@ -314,10 +212,13 @@ function generateSeriesTasks(
 
   return tasksToAdd;
 }
+*/
 
-// -----------------------------------------
-//  PROVIDER — TODO LOCAL
-// -----------------------------------------
+/* ============================================
+   FIN MODO LOCAL
+   ============================================ */
+
+const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -329,8 +230,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     const load = async () => {
+      /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
       if (useLocal) {
-        // Carga desde localStorage
         try {
           const raw = window.localStorage.getItem(STORAGE_KEY);
           if (raw) {
@@ -345,6 +246,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           setTasks(initialTasks);
         }
       } else {
+      */
         // Carga desde API
         setIsLoading(true);
         setError(null);
@@ -358,7 +260,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         } finally {
           if (isMounted) setIsLoading(false);
         }
-      }
+      /* } */
     };
 
     load();
@@ -367,28 +269,27 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Guarda en localStorage solo si estamos en modo local
+  /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
   useEffect(() => {
     if (!useLocal) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     } catch {
-      /* empty */
+      // empty
     }
   }, [tasks]);
-
-  // -----------------------------------------
-  //  ADD TASK LOCAL (con recurrencias)
-  // -----------------------------------------
+  */
 
   const addTask = async (input: CreateTaskInput) => {
     const member = familyMembersMap[input.assigneeId];
     if (!member) return;
 
+    /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
     if (useLocal) {
       const tasksToAdd = generateSeriesTasks(input, member);
       setTasks((prev) => [...prev, ...tasksToAdd]);
     } else {
+    */
       try {
         const created = await createTasks(input);
         setTasks((prev) => [...prev, ...created]);
@@ -396,32 +297,27 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         console.error("Error creando tarea(s)", err);
         throw err;
       }
-    }
+    /* } */
   };
 
-  // -----------------------------------------
-  //  REMOVE TASK LOCAL
-  // -----------------------------------------
-
   const removeTask = async (id: string, deleteAll?: boolean) => {
+    /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
     if (useLocal) {
       setTasks((prev) => {
         const target = prev.find((t) => t.id === id);
         if (!target) return prev;
-
         if (deleteAll && target.seriesId) {
           return prev.filter((t) => t.seriesId !== target.seriesId);
         }
         return prev.filter((t) => t.id !== id);
       });
     } else {
+    */
       try {
         await deleteTask(id, deleteAll);
-        // Optimistic update or refetch? Let's do optimistic for now to match local feel
         setTasks((prev) => {
            const target = prev.find((t) => t.id === id);
            if (!target) return prev;
-           
            if (deleteAll && target.seriesId) {
              return prev.filter((t) => t.seriesId !== target.seriesId);
            }
@@ -431,29 +327,25 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         console.error("Error borrando tarea", err);
         throw err;
       }
-    }
+    /* } */
   };
 
-  // -----------------------------------------
-  //  UPDATE TASK LOCAL
-  // -----------------------------------------
   const updateTask = async (id: string, input: CreateTaskInput, updateAll?: boolean) => {
     const member = familyMembersMap[input.assigneeId];
     if (!member) return;
 
+    /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
     if (useLocal) {
       setTasks((prev) => {
         const target = prev.find((t) => t.id === id);
         if (!target) return prev;
 
-        // UPDATE SERIES: Regenerate all tasks
         if (updateAll && target.seriesId) {
           const filtered = prev.filter((t) => t.seriesId !== target.seriesId);
           const newTasks = generateSeriesTasks(input, member, target.seriesId);
           return [...filtered, ...newTasks];
         }
 
-        // UPDATE SINGLE
         const updatedFields = {
           title: input.title.trim(),
           timeLabel: input.time || undefined,
@@ -475,42 +367,22 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         });
       });
     } else {
+    */
       try {
-        // API call
-        // Note: The backend will handle series regeneration if updateAll is true
-        // But for the frontend state, we might need to reload or manually adjust.
-        // For simplicity, we can reload tasks or try to mimic the backend logic.
-        // Since backend logic is complex (regeneration), re-fetching might be safer, 
-        // OR we can trust the backend returns the updated task(s).
-        // The current API updateTask returns a single Task. 
-        // If we update series, we might need it to return the list of new tasks.
-        // I will assume for now I should re-fetch or just update the single one if not series.
-        
-        // Let's update the API client to handle the response properly.
-        // If updateAll is true, the backend (in my plan) will return the new tasks.
-        // So I need to update the API client first or handle it here.
-        
         const result = await apiUpdateTask(id, input, updateAll);
         
         if (updateAll) {
-             // If we updated a series, the result might be an array of tasks (if I implement it that way)
-             // OR I just re-fetch everything to be safe.
-             const allTasks = await getTasks();
-             setTasks(allTasks);
+          const allTasks = await getTasks();
+          setTasks(allTasks);
         } else {
-            // Single update
-             setTasks((prev) => prev.map((t) => (t.id === id ? (result as Task) : t)));
+          setTasks((prev) => prev.map((t) => (t.id === id ? (result as Task) : t)));
         }
       } catch (err) {
         console.error("Error actualizando tarea", err);
         throw err;
       }
-    }
+    /* } */
   };
-
-  // -----------------------------------------
-  //  TAREAS DE HOY
-  // -----------------------------------------
 
   const tasksToday = useMemo(
     () => tasks.filter((t) => t.date === todayStr()),
@@ -533,7 +405,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   );
 }
 
-//  Hook
 // eslint-disable-next-line react-refresh/only-export-components
 export function useTaskStore(): TaskContextValue {
   const ctx = useContext(TaskContext);
