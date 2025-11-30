@@ -30,6 +30,7 @@ interface Task {
   daysOfWeek?: number[];
   durationWeeks?: number;
   notificationTime?: number; // minutes before event
+  color?: string;
 }
 
 // Mock de miembros de la familia
@@ -91,6 +92,16 @@ async function initDb() {
   } catch (err) {
     console.log("Column notification_time might already exist or error adding it:", err);
   }
+
+  // Add color column if it doesn't exist
+  try {
+    await pool.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS color text;
+    `);
+  } catch (err) {
+    console.log("Column color might already exist or error adding it:", err);
+  }
 }
 
 initDb()
@@ -109,7 +120,7 @@ initDb()
 app.get("/api/tasks", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time
+      SELECT id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color
       FROM tasks
       ORDER BY date, time_label NULLS FIRST, title;
     `);
@@ -129,6 +140,7 @@ app.get("/api/tasks", async (_req, res) => {
       daysOfWeek: (row.days_of_week ?? undefined) as number[] | undefined,
       durationWeeks: (row.duration_weeks ?? undefined) as number | undefined,
       notificationTime: (row.notification_time ?? undefined) as number | undefined,
+      color: (row.color ?? undefined) as string | undefined,
     }));
 
     res.json(tasks);
@@ -151,6 +163,7 @@ app.post("/api/tasks", async (req, res) => {
     daysOfWeek,
     durationWeeks,
     notificationTime,
+    color,
   } = req.body as {
     title?: string;
     date?: string;
@@ -163,6 +176,7 @@ app.post("/api/tasks", async (req, res) => {
     durationWeeks?: number;
     seriesId?: string;
     notificationTime?: number;
+    color?: string;
   };
 
   if (!title || !date || !assigneeId || !priority || !recurrence) {
@@ -186,6 +200,7 @@ app.post("/api/tasks", async (req, res) => {
     daysOfWeek,
     durationWeeks,
     notificationTime,
+    color,
   };
 
   const tasksToAdd: Task[] = [];
@@ -255,8 +270,8 @@ app.post("/api/tasks", async (req, res) => {
     const insertPromises = tasksToAdd.map((t) =>
       pool.query(
         `
-        INSERT INTO tasks (id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        INSERT INTO tasks (id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       `,
         [
           t.id,
@@ -271,6 +286,7 @@ app.post("/api/tasks", async (req, res) => {
           t.daysOfWeek ?? null,
           t.durationWeeks ?? null,
           t.notificationTime ?? null,
+          t.color ?? null,
         ]
       )
     );
@@ -299,6 +315,7 @@ app.put("/api/tasks/:id", async (req, res) => {
     daysOfWeek,
     durationWeeks,
     notificationTime,
+    color,
   } = req.body as {
     title?: string;
     date?: string;
@@ -310,6 +327,7 @@ app.put("/api/tasks/:id", async (req, res) => {
     daysOfWeek?: number[];
     durationWeeks?: number;
     notificationTime?: number;
+    color?: string;
   };
 
   if (!title || !date || !assigneeId || !priority) {
@@ -348,6 +366,7 @@ app.put("/api/tasks/:id", async (req, res) => {
           daysOfWeek,
           durationWeeks,
           notificationTime,
+          color,
         };
 
         const tasksToAdd: Task[] = [];
@@ -404,8 +423,8 @@ app.put("/api/tasks/:id", async (req, res) => {
         // Insert all
         const insertPromises = tasksToAdd.map((t) =>
           pool.query(
-            `INSERT INTO tasks (id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+            `INSERT INTO tasks (id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
             [
               t.id,
               t.title,
@@ -419,6 +438,7 @@ app.put("/api/tasks/:id", async (req, res) => {
               t.daysOfWeek ?? null,
               t.durationWeeks ?? null,
               t.notificationTime ?? null,
+              t.color ?? null,
             ]
           )
         );
@@ -435,8 +455,8 @@ app.put("/api/tasks/:id", async (req, res) => {
     const result = await pool.query(
       `
       UPDATE tasks
-      SET title = $1, date = $2, time_label = $3, priority = $4, recurrence = $5, description = $6, assignees = $7, days_of_week = $8, duration_weeks = $9, notification_time = $10
-      WHERE id = $11
+      SET title = $1, date = $2, time_label = $3, priority = $4, recurrence = $5, description = $6, assignees = $7, days_of_week = $8, duration_weeks = $9, notification_time = $10, color = $11
+      WHERE id = $12
       RETURNING *
     `,
       [
@@ -450,6 +470,7 @@ app.put("/api/tasks/:id", async (req, res) => {
         daysOfWeek ?? null,
         durationWeeks || null,
         notificationTime || null,
+        color || null,
         id,
       ]
     );
@@ -472,6 +493,7 @@ app.put("/api/tasks/:id", async (req, res) => {
       daysOfWeek: row.days_of_week ?? undefined,
       durationWeeks: row.duration_weeks ?? undefined,
       notificationTime: row.notification_time ?? undefined,
+      color: row.color ?? undefined,
     };
 
     res.json(updatedTask);
