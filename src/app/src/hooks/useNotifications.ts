@@ -51,9 +51,9 @@ export function useNotifications(enableScheduler = true) {
           
           if (!notifiedTasks.current.has(notificationId)) {
             try {
-              new Notification(`Upcoming Event: ${task.title}`, {
+              new Notification(`Upcoming Event: ${task.title} -- ${task.date}`, {
                 body: `Starting in ${task.notificationTime} minutes`,
-                icon: '/pwa-192x192.png' // Assuming this exists or browser default
+                requireInteraction: true // Keeps notification until user interacts
               });
               notifiedTasks.current.add(notificationId);
             } catch (e) {
