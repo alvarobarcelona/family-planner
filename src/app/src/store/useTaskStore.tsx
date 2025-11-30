@@ -34,6 +34,7 @@ export interface Task {
   seriesId?: string;
   daysOfWeek?: number[];
   durationWeeks?: number;
+  notificationTime?: number; // minutes before event
 }
 
 export interface CreateTaskInput {
@@ -46,6 +47,7 @@ export interface CreateTaskInput {
   description?: string;
   daysOfWeek?: number[];
   durationWeeks?: number;
+  notificationTime?: number;
 }
 
 interface TaskContextValue {

@@ -20,6 +20,14 @@ const weekdays = [
   { value: 7, label: "D" },
 ];
 
+const notificationOptions = [
+  { value: 0, label: "Sin notificación" },
+  { value: 10, label: "10 minutos antes" },
+  { value: 30, label: "30 minutos antes" },
+  { value: 60, label: "1 hora antes" },
+  { value: 1440, label: "1 día antes" },
+];
+
 export function NewTaskScreen() {
   const navigate = useNavigate();
   const { addTask, familyMembers } = useTaskStore();
@@ -31,6 +39,7 @@ export function NewTaskScreen() {
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [description, setDescription] = useState("");
+  const [notificationTime, setNotificationTime] = useState<number>(0);
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,6 +80,7 @@ export function NewTaskScreen() {
         description: description || undefined,
         daysOfWeek: useCustomDays ? customDays : undefined,
         durationWeeks: useCustomDays ? customDurationWeeks : undefined,
+        notificationTime: notificationTime > 0 ? notificationTime : undefined,
       });
 
       // Reset básico y volvemos a Hoy
@@ -81,6 +91,7 @@ export function NewTaskScreen() {
       setUseCustomDays(false);
       setCustomDurationWeeks(4);
       setRecurrence("NONE");
+      setNotificationTime(0);
       navigate("/");
     } catch (err) {
       console.error(err);
@@ -143,6 +154,31 @@ export function NewTaskScreen() {
               onChange={(e) => setTime(e.target.value)}
             />
           </div>
+        </div>
+
+        {/* Notificación */}
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="notification">
+            Notificación
+          </label>
+          <select
+            id="notification"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={notificationTime}
+            onChange={(e) => setNotificationTime(Number(e.target.value))}
+            disabled={!time} // Disable if no time is set, as notification depends on time
+          >
+            {notificationOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {!time && (
+            <p className="text-[10px] text-gray-400">
+              * Requiere hora para activar notificaciones
+            </p>
+          )}
         </div>
 
         {/*recurrencia personalizada por días */}

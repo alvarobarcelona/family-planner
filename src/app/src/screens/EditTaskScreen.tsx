@@ -16,7 +16,13 @@ const weekdays = [
   { value: 7, label: "D" },
 ];
 
-
+const notificationOptions = [
+  { value: 0, label: "Sin notificación" },
+  { value: 10, label: "10 minutos antes" },
+  { value: 30, label: "30 minutos antes" },
+  { value: 60, label: "1 hora antes" },
+  { value: 1440, label: "1 día antes" },
+];
 
 export function EditTaskScreen() {
   const { taskId } = useParams();
@@ -30,6 +36,7 @@ export function EditTaskScreen() {
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [description, setDescription] = useState("");
+  const [notificationTime, setNotificationTime] = useState<number>(0);
 
   const [useCustomDays, setUseCustomDays] = useState(false);
   const [customDays, setCustomDays] = useState<number[]>([]);
@@ -56,6 +63,7 @@ export function EditTaskScreen() {
         setPriority(task.priority);
         setRecurrence(task.recurrence || "NONE");
         setDescription(task.description || "");
+        setNotificationTime(task.notificationTime || 0);
         
         // Initialize custom days if applicable
         if (task.recurrence === "CUSTOM_WEEKLY") {
@@ -103,6 +111,7 @@ export function EditTaskScreen() {
         priority,
         recurrence, // Note: Editing recurrence might be tricky if it changes future events. For now, simple update.
         description: description || undefined,
+        notificationTime: notificationTime > 0 ? notificationTime : undefined,
       });
 
       navigate(-1); // Go back
@@ -165,6 +174,31 @@ export function EditTaskScreen() {
               onChange={(e) => setTime(e.target.value)}
             />
           </div>
+        </div>
+
+        {/* Notificación */}
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="notification">
+            Notificación
+          </label>
+          <select
+            id="notification"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={notificationTime}
+            onChange={(e) => setNotificationTime(Number(e.target.value))}
+            disabled={!time} // Disable if no time is set, as notification depends on time
+          >
+            {notificationOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {!time && (
+            <p className="text-[10px] text-gray-400">
+              * Requiere hora para activar notificaciones
+            </p>
+          )}
         </div>
 
         {/*recurrencia personalizada por días */}
@@ -362,6 +396,7 @@ export function EditTaskScreen() {
                             description: description || undefined,
                             daysOfWeek: useCustomDays ? customDays : undefined,
                             durationWeeks: useCustomDays ? customDurationWeeks : undefined,
+                            notificationTime: notificationTime > 0 ? notificationTime : undefined,
                           },
                           true // updateAll
                         );
