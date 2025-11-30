@@ -168,7 +168,7 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
     startOfWeek.setDate(diff);
 
-    const weekDays = [];
+    const weekDays: Date[] = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(startOfWeek);
         d.setDate(startOfWeek.getDate() + i);
@@ -176,39 +176,102 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
     }
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <div className="grid grid-cols-7 mb-2 border-b pb-1">
-                {weekDays.map(d => (
-                    <div key={d.toISOString()} className="text-center">
-                        <div className="text-[10px] text-gray-500 uppercase">{d.toLocaleDateString("es-ES", { weekday: 'short' }).slice(0, 1)}</div>
-                        <div className={`text-sm font-bold ${d.toDateString() === new Date().toDateString() ? 'text-slate-900 bg-amber-200 rounded-full w-6 h-6 mx-auto flex items-center justify-center' : ''}`}>
-                            {d.getDate()}
+        <div className="h-full flex flex-col overflow-hidden gap-4">
+            {/* Top: Grid View */}
+            <div className="flex flex-col shrink-0">
+                <div className="grid grid-cols-7 mb-2 border-b pb-1">
+                    {weekDays.map(d => (
+                        <div key={d.toISOString()} className="text-center">
+                            <div className="text-[10px] text-gray-500 uppercase">{d.toLocaleDateString("es-ES", { weekday: 'short' }).slice(0, 1)}</div>
+                            <div className={`text-sm font-bold ${d.toDateString() === new Date().toDateString() ? 'text-slate-900 bg-amber-200 rounded-full w-6 h-6 mx-auto flex items-center justify-center' : ''}`}>
+                                {d.getDate()}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                    {weekDays.map(d => {
+                        const dateStr = toLocalDateString(d);
+                        const dayTasks = tasks.filter(t => t.date === dateStr).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
+
+                        return (
+                            <div key={dateStr} className="flex flex-col gap-1 min-h-[80px] border-r last:border-r-0 border-gray-100 px-0.5 pt-1 bg-slate-50/50 rounded-lg">
+                                {dayTasks.map(t => (
+                                    <div
+                                        key={t.id}
+                                        onClick={() => onTaskClick(t.id)}
+                                        className="p-1 rounded text-[9px] cursor-pointer hover:opacity-80 shadow-sm truncate"
+                                        style={{ backgroundColor: t.color || t.assignees[0]?.color || '#eee', color: '#fff' }}
+                                        title={t.title}
+                                    >
+                                        {t.timeLabel && <span className="opacity-75 mr-0.5">{t.timeLabel}</span>}
+                                        {t.title}
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
-            <div className="flex-1 grid grid-cols-7 gap-1 overflow-y-auto">
+
+            {/* Bottom: List View */}
+            <div className="flex-1 overflow-y-auto px-1 space-y-4 pb-4 border-t border-slate-100 pt-2">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agenda de la semana</h3>
                 {weekDays.map(d => {
                     const dateStr = toLocalDateString(d);
                     const dayTasks = tasks.filter(t => t.date === dateStr).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
 
+                    if (dayTasks.length === 0) return null;
+
                     return (
-                        <div key={dateStr} className="flex flex-col gap-1 min-h-[100px] border-r last:border-r-0 border-gray-100 px-0.5 pt-1">
-                            {dayTasks.map(t => (
-                                <div
-                                    key={t.id}
-                                    onClick={() => onTaskClick(t.id)}
-                                    className="p-1 rounded text-[9px] cursor-pointer hover:opacity-80 shadow-sm truncate"
-                                    style={{ backgroundColor: t.color || t.assignees[0]?.color || '#eee', color: '#fff' }}
-                                    title={t.title}
-                                >
-                                    {t.timeLabel && <span className="opacity-75 mr-0.5">{t.timeLabel}</span>}
-                                    {t.title}
-                                </div>
-                            ))}
+                        <div key={dateStr} className="space-y-2">
+                            <h4 className="text-sm font-semibold text-slate-600 sticky top-0 bg-white/95 backdrop-blur-sm py-1 z-10 flex items-center gap-2">
+                                <span className="capitalize">{d.toLocaleDateString("es-ES", { weekday: 'long' })}</span>
+                                <span className="text-slate-400 font-normal">{d.getDate()}</span>
+                            </h4>
+                            <div className="space-y-2 pl-2">
+                                {dayTasks.map(task => (
+                                    <div
+                                        key={task.id}
+                                        onClick={() => onTaskClick(task.id)}
+                                        className="bg-white rounded-xl shadow-sm border border-slate-200 px-3 py-2 flex flex-col gap-1 cursor-pointer hover:shadow-md transition-all relative overflow-hidden group"
+                                    >
+                                        <div
+                                            className="absolute left-0 top-0 bottom-0 w-1.5 transition-all group-hover:w-2"
+                                            style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
+                                        />
+                                        <div className="flex justify-between items-start pl-1">
+                                            <span className="font-medium text-slate-700 text-sm">{task.title}</span>
+                                            {task.timeLabel && (
+                                                <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                    {task.timeLabel}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {task.description && (
+                                            <p className="text-xs text-slate-400 line-clamp-1 pl-1">{task.description}</p>
+                                        )}
+                                        <div className="flex gap-1 pl-1 mt-1">
+                                            {task.assignees.map((a: any) => (
+                                                <span key={a.id} className="text-[10px] px-1.5 py-0.5 bg-slate-50 text-slate-500 rounded-full border border-slate-100">
+                                                    {a.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     );
                 })}
+                {tasks.filter(t => {
+                    const tDate = new Date(t.date);
+                    return tDate >= weekDays[0] && tDate <= weekDays[6];
+                }).length === 0 && (
+                        <div className="text-center py-8 text-slate-400 text-sm">
+                            No hay eventos esta semana
+                        </div>
+                    )}
             </div>
         </div>
     );

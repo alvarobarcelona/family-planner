@@ -164,9 +164,9 @@ export function EditTaskScreen() {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
+        
           {/* Fecha */}
-          <div className="flex-1 space-y-1">
+          <div className="space-y-1">
             <label className="block text-xs text-gray-600" htmlFor="date">
               Fecha
             </label>
@@ -180,7 +180,7 @@ export function EditTaskScreen() {
           </div>
 
           {/* Hora */}
-          <div className="flex-1 space-y-1">
+          <div className="space-y-1">
             <label className="block text-xs text-gray-600" htmlFor="time">
               Hora (opcional)
             </label>
@@ -192,7 +192,7 @@ export function EditTaskScreen() {
               onChange={(e) => setTime(e.target.value)}
             />
           </div>
-        </div>
+        
 
         {/* Notificación */}
         <div className="space-y-1">

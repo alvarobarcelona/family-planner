@@ -146,7 +146,7 @@ export function NewTaskScreen() {
 
 
         {/* Fecha */}
-        <div className="flex-1 space-y-1">
+        <div className="space-y-1">
           <label className="block text-xs text-gray-600" htmlFor="date">
             Fecha
           </label>
@@ -161,7 +161,7 @@ export function NewTaskScreen() {
 
 
         {/* Hora */}
-        <div className="flex-1 space-y-1">
+        <div className="space-y-1">
           <label className="block text-xs text-gray-600" htmlFor="time">
             Hora (opcional)
           </label>

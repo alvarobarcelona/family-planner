@@ -65,7 +65,7 @@ export function CalendarScreen() {
   return (
     <div className="space-y-3">
       <header className="mt-1 mb-2">
-        <h1 className="text-xl font-semibold">Calendario</h1>
+        <h1 className="text-xl font-semibold">Lista de eventos</h1>
         <p className="text-xs text-gray-500">
           Vista de tareas por día con filtro por miembro
         </p>
