@@ -92,15 +92,15 @@ export function VisualCalendarScreen() {
       </header>
 
       {/* Filters */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         <button
           type="button"
           onClick={() => setSelectedAssigneeId("all")}
           className={
-            "px-2 py-1 rounded-full text-xs border " +
+            "px-4 py-1.5 rounded-full text-sm font-medium transition-all " +
             (selectedAssigneeId === "all"
-              ? "bg-slate-900 text-white border-slate-900"
-              : "bg-white text-slate-700 border-gray-300")
+              ? "bg-slate-800 text-white shadow-md shadow-slate-300"
+              : "bg-white text-slate-600 border border-transparent shadow-sm hover:bg-slate-50")
           }
         >
           Todos
@@ -112,14 +112,14 @@ export function VisualCalendarScreen() {
             type="button"
             onClick={() => setSelectedAssigneeId(m.id)}
             className={
-              "px-2 py-1 rounded-full text-xs border flex items-center gap-1 " +
+              "px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all " +
               (selectedAssigneeId === m.id
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-white text-slate-700 border-gray-300")
+                ? "bg-slate-800 text-white shadow-md shadow-slate-300"
+                : "bg-white text-slate-600 border border-transparent shadow-sm hover:bg-slate-50")
             }
           >
             <span
-              className="inline-block w-2 h-2 rounded-full"
+              className="inline-block w-2.5 h-2.5 rounded-full ring-2 ring-white"
               style={{ backgroundColor: m.color }}
             />
             {m.name}
@@ -128,7 +128,7 @@ export function VisualCalendarScreen() {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 bg-white rounded-xl shadow-sm border p-2 min-h-[300px] flex flex-col overflow-hidden">
+      <div className="flex-1 bg-white/50 backdrop-blur-sm rounded-3xl shadow-sm border border-white/60 p-2 min-h-[300px] flex flex-col overflow-hidden">
           {viewMode === "week" && (
             <WeekView 
                 currentDate={currentDate} 
@@ -324,12 +324,12 @@ function MonthView({ currentDate, tasks, onDayClick }: { currentDate: Date, task
                         <div 
                             key={idx} 
                             onClick={() => onDayClick(d.date)}
-                            className={`border rounded-lg p-1 flex flex-col items-center cursor-pointer transition-colors relative
-                                ${d.type === 'current' ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 text-gray-400'}
-                                ${isToday ? 'ring-2 ring-slate-900 z-10' : ''}
+                            className={`rounded-2xl p-1 flex flex-col items-center cursor-pointer transition-all relative min-h-[60px]
+                                ${d.type === 'current' ? 'hover:bg-white hover:shadow-sm' : 'opacity-30'}
+                                ${isToday ? 'bg-indigo-50 text-indigo-700 font-bold' : ''}
                             `}
                         >
-                            <span className={`text-xs ${d.type === 'current' ? 'font-medium' : ''}`}>{d.day}</span>
+                            <span className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'text-slate-600'}`}>{d.day}</span>
                             
                             {/* Task Indicators */}
                             <div className="flex flex-wrap justify-center gap-0.5 mt-1 w-full">

@@ -1,5 +1,6 @@
 /* Importa Tailwind 4 (esto sí funciona con @tailwindcss/postcss) */
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
 
 /* --- BASE LAYOUT --- */
 
@@ -12,12 +13,12 @@ body,
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+  font-family: 'Quicksand', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   line-height: 1.5;
-  font-weight: 400;
-  background-color: #f8fafc; /* similar a bg-slate-50 */
-  color: #020617; /* similar a text-slate-950 */
+  font-weight: 500; /* Un poco más de peso para Quicksand */
+  background-color: #fdfbf7; /* Crema muy suave */
+  color: #1e293b; /* Slate-800, un poco más suave que negro puro */
 }
 
 /* Contenedor “tipo Tailwind” pero en CSS normal */

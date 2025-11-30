@@ -28,15 +28,15 @@ export function HomeScreen() {
       </header>
       <div>Filtros</div>
       {/* Filtros por miembro */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         <button
           type="button"
           onClick={() => setSelectedAssigneeId("all")}
           className={
-            "px-2 py-1 rounded-full text-xs border " +
+            "px-4 py-1.5 rounded-full text-sm font-medium transition-all " +
             (selectedAssigneeId === "all"
-              ? "bg-slate-900 text-white border-slate-900"
-              : "bg-white text-slate-700 border-gray-300")
+              ? "bg-slate-800 text-white shadow-md shadow-slate-300"
+              : "bg-white text-slate-600 border border-transparent shadow-sm hover:bg-slate-50")
           }
         >
           Todos
@@ -48,14 +48,14 @@ export function HomeScreen() {
             type="button"
             onClick={() => setSelectedAssigneeId(m.id)}
             className={
-              "px-2 py-1 rounded-full text-xs border flex items-center gap-1 " +
+              "px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all " +
               (selectedAssigneeId === m.id
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-white text-slate-700 border-gray-300")
+                ? "bg-slate-800 text-white shadow-md shadow-slate-300"
+                : "bg-white text-slate-600 border border-transparent shadow-sm hover:bg-slate-50")
             }
           >
             <span
-              className="inline-block w-2 h-2 rounded-full"
+              className="inline-block w-2.5 h-2.5 rounded-full ring-2 ring-white"
               style={{ backgroundColor: m.color }}
             />
             {m.name}
@@ -68,7 +68,7 @@ export function HomeScreen() {
           <li
             key={task.id}
             onClick={() => navigate(`/edit/${task.id}`)}
-            className="bg-amber-200 rounded-xl shadow-sm px-3 py-2 flex flex-col gap-2 cursor-pointer hover:bg-amber-300 transition-colors"
+            className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex-1">
               <div className="flex justify-between">

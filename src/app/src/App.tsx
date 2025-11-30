@@ -9,9 +9,9 @@ import { TaskProvider } from "./store/useTaskStore";
 export default function App() {
   return (
     <TaskProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-        <main className="flex-1 max-w-md w-full mx-auto px-3 py-2">
-          <nav className="border bg-white max-w-md w-full mx-auto">
+      <div className="min-h-screen bg-[#fdfbf7] text-slate-900 flex flex-col relative">
+        <main className="flex-1 max-w-md w-full mx-auto px-4 py-4 pb-24">
+          <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-[380px] bg-white/80 backdrop-blur-md border border-white/50 shadow-xl rounded-2xl z-50">
             <div className="flex justify-around items-center py-2 text-xs">
               <NavLink
                 to="/"
@@ -39,11 +39,11 @@ export default function App() {
               </NavLink>
 
               <NavLink
-                to="/new" className={({ isActive }) => `flex flex-col items-center rounded-full px-5 py-2 shadow-md text-sm font-medium transition 
-                ${isActive ? "bg-slate-800" : "bg-slate-900"} text-white hover:bg-slate-800`
+                to="/new" className={({ isActive }) => `flex flex-col items-center justify-center rounded-full w-10 h-10 shadow-lg shadow-indigo-500/30 text-sm font-medium transition-transform active:scale-95 
+                ${isActive ? "bg-indigo-600" : "bg-indigo-600"} text-white hover:bg-indigo-700`
                 }
               >
-                ➕ Nuevo
+                ➕
               </NavLink>
             </div>
           </nav>
