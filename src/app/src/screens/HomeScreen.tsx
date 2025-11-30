@@ -24,10 +24,13 @@ export function HomeScreen() {
   return (
     <div className="space-y-3">
       <header className="mt-1 mb-2">
-        <h1 className="text-xl font-semibold">Hoy</h1>
+        <h1 className="text-xl font-semibold">Hoy {new Date().toLocaleDateString()}</h1>
         <p className="text-xs text-gray-500">
           Esto es lo que tiene la familia para hoy
         </p>
+        <div className="text-[10px] text-gray-400 font-mono mt-1">
+           Debug: Supported={String("Notification" in window)}, Permission={permission}
+        </div>
       </header>
 
       {permission === "default" && "Notification" in window && (
