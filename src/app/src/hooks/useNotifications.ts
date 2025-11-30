@@ -1,18 +1,29 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTaskStore } from '../store/useTaskStore';
 
-export function useNotifications() {
+export function useNotifications(enableScheduler = true) {
   const { tasks } = useTaskStore();
   const notifiedTasks = useRef<Set<string>>(new Set());
+  const [permission, setPermission] = useState<NotificationPermission>(
+    "Notification" in window ? Notification.permission : "denied"
+  );
 
-  useEffect(() => {
-    // Request permission on mount if supported
-    if ("Notification" in window && Notification.permission === 'default') {
-      Notification.requestPermission().catch(err => console.error("Error requesting notification permission", err));
+  const requestPermission = async () => {
+    if (!("Notification" in window)) {
+      alert("Tu navegador no soporta notificaciones.");
+      return;
     }
-  }, []);
+    try {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+    } catch (err) {
+      console.error("Error requesting notification permission", err);
+    }
+  };
 
   useEffect(() => {
+    if (!enableScheduler) return;
+
     const checkNotifications = () => {
       if (!("Notification" in window) || Notification.permission !== 'granted') return;
 
@@ -60,5 +71,7 @@ export function useNotifications() {
     checkNotifications();
 
     return () => clearInterval(intervalId);
-  }, [tasks]);
+  }, [tasks, enableScheduler]);
+
+  return { permission, requestPermission };
 }
