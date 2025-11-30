@@ -6,15 +6,15 @@ export function useNotifications() {
   const notifiedTasks = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    // Request permission on mount
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
+    // Request permission on mount if supported
+    if ("Notification" in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(err => console.error("Error requesting notification permission", err));
     }
   }, []);
 
   useEffect(() => {
     const checkNotifications = () => {
-      if (Notification.permission !== 'granted') return;
+      if (!("Notification" in window) || Notification.permission !== 'granted') return;
 
       const now = new Date();
       
@@ -39,11 +39,15 @@ export function useNotifications() {
           const notificationId = `${task.id}-${notificationTime.getTime()}`;
           
           if (!notifiedTasks.current.has(notificationId)) {
-            new Notification(`Upcoming Event: ${task.title}`, {
-              body: `Starting in ${task.notificationTime} minutes`,
-              icon: '/pwa-192x192.png' // Assuming this exists or browser default
-            });
-            notifiedTasks.current.add(notificationId);
+            try {
+              new Notification(`Upcoming Event: ${task.title}`, {
+                body: `Starting in ${task.notificationTime} minutes`,
+                icon: '/pwa-192x192.png' // Assuming this exists or browser default
+              });
+              notifiedTasks.current.add(notificationId);
+            } catch (e) {
+              console.error("Error showing notification", e);
+            }
           }
         }
       });
