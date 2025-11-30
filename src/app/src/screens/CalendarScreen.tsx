@@ -13,6 +13,19 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function isTodayOrFuture(dateStr: string): boolean {
+  const taskDate = new Date(dateStr);
+  const today = new Date();
+
+  taskDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return taskDate >= today;
+}
+
+
+
+
 export function CalendarScreen() {
   const navigate = useNavigate();
   const { tasks, familyMembers, removeTask } = useTaskStore();
@@ -21,11 +34,13 @@ export function CalendarScreen() {
 
   // 1) Filtramos por miembro
   const filteredTasks = useMemo(() => {
-    if (selectedAssigneeId === "all") return tasks;
 
-    return tasks.filter((task) =>
-      task.assignees.some((a) => a.id === selectedAssigneeId)
-    );
+    const byAssignee = selectedAssigneeId === "all"
+      ? tasks
+      : tasks.filter((task) =>
+        task.assignees.some((a) => a.id === selectedAssigneeId)
+      );
+    return byAssignee.filter((task) => isTodayOrFuture(task.date));
   }, [tasks, selectedAssigneeId]);
 
   // 2) Agrupamos por fecha las tareas ya filtradas

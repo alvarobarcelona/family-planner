@@ -64,16 +64,16 @@ export function EditTaskScreen() {
         setRecurrence(task.recurrence || "NONE");
         setDescription(task.description || "");
         setNotificationTime(task.notificationTime || 0);
-        
+
         // Initialize custom days if applicable
         if (task.recurrence === "CUSTOM_WEEKLY") {
-            setUseCustomDays(true);
-            setCustomDays(task.daysOfWeek || []);
-            setCustomDurationWeeks(task.durationWeeks || 4);
+          setUseCustomDays(true);
+          setCustomDays(task.daysOfWeek || []);
+          setCustomDurationWeeks(task.durationWeeks || 4);
         } else {
-            setUseCustomDays(false);
-            setCustomDays([]);
-            setCustomDurationWeeks(4);
+          setUseCustomDays(false);
+          setCustomDays([]);
+          setCustomDurationWeeks(4);
         }
 
         setIsLoading(false);
@@ -85,8 +85,8 @@ export function EditTaskScreen() {
         setIsLoading(false);
       }
     } else if (tasks.length > 0) {
-       setError("Tarea no encontrada");
-       setIsLoading(false);
+      setError("Tarea no encontrada");
+      setIsLoading(false);
     }
   }, [taskId, tasks]);
 
@@ -146,7 +146,7 @@ export function EditTaskScreen() {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {/* Fecha */}
           <div className="flex-1 space-y-1">
             <label className="block text-xs text-gray-600" htmlFor="date">
@@ -319,8 +319,8 @@ export function EditTaskScreen() {
 
         {/* Recurrence editing is simplified or disabled for now to avoid complexity with series */}
         <div className="space-y-1">
-           <span className="block text-xs text-gray-600">Repetir (Editar recurrencia no cambia eventos pasados)</span>
-           <div className="flex flex-wrap gap-2">
+          <span className="block text-xs text-gray-600">Repetir (Editar recurrencia no cambia eventos pasados)</span>
+          <div className="flex flex-wrap gap-2">
             {(
               [
                 { value: "NONE", label: "No repetir" },

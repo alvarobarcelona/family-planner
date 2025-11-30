@@ -126,7 +126,7 @@ export function NewTaskScreen() {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {/* Fecha */}
           <div className="flex-1 space-y-1">
             <label className="block text-xs text-gray-600" htmlFor="date">
