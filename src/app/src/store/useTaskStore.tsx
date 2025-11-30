@@ -10,7 +10,7 @@ import {
 // API Imports
 import { getTasks, createTasks, deleteTask, updateTask as apiUpdateTask } from "../api/tasksApi";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const useLocal = import.meta.env.VITE_USE_LOCAL_STORAGE === 'true';
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
