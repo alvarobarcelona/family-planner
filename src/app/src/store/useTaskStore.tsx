@@ -35,6 +35,7 @@ export interface Task {
   daysOfWeek?: number[];
   durationWeeks?: number;
   notificationTime?: number; // minutes before event
+  color?: string;
 }
 
 export interface CreateTaskInput {
@@ -48,6 +49,7 @@ export interface CreateTaskInput {
   daysOfWeek?: number[];
   durationWeeks?: number;
   notificationTime?: number;
+  color?: string;
 }
 
 interface TaskContextValue {
@@ -157,6 +159,7 @@ function generateSeriesTasks(
     seriesId,
     daysOfWeek: input.daysOfWeek,
     durationWeeks: input.durationWeeks,
+    color: input.color,
   };
 
   const tasksToAdd: Task[] = [];
@@ -260,21 +263,21 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         }
       } else {
       */
-        // Carga desde API
-        setIsLoading(true);
-        setError(null);
-        try {
-          const data = await getTasks();
-          if (!isMounted) return;
-          // Normalize dates
-          const normalized = data.map(t => ({ ...t, date: normalizeDate(t.date) }));
-          setTasks(normalized);
-        } catch (err) {
-          console.error("Error cargando tareas", err);
-          if (isMounted) setError("No se han podido cargar las tareas");
-        } finally {
-          if (isMounted) setIsLoading(false);
-        }
+      // Carga desde API
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await getTasks();
+        if (!isMounted) return;
+        // Normalize dates
+        const normalized = data.map(t => ({ ...t, date: normalizeDate(t.date) }));
+        setTasks(normalized);
+      } catch (err) {
+        console.error("Error cargando tareas", err);
+        if (isMounted) setError("No se han podido cargar las tareas");
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
       /* } */
     };
 
@@ -305,14 +308,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       setTasks((prev) => [...prev, ...tasksToAdd]);
     } else {
     */
-      try {
-        const created = await createTasks(input);
-        const normalized = created.map(t => ({ ...t, date: normalizeDate(t.date) }));
-        setTasks((prev) => [...prev, ...normalized]);
-      } catch (err) {
-        console.error("Error creando tarea(s)", err);
-        throw err;
-      }
+    try {
+      const created = await createTasks(input);
+      const normalized = created.map(t => ({ ...t, date: normalizeDate(t.date) }));
+      setTasks((prev) => [...prev, ...normalized]);
+    } catch (err) {
+      console.error("Error creando tarea(s)", err);
+      throw err;
+    }
     /* } */
   };
 
@@ -329,20 +332,20 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       });
     } else {
     */
-      try {
-        await deleteTask(id, deleteAll);
-        setTasks((prev) => {
-           const target = prev.find((t) => t.id === id);
-           if (!target) return prev;
-           if (deleteAll && target.seriesId) {
-             return prev.filter((t) => t.seriesId !== target.seriesId);
-           }
-           return prev.filter((t) => t.id !== id);
-        });
-      } catch (err) {
-        console.error("Error borrando tarea", err);
-        throw err;
-      }
+    try {
+      await deleteTask(id, deleteAll);
+      setTasks((prev) => {
+        const target = prev.find((t) => t.id === id);
+        if (!target) return prev;
+        if (deleteAll && target.seriesId) {
+          return prev.filter((t) => t.seriesId !== target.seriesId);
+        }
+        return prev.filter((t) => t.id !== id);
+      });
+    } catch (err) {
+      console.error("Error borrando tarea", err);
+      throw err;
+    }
     /* } */
   };
 
@@ -371,6 +374,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           description: input.description?.trim(),
           daysOfWeek: input.daysOfWeek,
           durationWeeks: input.durationWeeks,
+          color: input.color,
         };
 
         return prev.map((t) => {
@@ -384,26 +388,26 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       });
     } else {
     */
-      try {
-        const result = await apiUpdateTask(id, input, updateAll);
-        
-        if (updateAll) {
-          const allTasks = await getTasks();
-          const normalized = allTasks.map(t => ({ ...t, date: normalizeDate(t.date) }));
-          setTasks(normalized);
-        } else {
-          setTasks((prev) => prev.map((t) => {
-            if (t.id === id) {
-                const updated = result as Task;
-                return { ...updated, date: normalizeDate(updated.date) };
-            }
-            return t;
-          }));
-        }
-      } catch (err) {
-        console.error("Error actualizando tarea", err);
-        throw err;
+    try {
+      const result = await apiUpdateTask(id, input, updateAll);
+
+      if (updateAll) {
+        const allTasks = await getTasks();
+        const normalized = allTasks.map(t => ({ ...t, date: normalizeDate(t.date) }));
+        setTasks(normalized);
+      } else {
+        setTasks((prev) => prev.map((t) => {
+          if (t.id === id) {
+            const updated = result as Task;
+            return { ...updated, date: normalizeDate(updated.date) };
+          }
+          return t;
+        }));
       }
+    } catch (err) {
+      console.error("Error actualizando tarea", err);
+      throw err;
+    }
     /* } */
   };
 

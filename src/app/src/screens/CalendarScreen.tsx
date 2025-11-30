@@ -133,8 +133,12 @@ export function CalendarScreen() {
                 <li
                   key={task.id}
                   onClick={() => navigate(`/edit/${task.id}`)}
-                  className="bg-amber-200 rounded-xl shadow-sm px-3 py-2 flex flex-col gap-2 cursor-pointer hover:bg-amber-300 transition-colors"
+                  className="bg-white rounded-xl shadow-sm border border-slate-200 px-3 py-2 flex flex-col gap-2 cursor-pointer hover:shadow-md transition-all relative overflow-hidden"
                 >
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1.5"
+                    style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
+                  />
                   <div className="flex-1">
                     <div className="flex justify-between">
                       <p

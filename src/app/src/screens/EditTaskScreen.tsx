@@ -48,6 +48,22 @@ export function EditTaskScreen() {
     );
   };
 
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
+
+  const colorOptions = [
+    { value: undefined, label: "Por defecto" },
+    { value: "#ef4444", label: "Rojo" },
+    { value: "#f97316", label: "Naranja" },
+    { value: "#f59e0b", label: "Ámbar" },
+    { value: "#22c55e", label: "Verde" },
+    { value: "#14b8a6", label: "Turquesa" },
+    { value: "#3b82f6", label: "Azul" },
+    { value: "#6366f1", label: "Índigo" },
+    { value: "#a855f7", label: "Violeta" },
+    { value: "#ec4899", label: "Rosa" },
+    { value: "#64748b", label: "Gris" },
+  ];
+
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +80,7 @@ export function EditTaskScreen() {
         setRecurrence(task.recurrence || "NONE");
         setDescription(task.description || "");
         setNotificationTime(task.notificationTime || 0);
+        setSelectedColor(task.color);
 
         // Initialize custom days if applicable
         if (task.recurrence === "CUSTOM_WEEKLY") {
@@ -112,6 +129,7 @@ export function EditTaskScreen() {
         recurrence, // Note: Editing recurrence might be tricky if it changes future events. For now, simple update.
         description: description || undefined,
         notificationTime: notificationTime > 0 ? notificationTime : undefined,
+        color: selectedColor,
       });
 
       navigate(-1); // Go back
@@ -283,6 +301,34 @@ export function EditTaskScreen() {
         </div>
 
         <div className="space-y-1">
+          <span className="block text-xs text-gray-600">Color</span>
+          <div className="flex flex-wrap gap-2">
+            {colorOptions.map((c) => (
+              <button
+                key={c.value || "default"}
+                type="button"
+                onClick={() => setSelectedColor(c.value)}
+                className={
+                  "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all " +
+                  (selectedColor === c.value
+                    ? "border-slate-900 scale-110"
+                    : "border-transparent hover:scale-105")
+                }
+                style={{ backgroundColor: c.value || "#e2e8f0" }}
+                title={c.label}
+              >
+                {selectedColor === c.value && (
+                  <span className="text-[10px] text-white font-bold">✓</span>
+                )}
+                {!c.value && !selectedColor && (
+                  <span className="text-[10px] text-slate-500 font-bold">?</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1">
           <label className="block text-xs text-gray-600" htmlFor="description">
             Notas / descripción (opcional)
           </label>
@@ -397,6 +443,7 @@ export function EditTaskScreen() {
                             daysOfWeek: useCustomDays ? customDays : undefined,
                             durationWeeks: useCustomDays ? customDurationWeeks : undefined,
                             notificationTime: notificationTime > 0 ? notificationTime : undefined,
+                            color: selectedColor,
                           },
                           true // updateAll
                         );

@@ -29,7 +29,7 @@ export function HomeScreen() {
           Esto es lo que tiene la familia para hoy
         </p>
         <div className="text-[10px] text-gray-400 font-mono mt-1">
-           Debug: Supported={String("Notification" in window)}, Permission={permission}
+          Debug: Supported={String("Notification" in window)}, Permission={permission}
         </div>
       </header>
 
@@ -91,8 +91,13 @@ export function HomeScreen() {
           <li
             key={task.id}
             onClick={() => navigate(`/edit/${task.id}`)}
-            className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden"
           >
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1.5"
+              style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
+            />
+
             <div className="flex-1">
               <div className="flex justify-between">
                 <p

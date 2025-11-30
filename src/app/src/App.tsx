@@ -14,14 +14,14 @@ function AppContent() {
     <div className="min-h-screen bg-[#fdfbf7] text-slate-900 flex flex-col relative">
       <main className="flex-1 w-full mx-auto px-4 py-4 pb-24 max-w-md md:max-w-4xl lg:max-w-6xl transition-all duration-300">
         <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] max-w-[600px] bg-white/80 backdrop-blur-md border border-white/50 shadow-xl rounded-2xl z-50 transition-all duration-300">
-          <div className="flex justify-around items-center py-2 text-xs">
+          <div className="flex justify-around items-center py-2 text-lg">
             <NavLink
               to="/"
               className={({ isActive }) =>`flex flex-col items-center gap-0.5 transition 
                       ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
               }
             >
-              <span className="text-sm">Hoy</span>
+              <span className="text-lg">Hoy</span>
             </NavLink>
 
             <NavLink
@@ -29,7 +29,7 @@ function AppContent() {
               ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
               }
             >
-              <span className="text-sm">Eventos</span>
+              <span className="text-lg">Eventos</span>
             </NavLink>
 
             <NavLink
@@ -37,7 +37,7 @@ function AppContent() {
               ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
               }
             >
-              <span className="text-sm">Calendario</span>
+              <span className="text-lg">Calendario</span>
             </NavLink>
 
             <NavLink

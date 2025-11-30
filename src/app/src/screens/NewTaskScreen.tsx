@@ -54,6 +54,22 @@ export function NewTaskScreen() {
     );
   };
 
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
+
+  const colorOptions = [
+    { value: undefined, label: "Por defecto" },
+    { value: "#ef4444", label: "Rojo" },
+    { value: "#f97316", label: "Naranja" },
+    { value: "#f59e0b", label: "Ámbar" },
+    { value: "#22c55e", label: "Verde" },
+    { value: "#14b8a6", label: "Turquesa" },
+    { value: "#3b82f6", label: "Azul" },
+    { value: "#6366f1", label: "Índigo" },
+    { value: "#a855f7", label: "Violeta" },
+    { value: "#ec4899", label: "Rosa" },
+    { value: "#64748b", label: "Gris" },
+  ];
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -81,6 +97,7 @@ export function NewTaskScreen() {
         daysOfWeek: useCustomDays ? customDays : undefined,
         durationWeeks: useCustomDays ? customDurationWeeks : undefined,
         notificationTime: notificationTime > 0 ? notificationTime : undefined,
+        color: selectedColor,
       });
 
       // Reset básico y volvemos a Hoy
@@ -92,6 +109,7 @@ export function NewTaskScreen() {
       setCustomDurationWeeks(4);
       setRecurrence("NONE");
       setNotificationTime(0);
+      setSelectedColor(undefined);
       navigate("/");
     } catch (err) {
       console.error(err);
@@ -126,34 +144,34 @@ export function NewTaskScreen() {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
-          {/* Fecha */}
-          <div className="flex-1 space-y-1">
-            <label className="block text-xs text-gray-600" htmlFor="date">
-              Fecha
-            </label>
-            <input
-              id="date"
-              type="date"
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
 
-          {/* Hora */}
-          <div className="flex-1 space-y-1">
-            <label className="block text-xs text-gray-600" htmlFor="time">
-              Hora (opcional)
-            </label>
-            <input
-              id="time"
-              type="time"
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </div>
+        {/* Fecha */}
+        <div className="flex-1 space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="date">
+            Fecha
+          </label>
+          <input
+            id="date"
+            type="date"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+
+
+        {/* Hora */}
+        <div className="flex-1 space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="time">
+            Hora (opcional)
+          </label>
+          <input
+            id="time"
+            type="time"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          />
         </div>
 
         {/* Notificación */}
@@ -261,6 +279,34 @@ export function NewTaskScreen() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="space-y-1">
+          <span className="block text-xs text-gray-600">Color</span>
+          <div className="flex flex-wrap gap-2">
+            {colorOptions.map((c) => (
+              <button
+                key={c.value || "default"}
+                type="button"
+                onClick={() => setSelectedColor(c.value)}
+                className={
+                  "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all " +
+                  (selectedColor === c.value
+                    ? "border-slate-900 scale-110"
+                    : "border-transparent hover:scale-105")
+                }
+                style={{ backgroundColor: c.value || "#e2e8f0" }}
+                title={c.label}
+              >
+                {selectedColor === c.value && (
+                  <span className="text-[10px] text-white font-bold">✓</span>
+                )}
+                {!c.value && !selectedColor && (
+                  <span className="text-[10px] text-slate-500 font-bold">?</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-1">
