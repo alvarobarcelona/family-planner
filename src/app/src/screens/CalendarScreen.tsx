@@ -59,15 +59,15 @@ export function CalendarScreen() {
       <div>Filtros</div>
 
       {/* Filtros por miembro (igual que en Hoy) */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         <button
           type="button"
           onClick={() => setSelectedAssigneeId("all")}
           className={
-            "px-2 py-1 rounded-full text-xs border " +
+            "px-4 py-1.5 rounded-full text-sm font-medium transition-all  " +
             (selectedAssigneeId === "all"
-              ? "bg-slate-900 text-white border-slate-900"
-              : "bg-white text-slate-700 border-gray-300")
+              ? "bg-slate-800 text-white shadow-md shadow-slate-300"
+              : "bg-white text-slate-600 border border-transparent shadow-sm hover:bg-slate-50")
           }
         >
           Todos
@@ -79,14 +79,14 @@ export function CalendarScreen() {
             type="button"
             onClick={() => setSelectedAssigneeId(m.id)}
             className={
-              "px-2 py-1 rounded-full text-xs border flex items-center gap-1 " +
+              "px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all  " +
               (selectedAssigneeId === m.id
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-white text-slate-700 border-gray-300")
+                ? "bg-slate-800 text-white shadow-md shadow-slate-300"
+                : "bg-white text-slate-600 border border-transparent shadow-sm hover:bg-slate-50")
             }
           >
             <span
-              className="inline-block w-2 h-2 rounded-full"
+              className="inline-block w-2.5 h-2.5 rounded-full ring-2 ring-white"
               style={{ backgroundColor: m.color }}
             />
             {m.name}
