@@ -9,6 +9,7 @@
     "strict": true,
     "skipLibCheck": true,
     "lib": ["es2020"],
+    "typeRoots": ["./node_modules/@types"],
     "sourceMap": true
   },
   "include": ["src"]
