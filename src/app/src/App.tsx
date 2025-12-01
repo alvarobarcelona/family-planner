@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
 import { HomeScreen } from "./screens/HomeScreen";
+import { LoginScreen } from "./screens/LoginScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { VisualCalendarScreen } from "./screens/VisualCalendarScreen";
 import { NewTaskScreen } from "./screens/NewTaskScreen";
@@ -17,7 +19,7 @@ function AppContent() {
           <div className="flex justify-around items-center py-2 text-lg">
             <NavLink
               to="/"
-              className={({ isActive }) =>`flex flex-col items-center gap-0.5 transition 
+              className={({ isActive }) => `flex flex-col items-center gap-0.5 transition 
                       ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
               }
             >
@@ -63,6 +65,19 @@ function AppContent() {
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
+
   return (
     <TaskProvider>
       <AppContent />

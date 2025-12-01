@@ -8,8 +8,11 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "cors": "^2.x",
+    "dotenv": "^17.2.3",
     "express": "^4.x",
+    "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3"
   },
   "devDependencies": {

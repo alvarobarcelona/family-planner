@@ -2,6 +2,8 @@ import cors from "cors";
 import express from "express";
 import { randomUUID } from "crypto";
 import { pool } from "./db";
+import jwt from "jsonwebtoken";
+import "dotenv/config";
 
 const app = express();
 
@@ -65,6 +67,43 @@ app.use(
   })
 );
 
+// Auth Middleware
+const APP_SECRET_PASSWORD = process.env.APP_SECRET_PASSWORD;
+const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-change-me";
+
+if (!APP_SECRET_PASSWORD) {
+  console.warn("WARNING: APP_SECRET_PASSWORD is not set in environment variables.");
+}
+
+function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Invalid token format" });
+  }
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+}
+
+// Login Endpoint
+app.post("/api/login", (req, res) => {
+  const { password } = req.body;
+  if (password === APP_SECRET_PASSWORD) {
+    const token = jwt.sign({ role: "family" }, JWT_SECRET, { expiresIn: "365d" });
+    return res.json({ token });
+  }
+  return res.status(401).json({ message: "Contraseña incorrecta" });
+});
+
 // Init DB
 async function initDb() {
   await pool.query(`
@@ -117,7 +156,7 @@ initDb()
   });
 
 // GET todas las tareas
-app.get("/api/tasks", async (_req, res) => {
+app.get("/api/tasks", authMiddleware, async (_req, res) => {
   try {
     const result = await pool.query(`
       SELECT id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color
@@ -151,7 +190,7 @@ app.get("/api/tasks", async (_req, res) => {
 });
 
 // POST crear tarea(s)
-app.post("/api/tasks", async (req, res) => {
+app.post("/api/tasks", authMiddleware, async (req, res) => {
   const {
     title,
     date,
@@ -301,7 +340,7 @@ app.post("/api/tasks", async (req, res) => {
 });
 
 // PUT actualizar tarea
-app.put("/api/tasks/:id", async (req, res) => {
+app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { updateAll } = req.query;
   const {
@@ -504,7 +543,7 @@ app.put("/api/tasks/:id", async (req, res) => {
 });
 
 // DELETE
-app.delete("/api/tasks/:id", async (req, res) => {
+app.delete("/api/tasks/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { deleteAll } = req.query;
 

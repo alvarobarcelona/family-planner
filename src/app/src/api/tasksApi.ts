@@ -23,8 +23,35 @@ function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`;
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export async function login(password: string): Promise<void> {
+  const res = await fetch(buildUrl("/api/login"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Login failed");
+  }
+
+  const data = await res.json();
+  localStorage.setItem("auth_token", data.token);
+}
+
+export function logout() {
+  localStorage.removeItem("auth_token");
+  window.location.reload();
+}
+
 export async function getTasks(): Promise<Task[]> {
-  const res = await fetch(buildUrl("/api/tasks"));
+  const res = await fetch(buildUrl("/api/tasks"), {
+    headers: { ...getAuthHeaders() },
+  });
   if (!res.ok) {
     throw new Error("Error al cargar tareas");
   }
@@ -37,7 +64,10 @@ export async function createTasks(payload: CreateTaskDto): Promise<Task[]> {
   
   const res = await fetch(buildUrl("/api/tasks"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(payload),
   });
 
@@ -58,6 +88,7 @@ export async function deleteTask(id: string, deleteAll?: boolean): Promise<void>
   const query = deleteAll ? "?deleteAll=true" : "";
   const res = await fetch(buildUrl(`/api/tasks/${id}${query}`), {
     method: "DELETE",
+    headers: { ...getAuthHeaders() },
   });
 
   if (!res.ok && res.status !== 404) {
@@ -69,7 +100,10 @@ export async function updateTask(id: string, payload: CreateTaskDto, updateAll?:
   const query = updateAll ? "?updateAll=true" : "";
   const res = await fetch(buildUrl(`/api/tasks/${id}${query}`), {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(payload),
   });
 
