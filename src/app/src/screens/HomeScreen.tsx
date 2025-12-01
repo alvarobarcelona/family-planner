@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { useNotifications } from "../hooks/useNotifications";
+import { logout } from "../api/tasksApi";
 
 type FilterAssigneeId = "all" | string;
 
@@ -28,8 +29,16 @@ export function HomeScreen() {
         <p className="text-xs text-gray-500">
           Esto es lo que tiene la familia para hoy
         </p>
-        <div className="text-[10px] text-gray-400 font-mono mt-1">
-          Debug: Supported={String("Notification" in window)}, Permission={permission}
+        <div className="flex justify-between items-center mt-2">
+          <div className="text-[10px] text-gray-400 font-mono">
+            Debug: Supported={String("Notification" in window)}, Permission={permission}
+          </div>
+          <button
+            onClick={logout}
+            className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
+          >
+            Cerrar Sesión
+          </button>
         </div>
       </header>
 
