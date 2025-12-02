@@ -18,10 +18,6 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         try {
             await login(password);
 
-            if ("Notification" in window && Notification.permission === "default") {
-                await Notification.requestPermission();
-            }
-
             onLoginSuccess();
         } catch (err) {
             setError("Contraseña incorrecta");
