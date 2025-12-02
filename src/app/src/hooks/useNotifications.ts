@@ -9,6 +9,11 @@ export function useNotifications(enableScheduler = true) {
   );
 
   const requestPermission = async () => {
+    if (!window.isSecureContext) {
+      alert("Las notificaciones requieren una conexión segura (HTTPS). Si estás en local, usa localhost o un túnel seguro.");
+      return;
+    }
+
     if (!("Notification" in window)) {
       alert("Tu navegador no soporta notificaciones.");
       return;

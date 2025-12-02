@@ -42,22 +42,20 @@ export function HomeScreen() {
         </div>
       </header>
 
-      {permission === "default" && "Notification" in window && (
-        <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🔔</span>
-            <p className="text-xs text-indigo-800">
-              Activa las notificaciones para recibir recordatorios.
-            </p>
-          </div>
-          <button
-            onClick={requestPermission}
-            className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full font-medium shadow-sm active:scale-95 transition-transform"
-          >
-            Activar
-          </button>
+      <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🔔</span>
+          <p className="text-xs text-indigo-800">
+            Activa las notificaciones para recibir recordatorios.
+          </p>
         </div>
-      )}
+        <button
+          onClick={requestPermission}
+          className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full font-medium shadow-sm active:scale-95 transition-transform"
+        >
+          Activar
+        </button>
+      </div>
       <div>Filtros</div>
       {/* Filtros por miembro */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
