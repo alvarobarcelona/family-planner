@@ -26,13 +26,10 @@ export function HomeScreen() {
     <div className="space-y-3">
       <header className="mt-1 mb-2">
         <h1 className="text-xl font-semibold">Hoy {new Date().toLocaleDateString()}</h1>
-        <p className="text-xs text-gray-500">
-          Esto es lo que tiene la familia para hoy
-        </p>
         <div className="flex justify-between items-center mt-2">
-          <div className="text-[10px] text-gray-400 font-mono">
-            Debug: Supported={String("Notification" in window)}, Permission={permission}
-          </div>
+          <p className="text-xs text-gray-500">
+            Esto es lo que tiene la familia para hoy
+          </p>
           <button
             onClick={logout}
             className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
@@ -40,6 +37,11 @@ export function HomeScreen() {
             Cerrar Sesión
           </button>
         </div>
+
+        <div className="text-[10px] text-gray-400 font-mono">
+          Debug: Supported={String("Notification" in window)}, Permission={permission}
+        </div>
+
       </header>
 
       {permission === "default" && "Notification" in window && (

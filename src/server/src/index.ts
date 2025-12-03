@@ -1,9 +1,11 @@
+//dotenv debe ir al principio de todos los archivos 
+import "dotenv/config";
+
 import cors from "cors";
 import express from "express";
 import { randomUUID } from "crypto";
 import { pool } from "./db";
 import jwt from "jsonwebtoken";
-import "dotenv/config";
 
 const app = express();
 
@@ -58,6 +60,7 @@ function addMonths(dateStr: string, months: number): string {
 // CORS
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:4000",
   "https://family-planner-tau.vercel.app",
 ];
 
