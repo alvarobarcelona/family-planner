@@ -44,11 +44,11 @@ build
 Thumbs.db
 
 # Docker
-docker-compose.yml
-docker-compose.override.yml
+.docker-compose.yml
+.docker-compose.override.yml
 
 
 # Docker volumes
-postgres_data
+.postgres_data
 
 
