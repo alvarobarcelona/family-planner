@@ -31,7 +31,7 @@ function AppContent() {
               ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
               }
             >
-              <span className="text-lg">Eventos</span>
+              <span className="text-lg">Agenda</span>
             </NavLink>
 
             <NavLink

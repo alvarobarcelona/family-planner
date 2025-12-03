@@ -1,4 +1,4 @@
-//dotenv debe ir al principio de todos los archivos 
+//dotenv debe ir al principio de todos los archivos
 import "dotenv/config";
 
 import cors from "cors";
@@ -41,7 +41,7 @@ interface Task {
 const familyMembers: Record<string, Assignee> = {
   mama: { id: "mama", name: "Maria", color: "#f97316" },
   papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
-  familia: { id: "familia", name: "Todos", color: "#6366f1" },
+  familia: { id: "familia", name: "Familia", color: "#6366f1" },
 };
 
 // Helpers de fechas
@@ -75,10 +75,16 @@ const APP_SECRET_PASSWORD = process.env.APP_SECRET_PASSWORD;
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-change-me";
 
 if (!APP_SECRET_PASSWORD) {
-  console.warn("WARNING: APP_SECRET_PASSWORD is not set in environment variables.");
+  console.warn(
+    "WARNING: APP_SECRET_PASSWORD is not set in environment variables."
+  );
 }
 
-function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+function authMiddleware(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ message: "No token provided" });
@@ -101,7 +107,9 @@ function authMiddleware(req: express.Request, res: express.Response, next: expre
 app.post("/api/login", (req, res) => {
   const { password } = req.body;
   if (password === APP_SECRET_PASSWORD) {
-    const token = jwt.sign({ role: "family" }, JWT_SECRET, { expiresIn: "365d" });
+    const token = jwt.sign({ role: "family" }, JWT_SECRET, {
+      expiresIn: "365d",
+    });
     return res.json({ token });
   }
   return res.status(401).json({ message: "Contraseña incorrecta" });
@@ -132,7 +140,10 @@ async function initDb() {
       ADD COLUMN IF NOT EXISTS notification_time integer;
     `);
   } catch (err) {
-    console.log("Column notification_time might already exist or error adding it:", err);
+    console.log(
+      "Column notification_time might already exist or error adding it:",
+      err
+    );
   }
 
   // Add color column if it doesn't exist
@@ -181,7 +192,9 @@ app.get("/api/tasks", authMiddleware, async (_req, res) => {
       seriesId: (row.series_id ?? undefined) as string | undefined,
       daysOfWeek: (row.days_of_week ?? undefined) as number[] | undefined,
       durationWeeks: (row.duration_weeks ?? undefined) as number | undefined,
-      notificationTime: (row.notification_time ?? undefined) as number | undefined,
+      notificationTime: (row.notification_time ?? undefined) as
+        | number
+        | undefined,
       color: (row.color ?? undefined) as string | undefined,
     }));
 
