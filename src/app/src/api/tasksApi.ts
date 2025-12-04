@@ -59,8 +59,8 @@ export async function getTasks(): Promise<Task[]> {
 }
 
 export async function createTasks(payload: CreateTaskDto): Promise<Task[]> {
-  console.log('🔵 Sending POST to:', buildUrl("/api/tasks"));
-  console.log('🔵 Payload:', payload);
+  console.log('Sending POST to:', buildUrl("/api/tasks"));
+  console.log(' Payload:', payload);
   
   const res = await fetch(buildUrl("/api/tasks"), {
     method: "POST",
@@ -71,16 +71,16 @@ export async function createTasks(payload: CreateTaskDto): Promise<Task[]> {
     body: JSON.stringify(payload),
   });
 
-  console.log('🔵 Response status:', res.status);
+  console.log(' Response status:', res.status);
   
   if (!res.ok) {
     const errorText = await res.text();
-    console.error('❌ API Error:', res.status, errorText);
+    
     throw new Error(`Error al crear tarea(s): ${res.status} - ${errorText}`);
   }
 
   const data = await res.json();
-  console.log('✅ Created tasks:', data);
+
   return data;
 }
 
