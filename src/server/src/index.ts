@@ -8,13 +8,10 @@ import { pool } from "./db";
 import jwt from "jsonwebtoken";
 import { sendNotification } from "./services/pushService";
 
-
-
 // Try explicit load if missing
 if (!process.env.VAPID_PUBLIC_KEY) {
   const envPath = path.resolve(process.cwd(), ".env");
   require("dotenv").config({ path: envPath });
- 
 }
 
 const app = express();
@@ -53,6 +50,34 @@ const familyMembers: Record<string, Assignee> = {
   papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
   familia: { id: "familia", name: "Familia", color: "#6366f1" },
 };
+
+// Helper function to get Central European Time offset (UTC+1 or UTC+2)
+function getCETOffset(date: Date): number {
+  // CET (Central European Time) rules:
+  // - Winter: UTC+1 (60 minutes)
+  // - Summer (DST): UTC+2 (120 minutes)
+  // DST starts: Last Sunday of March at 2:00 AM
+  // DST ends: Last Sunday of October at 3:00 AM
+
+  const year = date.getFullYear();
+
+  // Find last Sunday of March
+  const marchLastDay = new Date(Date.UTC(year, 2, 31)); // March 31
+  const marchLastSunday = new Date(marchLastDay);
+  marchLastSunday.setUTCDate(31 - ((marchLastDay.getUTCDay() || 7) - 7));
+  marchLastSunday.setUTCHours(1, 0, 0, 0); // 2:00 AM CET = 1:00 AM UTC
+
+  // Find last Sunday of October
+  const octoberLastDay = new Date(Date.UTC(year, 9, 31)); // October 31
+  const octoberLastSunday = new Date(octoberLastDay);
+  octoberLastSunday.setUTCDate(31 - ((octoberLastDay.getUTCDay() || 7) - 7));
+  octoberLastSunday.setUTCHours(1, 0, 0, 0); // 3:00 AM CEST = 1:00 AM UTC
+
+  // Check if date is in DST period
+  const isDST = date >= marchLastSunday && date < octoberLastSunday;
+
+  return isDST ? 120 : 60; // 120 minutes (UTC+2) in summer, 60 minutes (UTC+1) in winter
+}
 
 // Helpers de fechas
 function addDays(dateStr: string, days: number): string {
@@ -268,7 +293,6 @@ async function initDb() {
       householdId,
       "Familia Barcelona",
     ]);
-   
   }
 
   // Seed Members
@@ -288,7 +312,6 @@ async function initDb() {
         "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
         [m.id, householdId, m.name, m.color]
       );
-      
     }
   }
 }
@@ -300,7 +323,7 @@ initDb()
       console.log(`Server running on port ${PORT}`);
 
       // Start Scheduler
-  
+
       setInterval(async () => {
         try {
           const now = new Date();
@@ -320,13 +343,9 @@ initDb()
           for (const task of result.rows) {
             const [hours, minutes] = task.time_label.split(":").map(Number);
 
-            // Construct target date in local time
-            // We assume task.date is a Date object (midnight) or string YYYY-MM-DD
+            // Construct target date in Europe/Madrid timezone
             let dateStr = "";
             if (task.date instanceof Date) {
-              // Adjust for timezone offset issues if pg returns UTC midnight
-              // Better to use the string representation from DB if possible, but pg parses it.
-              // Let's format it manually to YYYY-MM-DD
               const y = task.date.getFullYear();
               const m = String(task.date.getMonth() + 1).padStart(2, "0");
               const d = String(task.date.getDate()).padStart(2, "0");
@@ -335,7 +354,21 @@ initDb()
               dateStr = task.date;
             }
 
-            const targetDate = new Date(`${dateStr}T${task.time_label}:00`);
+            // Create date in Europe/Madrid timezone (CET/CEST)
+            // Automatically detects UTC+1 (winter) or UTC+2 (summer)
+            // Parse the date components
+            const [year, month, day] = dateStr.split("-").map(Number);
+
+            // Create a date in UTC, then adjust for CET timezone
+            const utcDate = new Date(
+              Date.UTC(year, month - 1, day, hours, minutes, 0)
+            );
+
+            // Get the correct timezone offset (60 or 120 minutes) based on DST
+            const cetOffsetMinutes = getCETOffset(utcDate);
+            const targetDate = new Date(
+              utcDate.getTime() - cetOffsetMinutes * 60000
+            );
 
             // Subtract notification time
             const notifyTime = new Date(
