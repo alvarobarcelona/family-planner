@@ -4,7 +4,7 @@ self.addEventListener("push", function (event) {
       const payload = event.data.json();
       const options = {
         body: payload.body,
-        icon: payload.icon || "/vite.svg", // Default vite icon for now
+        icon: payload.icon || "/icons/icon-192.png", 
         vibrate: [100, 50, 100],
         data: {
           dateOfArrival: Date.now(),
