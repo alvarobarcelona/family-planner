@@ -1,16 +1,44 @@
-const CACHE_NAME = "family-planner-v1";
-const URLS_TO_CACHE = ["/", "/index.html", "/manifest.json"];
+self.addEventListener("push", function (event) {
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      const options = {
+        body: payload.body,
+        icon: payload.icon || "/icons/icon-192.png", 
+        vibrate: [100, 50, 100],
+        data: {
+          dateOfArrival: Date.now(),
+          primaryKey: 1,
+          url: payload.url || "/",
+        },
+      };
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE))
-  );
+      event.waitUntil(
+        self.registration.showNotification(payload.title, options)
+      );
+    } catch (e) {
+      console.error("Error parsing push payload", e);
+    }
+  }
 });
 
-self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches
-      .match(event.request)
-      .then((response) => response || fetch(event.request))
+self.addEventListener("notificationclick", function (event) {
+  event.notification.close();
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        // Check if there is already a window/tab open with the target URL
+        for (var i = 0; i < windowClients.length; i++) {
+          var client = windowClients[i];
+          if (client.url === event.notification.data.url && "focus" in client) {
+            return client.focus();
+          }
+        }
+        // If not, open a new window
+        if (clients.openWindow) {
+          return clients.openWindow(event.notification.data.url);
+        }
+      })
   );
 });
