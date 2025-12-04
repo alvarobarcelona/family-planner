@@ -56,8 +56,8 @@ export function useNotifications(enableScheduler = true) {
           
           if (!notifiedTasks.current.has(notificationId)) {
             try {
-              new Notification(`Upcoming Event: ${task.title} -- ${task.date}`, {
-                body: `Starting in ${task.notificationTime} minutes`,
+              new Notification(`Evento/tarea: ${task.title} -- ${task.date}`, {
+                body: `Comienza en: ${task.notificationTime} minutes`,
                 requireInteraction: true // Keeps notification until user interacts
               });
               notifiedTasks.current.add(notificationId);

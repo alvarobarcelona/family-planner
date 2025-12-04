@@ -45,7 +45,7 @@ export function HomeScreen() {
 
 
         <div className="text-[10px] text-gray-400 font-mono">
-          Debug: Subscribed={String(isSubscribed)}, Permission={permission}
+          Notificaciones: Subscribed={String(isSubscribed)}, Permission={permission}
         </div>
 
       </header>
