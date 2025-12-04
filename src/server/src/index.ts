@@ -1,11 +1,21 @@
 //dotenv debe ir al principio de todos los archivos
 import "dotenv/config";
-
+import path from "path";
 import cors from "cors";
 import express from "express";
 import { randomUUID } from "crypto";
 import { pool } from "./db";
 import jwt from "jsonwebtoken";
+import { sendNotification } from "./services/pushService";
+
+
+
+// Try explicit load if missing
+if (!process.env.VAPID_PUBLIC_KEY) {
+  const envPath = path.resolve(process.cwd(), ".env");
+  require("dotenv").config({ path: envPath });
+ 
+}
 
 const app = express();
 
@@ -115,6 +125,48 @@ app.post("/api/login", (req, res) => {
   return res.status(401).json({ message: "Contraseña incorrecta" });
 });
 
+// GET Public VAPID Key
+app.get("/api/vapid-public-key", (_req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+// POST Subscribe to Push Notifications
+app.post("/api/subscribe", async (req, res) => {
+  const { subscription, familyMemberId } = req.body;
+
+  if (!subscription || !subscription.endpoint) {
+    return res.status(400).json({ message: "Invalid subscription" });
+  }
+
+  const householdId = "00000000-0000-0000-0000-000000000000"; // Default household
+
+  try {
+    await pool.query(
+      `
+      INSERT INTO push_subscriptions (id, household_id, family_member_id, endpoint, keys, user_agent)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (endpoint) DO UPDATE
+      SET family_member_id = EXCLUDED.family_member_id,
+          last_used_at = now(),
+          is_active = true
+    `,
+      [
+        randomUUID(),
+        householdId,
+        familyMemberId || null,
+        subscription.endpoint,
+        JSON.stringify(subscription.keys),
+        req.headers["user-agent"],
+      ]
+    );
+
+    res.status(201).json({ message: "Subscribed successfully" });
+  } catch (err) {
+    console.error("Error subscribing:", err);
+    res.status(500).json({ message: "Error subscribing" });
+  }
+});
+
 // Init DB
 async function initDb() {
   await pool.query(`
@@ -155,6 +207,90 @@ async function initDb() {
   } catch (err) {
     console.log("Column color might already exist or error adding it:", err);
   }
+
+  // Add notification_sent column if it doesn't exist
+  try {
+    await pool.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS notification_sent boolean DEFAULT false;
+    `);
+  } catch (err) {
+    console.log(
+      "Column notification_sent might already exist or error adding it:",
+      err
+    );
+  }
+  // 1. Households
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS households (
+      id uuid PRIMARY KEY,
+      name text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+
+  // 2. Family Members
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS family_members (
+      id text PRIMARY KEY,
+      household_id uuid NOT NULL REFERENCES households(id),
+      name text NOT NULL,
+      color text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+
+  // 3. Push Subscriptions
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id uuid PRIMARY KEY,
+      household_id uuid NOT NULL REFERENCES households(id),
+      family_member_id text REFERENCES family_members(id),
+      endpoint text UNIQUE NOT NULL,
+      keys jsonb NOT NULL,
+      user_agent text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      last_used_at timestamptz,
+      is_active boolean NOT NULL DEFAULT true
+    );
+  `);
+
+  // Seed Data
+  const householdId = "00000000-0000-0000-0000-000000000000"; // Fixed ID for simplicity
+
+  // Check if household exists
+  const householdRes = await pool.query(
+    "SELECT id FROM households WHERE id = $1",
+    [householdId]
+  );
+  if (householdRes.rowCount === 0) {
+    await pool.query("INSERT INTO households (id, name) VALUES ($1, $2)", [
+      householdId,
+      "Familia Barcelona",
+    ]);
+   
+  }
+
+  // Seed Members
+  const members = [
+    { id: "mama", name: "Maria", color: "#f97316" },
+    { id: "papa", name: "Alvaro", color: "#22c55e" },
+    { id: "familia", name: "Todos", color: "#6366f1" },
+  ];
+
+  for (const m of members) {
+    const memberRes = await pool.query(
+      "SELECT id FROM family_members WHERE id = $1",
+      [m.id]
+    );
+    if (memberRes.rowCount === 0) {
+      await pool.query(
+        "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
+        [m.id, householdId, m.name, m.color]
+      );
+      
+    }
+  }
 }
 
 initDb()
@@ -162,6 +298,96 @@ initDb()
     const PORT = process.env.PORT ?? 4000;
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+
+      // Start Scheduler
+  
+      setInterval(async () => {
+        try {
+          const now = new Date();
+          const todayStr = now.toISOString().slice(0, 10);
+
+          const result = await pool.query(
+            `
+            SELECT * FROM tasks 
+            WHERE date >= $1 
+            AND notification_time IS NOT NULL 
+            AND time_label IS NOT NULL
+            AND (notification_sent IS NULL OR notification_sent = false)
+          `,
+            [todayStr]
+          );
+
+          for (const task of result.rows) {
+            const [hours, minutes] = task.time_label.split(":").map(Number);
+
+            // Construct target date in local time
+            // We assume task.date is a Date object (midnight) or string YYYY-MM-DD
+            let dateStr = "";
+            if (task.date instanceof Date) {
+              // Adjust for timezone offset issues if pg returns UTC midnight
+              // Better to use the string representation from DB if possible, but pg parses it.
+              // Let's format it manually to YYYY-MM-DD
+              const y = task.date.getFullYear();
+              const m = String(task.date.getMonth() + 1).padStart(2, "0");
+              const d = String(task.date.getDate()).padStart(2, "0");
+              dateStr = `${y}-${m}-${d}`;
+            } else {
+              dateStr = task.date;
+            }
+
+            const targetDate = new Date(`${dateStr}T${task.time_label}:00`);
+
+            // Subtract notification time
+            const notifyTime = new Date(
+              targetDate.getTime() - task.notification_time * 60000
+            );
+
+            const diff = now.getTime() - notifyTime.getTime();
+
+            // Check if within last 60 seconds
+            if (diff >= 0 && diff < 60000) {
+              console.log(`Sending notification for task: ${task.title}`);
+
+              const householdId = "00000000-0000-0000-0000-000000000000";
+              const assignees = task.assignees;
+              const assigneeIds = assignees.map((a: any) => a.id);
+
+              const subsRes = await pool.query(
+                `
+                SELECT * FROM push_subscriptions 
+                WHERE household_id = $1 
+                AND (family_member_id = ANY($2) OR family_member_id IS NULL)
+              `,
+                [householdId, assigneeIds]
+              );
+
+              for (const sub of subsRes.rows) {
+                const payload = {
+                  title: `Recordatorio: ${task.title}`,
+                  body: `Comienza en ${task.notification_time} minutos`,
+                  url: "/",
+                  icon: "/icon-192x192.png",
+                };
+
+                // Construct subscription object expected by web-push
+                const pushSub = {
+                  endpoint: sub.endpoint,
+                  keys: sub.keys,
+                };
+
+                await sendNotification(pushSub, payload);
+              }
+
+              await pool.query(
+                "UPDATE tasks SET notification_sent = true WHERE id = $1",
+                [task.id]
+              );
+            }
+          }
+        } catch (err) {
+          console.error("Scheduler error:", err);
+        }
+      }, 60000); // Check every minute
     });
   })
   .catch((err) => {
