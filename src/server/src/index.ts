@@ -446,7 +446,7 @@ initDb()
         } catch (err) {
           console.error("Scheduler error:", err);
         }
-      }, 300000); // Check every 5 minutes
+      }, 30000); // Check every 30 seconds
     });
   })
   .catch((err) => {
