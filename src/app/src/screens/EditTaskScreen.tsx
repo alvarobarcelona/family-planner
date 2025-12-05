@@ -426,6 +426,26 @@ export function EditTaskScreen() {
               Cancelar
             </button>
             <button
+              type="button"
+              onClick={async () => {
+                if (window.confirm("¿Borrar solo este evento?")) {
+                  setIsSubmitting(true);
+                  try {
+                    await removeTask(taskId!, false); // deleteAll = false
+                    navigate(-1);
+                  } catch (err) {
+                    console.error(err);
+                    setError("Error al borrar evento");
+                    setIsSubmitting(false);
+                  }
+                }
+              }}
+              disabled={isSubmitting}
+              className="flex-1 rounded-lg border border-red-200 text-red-600 py-2 text-xs font-medium hover:bg-red-50"
+            >
+              Borrar solo este evento
+            </button>
+            <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 rounded-lg bg-slate-900 text-white py-2 text-sm font-medium disabled:opacity-60"
@@ -441,6 +461,29 @@ export function EditTaskScreen() {
                 Opciones de serie
               </p>
               <div className="flex gap-2">
+                
+                
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (window.confirm("¿Borrar TODA la serie?")) {
+                      setIsSubmitting(true);
+                      try {
+                        await removeTask(taskId!, true); // deleteAll = true
+                        navigate(-1);
+                      } catch (err) {
+                        console.error(err);
+                        setError("Error al borrar serie");
+                        setIsSubmitting(false);
+                      }
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  className="flex-1 rounded-lg bg-red-50 border border-red-200 text-red-600 py-2 text-xs font-medium hover:bg-red-100"
+                >
+                  Borrar Serie
+                </button>
+
                 <button
                   type="button"
                   onClick={async () => {
@@ -480,46 +523,6 @@ export function EditTaskScreen() {
                   className="flex-1 rounded-lg bg-slate-700 text-white py-2 text-xs font-medium disabled:opacity-60"
                 >
                   Guardar Serie
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (window.confirm("¿Borrar solo este evento?")) {
-                      setIsSubmitting(true);
-                      try {
-                        await removeTask(taskId!, false); // deleteAll = false
-                        navigate(-1);
-                      } catch (err) {
-                        console.error(err);
-                        setError("Error al borrar evento");
-                        setIsSubmitting(false);
-                      }
-                    }
-                  }}
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-lg border border-red-200 text-red-600 py-2 text-xs font-medium hover:bg-red-50"
-                >
-                  Borrar este
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (window.confirm("¿Borrar TODA la serie?")) {
-                      setIsSubmitting(true);
-                      try {
-                        await removeTask(taskId!, true); // deleteAll = true
-                        navigate(-1);
-                      } catch (err) {
-                        console.error(err);
-                        setError("Error al borrar serie");
-                        setIsSubmitting(false);
-                      }
-                    }
-                  }}
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-lg bg-red-50 border border-red-200 text-red-600 py-2 text-xs font-medium hover:bg-red-100"
-                >
-                  Borrar Serie
                 </button>
               </div>
             </div>

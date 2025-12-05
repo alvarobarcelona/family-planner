@@ -29,7 +29,7 @@ export function HomeScreen() {
           <h1 className="text-xl font-semibold">Hoy {new Date().toLocaleDateString()}</h1>
           <button
             onClick={logout}
-            className="group flex items-center gap-2 text-sm font-medium text-red-500 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.97] transition-all duration-200"
+            className="group flex items-center gap-2 text-xs font-medium text-red-500 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.97] transition-all duration-200"
           >
             <svg className="w-4 h-4 text-red-500 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-10V5m0 0a2 2 0 00-2 2v10a2 2 0 002 2" />
