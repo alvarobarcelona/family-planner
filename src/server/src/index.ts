@@ -31,7 +31,8 @@ interface Assignee {
 interface Task {
   id: string;
   title: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (start date)
+  endDate?: string; // YYYY-MM-DD (end date, optional for multi-day events)
   timeLabel?: string;
   assignees: Assignee[];
   priority: Priority;
@@ -42,6 +43,7 @@ interface Task {
   durationWeeks?: number;
   notificationTime?: number; // minutes before event
   color?: string;
+  isCompleted?: boolean; // whether task is marked as done
 }
 
 // Mock de miembros de la familia
@@ -245,6 +247,29 @@ async function initDb() {
       err
     );
   }
+
+  // Add end_date column if it doesn't exist
+  try {
+    await pool.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS end_date date;
+    `);
+  } catch (err) {
+    console.log("Column end_date might already exist or error adding it:", err);
+  }
+
+  // Add is_completed column if it doesn't exist
+  try {
+    await pool.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS is_completed boolean DEFAULT false;
+    `);
+  } catch (err) {
+    console.log(
+      "Column is_completed might already exist or error adding it:",
+      err
+    );
+  }
   // 1. Households
   await pool.query(`
     CREATE TABLE IF NOT EXISTS households (
@@ -432,7 +457,7 @@ initDb()
 app.get("/api/tasks", authMiddleware, async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color
+      SELECT id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed
       FROM tasks
       ORDER BY date, time_label NULLS FIRST, title;
     `);
@@ -443,6 +468,7 @@ app.get("/api/tasks", authMiddleware, async (_req, res) => {
       id: row.id as string,
       title: row.title as string,
       date: row.date as string, // "YYYY-MM-DD"
+      endDate: (row.end_date ?? undefined) as string | undefined,
       timeLabel: (row.time_label ?? undefined) as string | undefined,
       priority: row.priority as Priority,
       recurrence: (row.recurrence ?? undefined) as Recurrence | undefined,
@@ -455,6 +481,7 @@ app.get("/api/tasks", authMiddleware, async (_req, res) => {
         | number
         | undefined,
       color: (row.color ?? undefined) as string | undefined,
+      isCompleted: (row.is_completed ?? undefined) as boolean | undefined,
     }));
 
     res.json(tasks);
@@ -469,6 +496,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
   const {
     title,
     date,
+    endDate,
     time,
     assigneeId,
     priority,
@@ -481,6 +509,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
   } = req.body as {
     title?: string;
     date?: string;
+    endDate?: string;
     time?: string;
     assigneeId?: string;
     priority?: Priority;
@@ -505,6 +534,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
   const base: Omit<Task, "id"> = {
     title: title.trim(),
     date,
+    endDate,
     timeLabel: time || undefined,
     priority,
     assignees: [member],
@@ -584,13 +614,14 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
     const insertPromises = tasksToAdd.map((t) =>
       pool.query(
         `
-        INSERT INTO tasks (id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        INSERT INTO tasks (id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `,
         [
           t.id,
           t.title,
           t.date,
+          t.endDate ?? null,
           t.timeLabel ?? null,
           t.priority,
           t.recurrence ?? null,
@@ -621,6 +652,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
   const {
     title,
     date,
+    endDate,
     time,
     assigneeId,
     priority,
@@ -630,9 +662,11 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
     durationWeeks,
     notificationTime,
     color,
+    isCompleted,
   } = req.body as {
     title?: string;
     date?: string;
+    endDate?: string;
     time?: string;
     assigneeId?: string;
     priority?: Priority;
@@ -642,6 +676,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
     durationWeeks?: number;
     notificationTime?: number;
     color?: string;
+    isCompleted?: boolean;
   };
 
   if (!title || !date || !assigneeId || !priority) {
@@ -671,6 +706,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
         const base: Omit<Task, "id"> = {
           title: title.trim(),
           date,
+          endDate,
           timeLabel: time || undefined,
           priority,
           assignees: [member],
@@ -737,12 +773,13 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
         // Insert all
         const insertPromises = tasksToAdd.map((t) =>
           pool.query(
-            `INSERT INTO tasks (id, title, date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+            `INSERT INTO tasks (id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
             [
               t.id,
               t.title,
               t.date,
+              t.endDate ?? null,
               t.timeLabel ?? null,
               t.priority,
               t.recurrence ?? null,
@@ -769,13 +806,14 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
     const result = await pool.query(
       `
       UPDATE tasks
-      SET title = $1, date = $2, time_label = $3, priority = $4, recurrence = $5, description = $6, assignees = $7, days_of_week = $8, duration_weeks = $9, notification_time = $10, color = $11
-      WHERE id = $12
+      SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13
+      WHERE id = $14
       RETURNING *
     `,
       [
         title.trim(),
         date,
+        endDate || null,
         time || null,
         priority,
         recurrence || null,
@@ -785,6 +823,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
         durationWeeks || null,
         notificationTime || null,
         color || null,
+        isCompleted ?? null,
         id,
       ]
     );
@@ -798,6 +837,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
       id: row.id,
       title: row.title,
       date: row.date, // YYYY-MM-DD
+      endDate: row.end_date ?? undefined,
       timeLabel: row.time_label ?? undefined,
       priority: row.priority as Priority,
       recurrence: row.recurrence ?? undefined,
@@ -808,6 +848,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
       durationWeeks: row.duration_weeks ?? undefined,
       notificationTime: row.notification_time ?? undefined,
       color: row.color ?? undefined,
+      isCompleted: row.is_completed ?? undefined,
     };
 
     res.json(updatedTask);

@@ -31,6 +31,7 @@ export function EditTaskScreen() {
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [time, setTime] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
@@ -74,6 +75,7 @@ export function EditTaskScreen() {
       if (task) {
         setTitle(task.title);
         setDate(task.date);
+        setEndDate(task.endDate || "");
         setTime(task.timeLabel || "");
         setAssigneeId(task.assignees[0]?.id || "familia");
         setPriority(task.priority);
@@ -123,6 +125,7 @@ export function EditTaskScreen() {
       await updateTask(taskId, {
         title,
         date,
+        endDate: endDate || undefined,
         time: time || undefined,
         assigneeId,
         priority,
@@ -164,35 +167,53 @@ export function EditTaskScreen() {
           />
         </div>
 
-        
-          {/* Fecha */}
-          <div className="space-y-1">
-            <label className="block text-xs text-gray-600" htmlFor="date">
-              Fecha
-            </label>
-            <input
-              id="date"
-              type="date"
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
 
-          {/* Hora */}
-          <div className="space-y-1">
-            <label className="block text-xs text-gray-600" htmlFor="time">
-              Hora (opcional)
-            </label>
-            <input
-              id="time"
-              type="time"
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </div>
-        
+        {/* Fecha */}
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="date">
+            Fecha
+          </label>
+          <input
+            id="date"
+            type="date"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+
+        {/* Fecha fin (opcional, solo para eventos de varios días seguidos) */}
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="endDate">
+            Fecha fin (opcional)
+          </label>
+          <input
+            id="endDate"
+            type="date"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            min={date}
+          />
+          <p className="text-[10px] text-gray-400">
+            * Para eventos de varios días seguidos
+          </p>
+        </div>
+
+        {/* Hora */}
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="time">
+            Hora (opcional)
+          </label>
+          <input
+            id="time"
+            type="time"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          />
+        </div>
+
 
         {/* Notificación */}
         <div className="space-y-1">

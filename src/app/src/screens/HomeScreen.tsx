@@ -8,7 +8,7 @@ type FilterAssigneeId = "all" | string;
 
 export function HomeScreen() {
   const navigate = useNavigate();
-  const { tasksToday, familyMembers, removeTask } = useTaskStore();
+  const { tasksToday, familyMembers, removeTask, toggleTaskCompletion } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
 
@@ -109,7 +109,8 @@ export function HomeScreen() {
           <li
             key={task.id}
             onClick={() => navigate(`/edit/${task.id}`)}
-            className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden"
+            className={`bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer transition-all duration-200 relative overflow-hidden ${task.isCompleted ? "opacity-60" : "hover:shadow-md hover:-translate-y-0.5"
+              }`}
           >
             <div
               className="absolute left-0 top-0 bottom-0 w-1.5"
@@ -117,20 +118,42 @@ export function HomeScreen() {
             />
 
             <div className="flex-1">
-              <div className="flex justify-between">
-                <p
-                  className={
-                    "text-sm font-medium leading-snug " +
-                    (task.title.length > 30
-                      ? "whitespace-normal wrap-break-word"
-                      : "whitespace-nowrap")
-                  }
+              <div className="flex justify-between items-start gap-2">
+                {/* Completion Checkbox */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleTaskCompletion(task.id);
+                  }}
+                  className="flex-shrink-0 mt-0.5"
                 >
-                  {task.title}
-                </p>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.isCompleted
+                    ? "bg-green-500 border-green-500"
+                    : "border-gray-300 hover:border-green-400"
+                    }`}>
+                    {task.isCompleted && (
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+
+                <div className="flex-1">
+                  <p
+                    className={
+                      `text-sm font-medium leading-snug ${task.isCompleted ? "line-through text-gray-400" : ""} ` +
+                      (task.title.length > 30
+                        ? "whitespace-normal wrap-break-word"
+                        : "whitespace-nowrap")
+                    }
+                  >
+                    {task.title}
+                  </p>
+                </div>
 
                 {task.timeLabel && (
-                  <p className="text[5px] text-gray-500">{task.timeLabel} h</p>
+                  <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>
                 )}
               </div>
 

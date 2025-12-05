@@ -34,6 +34,7 @@ export function NewTaskScreen() {
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(todayStr());
+  const [endDate, setEndDate] = useState("");
   const [time, setTime] = useState("");
   const [assigneeId, setAssigneeId] = useState("familia");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
@@ -89,6 +90,7 @@ export function NewTaskScreen() {
       addTask({
         title,
         date,
+        endDate: endDate || undefined,
         time: time || undefined,
         assigneeId,
         priority,
@@ -102,6 +104,7 @@ export function NewTaskScreen() {
 
       // Reset básico y volvemos a Hoy
       setTitle("");
+      setEndDate("");
       setTime("");
       setDescription("");
       setCustomDays([]);
@@ -157,6 +160,24 @@ export function NewTaskScreen() {
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+        </div>
+
+        {/* Fecha fin (opcional, solo para eventos de varios días seguidos) */}
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="endDate">
+            Fecha fin (opcional)
+          </label>
+          <input
+            id="endDate"
+            type="date"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            min={date}
+          />
+          <p className="text-[10px] text-gray-400">
+            * Para eventos de varios días seguidos
+          </p>
         </div>
 
 

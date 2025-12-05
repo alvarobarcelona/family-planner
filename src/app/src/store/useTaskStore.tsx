@@ -25,7 +25,8 @@ export interface Assignee {
 export interface Task {
   id: string;
   title: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (start date)
+  endDate?: string; // YYYY-MM-DD (end date for multi-day events)
   timeLabel?: string;
   assignees: Assignee[];
   priority: Priority;
@@ -36,11 +37,13 @@ export interface Task {
   durationWeeks?: number;
   notificationTime?: number; // minutes before event
   color?: string;
+  isCompleted?: boolean; // whether task is marked as done
 }
 
 export interface CreateTaskInput {
   title: string;
   date: string;
+  endDate?: string;
   time?: string;
   assigneeId: string;
   priority: Priority;
@@ -59,6 +62,7 @@ interface TaskContextValue {
   familyMembers: Assignee[];
   removeTask: (id: string, deleteAll?: boolean) => Promise<void>;
   updateTask: (id: string, input: CreateTaskInput, updateAll?: boolean) => Promise<void>;
+  toggleTaskCompletion: (id: string) => Promise<void>;
 }
 
 function todayStr(): string {
@@ -411,6 +415,55 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     /* } */
   };
 
+  const toggleTaskCompletion = async (id: string) => {
+    try {
+      const task = tasks.find((t) => t.id === id);
+      if (!task) return;
+
+      // Manually call the API with isCompleted toggled
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/tasks/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          title: task.title,
+          date: task.date,
+          endDate: task.endDate,
+          time: task.timeLabel,
+          assigneeId: task.assignees[0]?.id || "familia",
+          priority: task.priority,
+          recurrence: task.recurrence || "NONE",
+          description: task.description,
+          daysOfWeek: task.daysOfWeek,
+          durationWeeks: task.durationWeeks,
+          notificationTime: task.notificationTime,
+          color: task.color,
+          isCompleted: !task.isCompleted,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to toggle completion");
+      }
+
+      // Update local state
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id === id) {
+            return { ...t, isCompleted: !t.isCompleted };
+          }
+          return t;
+        })
+      );
+    } catch (err) {
+      console.error("Error toggling task completion", err);
+      throw err;
+    }
+  };
+
   const tasksToday = useMemo(
     () => tasks.filter((t) => t.date === todayStr()),
     [tasks]
@@ -425,6 +478,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         familyMembers: Object.values(familyMembersMap),
         removeTask,
         updateTask,
+        toggleTaskCompletion,
       }}
     >
       {children}

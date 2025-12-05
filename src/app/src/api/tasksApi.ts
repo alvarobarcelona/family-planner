@@ -3,6 +3,7 @@ import type { Task, Priority, Recurrence } from "../store/useTaskStore";
 export interface CreateTaskDto {
   title: string;
   date: string; // YYYY-MM-DD
+  endDate?: string;
   time?: string;
   assigneeId: string;
   priority: Priority;
@@ -17,7 +18,6 @@ export interface CreateTaskDto {
 
 const rawBaseUrl = import.meta.env.VITE_API_URL ?? "";
 const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
-
 
 function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`;
@@ -59,23 +59,23 @@ export async function getTasks(): Promise<Task[]> {
 }
 
 export async function createTasks(payload: CreateTaskDto): Promise<Task[]> {
-  console.log('Sending POST to:', buildUrl("/api/tasks"));
-  console.log(' Payload:', payload);
-  
+  console.log("Sending POST to:", buildUrl("/api/tasks"));
+  console.log(" Payload:", payload);
+
   const res = await fetch(buildUrl("/api/tasks"), {
     method: "POST",
-    headers: { 
+    headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
     body: JSON.stringify(payload),
   });
 
-  console.log(' Response status:', res.status);
-  
+  console.log(" Response status:", res.status);
+
   if (!res.ok) {
     const errorText = await res.text();
-    
+
     throw new Error(`Error al crear tarea(s): ${res.status} - ${errorText}`);
   }
 
@@ -84,7 +84,10 @@ export async function createTasks(payload: CreateTaskDto): Promise<Task[]> {
   return data;
 }
 
-export async function deleteTask(id: string, deleteAll?: boolean): Promise<void> {
+export async function deleteTask(
+  id: string,
+  deleteAll?: boolean
+): Promise<void> {
   const query = deleteAll ? "?deleteAll=true" : "";
   const res = await fetch(buildUrl(`/api/tasks/${id}${query}`), {
     method: "DELETE",
@@ -96,11 +99,15 @@ export async function deleteTask(id: string, deleteAll?: boolean): Promise<void>
   }
 }
 
-export async function updateTask(id: string, payload: CreateTaskDto, updateAll?: boolean): Promise<Task> {
+export async function updateTask(
+  id: string,
+  payload: CreateTaskDto,
+  updateAll?: boolean
+): Promise<Task> {
   const query = updateAll ? "?updateAll=true" : "";
   const res = await fetch(buildUrl(`/api/tasks/${id}${query}`), {
     method: "PUT",
-    headers: { 
+    headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
