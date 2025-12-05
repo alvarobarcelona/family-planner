@@ -422,7 +422,7 @@ initDb()
 
               for (const sub of subsRes.rows) {
                 const payload = {
-                  title: `Recordatorio: ${task.title}`,
+                  title: `Evento: ${task.title}`,
                   body: `Comienza en ${task.notification_time} minutos`,
                   url: "/",
                   icon: "/icon-192x192.png",
@@ -446,7 +446,7 @@ initDb()
         } catch (err) {
           console.error("Scheduler error:", err);
         }
-      }, 60000); // Check every minute
+      }, 300000); // Check every 5 minutes
     });
   })
   .catch((err) => {
