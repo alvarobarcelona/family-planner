@@ -16,6 +16,20 @@ if (!process.env.VAPID_PUBLIC_KEY) {
 
 const app = express();
 
+// CORS
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:4000",
+  "https://family-planner-tau.vercel.app",
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 // Tipos
@@ -93,19 +107,6 @@ function addMonths(dateStr: string, months: number): string {
   d.setMonth(d.getMonth() + months);
   return d.toISOString().slice(0, 10);
 }
-
-// CORS
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:4000",
-  "https://family-planner-tau.vercel.app",
-];
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-  })
-);
 
 // Auth Middleware
 const APP_SECRET_PASSWORD = process.env.APP_SECRET_PASSWORD;
