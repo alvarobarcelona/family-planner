@@ -11,7 +11,7 @@ import {
 import { getTasks, createTasks, deleteTask, updateTask as apiUpdateTask } from "../api/tasksApi";
 
 
-const useLocal = import.meta.env.VITE_USE_LOCAL_STORAGE === 'true';
+//const useLocal = import.meta.env.VITE_USE_LOCAL_STORAGE === 'true';
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
 export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM_WEEKLY";
@@ -63,6 +63,7 @@ interface TaskContextValue {
   removeTask: (id: string, deleteAll?: boolean) => Promise<void>;
   updateTask: (id: string, input: CreateTaskInput, updateAll?: boolean) => Promise<void>;
   toggleTaskCompletion: (id: string) => Promise<void>;
+  isLoading: boolean;
 }
 
 function todayStr(): string {
@@ -242,7 +243,7 @@ const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [, setError] = useState<string | null>(null);
 
   // Carga inicial
@@ -479,6 +480,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         removeTask,
         updateTask,
         toggleTaskCompletion,
+        isLoading,
       }}
     >
       {children}

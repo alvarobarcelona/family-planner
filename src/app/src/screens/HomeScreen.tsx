@@ -8,7 +8,7 @@ type FilterAssigneeId = "all" | string;
 
 export function HomeScreen() {
   const navigate = useNavigate();
-  const { tasksToday, familyMembers, removeTask, toggleTaskCompletion } = useTaskStore();
+  const { tasksToday, familyMembers, removeTask, toggleTaskCompletion, isLoading } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
 
@@ -104,131 +104,145 @@ export function HomeScreen() {
         ))}
       </div>
 
-      <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTasks.map((task) => (
-          <li
-            key={task.id}
-            onClick={() => navigate(`/edit/${task.id}`)}
-            className={`bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer transition-all duration-200 relative overflow-hidden ${task.isCompleted ? "opacity-60" : "hover:shadow-md hover:-translate-y-0.5"
-              }`}
-          >
-            <div
-              className="absolute left-0 top-0 bottom-0 w-1.5"
-              style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
-            />
 
-            <div className="flex-1">
-              <div className="flex justify-between items-start gap-2">
-                {/* Completion Checkbox */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleTaskCompletion(task.id);
-                  }}
-                  className="flex-shrink-0 mt-0.5"
-                >
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.isCompleted
-                    ? "bg-green-500 border-green-500"
-                    : "border-gray-300 hover:border-green-400"
-                    }`}>
-                    {task.isCompleted && (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                </button>
+
+      {
+        isLoading && (
+          <div className="flex justify-center items-center py-10">
+            <p className="text-gray-500 font-medium animate-pulse">Cargando tareas...</p>
+          </div>
+        )
+      }
+
+      {
+        !isLoading && (
+          <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTasks.map((task) => (
+              <li
+                key={task.id}
+                onClick={() => navigate(`/edit/${task.id}`)}
+                className={`bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer transition-all duration-200 relative overflow-hidden ${task.isCompleted ? "opacity-60" : "hover:shadow-md hover:-translate-y-0.5"
+                  }`}
+              >
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-1.5"
+                  style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
+                />
 
                 <div className="flex-1">
-                  <p
-                    className={
-                      `text-sm font-medium leading-snug ${task.isCompleted ? "line-through text-gray-400" : ""} ` +
-                      (task.title.length > 30
-                        ? "whitespace-normal wrap-break-word"
-                        : "whitespace-nowrap")
-                    }
-                  >
-                    {task.title}
-                  </p>
+                  <div className="flex justify-between items-start gap-2">
+                    {/* Completion Checkbox */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTaskCompletion(task.id);
+                      }}
+                      className="flex-shrink-0 mt-0.5"
+                    >
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.isCompleted
+                        ? "bg-green-500 border-green-500"
+                        : "border-gray-300 hover:border-green-400"
+                        }`}>
+                        {task.isCompleted && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+
+                    <div className="flex-1">
+                      <p
+                        className={
+                          `text-sm font-medium leading-snug ${task.isCompleted ? "line-through text-gray-400" : ""} ` +
+                          (task.title.length > 30
+                            ? "whitespace-normal wrap-break-word"
+                            : "whitespace-nowrap")
+                        }
+                      >
+                        {task.title}
+                      </p>
+                    </div>
+
+                    {task.timeLabel && (
+                      <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {task.assignees.map((a) => (
+                      <span
+                        key={a.id}
+                        className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
+                        style={{ backgroundColor: a.color }}
+                      >
+                        {a.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                {task.timeLabel && (
-                  <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>
+                {task.description && (
+                  <p className="mt-1 text-[10px] text-gray-600 whitespace-pre-line">
+                    {task.description}
+                  </p>
                 )}
-              </div>
 
-              <div className="flex gap-1 mt-1 flex-wrap">
-                {task.assignees.map((a) => (
-                  <span
-                    key={a.id}
-                    className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
-                    style={{ backgroundColor: a.color }}
-                  >
-                    {a.name}
+                <div className="mt-auto flex">
+                  <span className="mr-1">Prioridad:</span>
+                  {task.priority === "HIGH" && (
+                    <span className="text[10px] text-red-500 font-semibold">
+                      Alta
+                    </span>
+                  )}
+                  {task.priority === "MEDIUM" && (
+                    <span className="text[10px] text-amber-500">Media</span>
+                  )}
+                  {task.priority === "LOW" && (
+                    <span className="text[10px] text-gray-400">Baja</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (task.seriesId) {
+                      const deleteAll = window.confirm(
+                        "Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?\n(Aceptar = Toda la serie, Cancelar = Solo este evento)"
+                      );
+                      if (deleteAll) {
+                        removeTask(task.id, true);
+                      } else {
+                        const deleteSingle = window.confirm(
+                          "¿Borrar solo este evento de la serie?"
+                        );
+                        if (deleteSingle) {
+                          removeTask(task.id, false);
+                        }
+                      }
+                    } else {
+                      const ok = window.confirm("¿Borrar tarea?");
+                      if (ok) removeTask(task.id);
+                    }
+                  }}
+                  className="mt-auto items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"
+                >
+                  <span className="text-[12px]" aria-hidden="true">
+                    🗑️
                   </span>
-                ))}
-              </div>
-            </div>
+                  <span>Borrar</span>
+                </button>
+              </li>
+            ))}
 
-            {task.description && (
-              <p className="mt-1 text-[10px] text-gray-600 whitespace-pre-line">
-                {task.description}
+            {filteredTasks.length === 0 && (
+              <p className="text-xs text-gray-400">
+                No hay tareas para este filtro. 😊
               </p>
             )}
-
-            <div className="mt-auto flex">
-              <span className="mr-1">Prioridad:</span>
-              {task.priority === "HIGH" && (
-                <span className="text[10px] text-red-500 font-semibold">
-                  Alta
-                </span>
-              )}
-              {task.priority === "MEDIUM" && (
-                <span className="text[10px] text-amber-500">Media</span>
-              )}
-              {task.priority === "LOW" && (
-                <span className="text[10px] text-gray-400">Baja</span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (task.seriesId) {
-                  const deleteAll = window.confirm(
-                    "Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?\n(Aceptar = Toda la serie, Cancelar = Solo este evento)"
-                  );
-                  if (deleteAll) {
-                    removeTask(task.id, true);
-                  } else {
-                    const deleteSingle = window.confirm(
-                      "¿Borrar solo este evento de la serie?"
-                    );
-                    if (deleteSingle) {
-                      removeTask(task.id, false);
-                    }
-                  }
-                } else {
-                  const ok = window.confirm("¿Borrar tarea?");
-                  if (ok) removeTask(task.id);
-                }
-              }}
-              className="mt-auto items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"
-            >
-              <span className="text-[12px]" aria-hidden="true">
-                🗑️
-              </span>
-              <span>Borrar</span>
-            </button>
-          </li>
-        ))}
-
-        {filteredTasks.length === 0 && (
-          <p className="text-xs text-gray-400">
-            No hay tareas para este filtro. 😊
-          </p>
-        )}
-      </ul>
-    </div>
+          </ul>
+        )
+      }
+    </div >
   );
 }

@@ -48,8 +48,29 @@ export function CalendarScreen() {
     const byDate: Record<string, typeof filteredTasks> = {};
 
     for (const task of filteredTasks) {
-      if (!byDate[task.date]) byDate[task.date] = [];
-      byDate[task.date].push(task);
+      // Determine start and end dates
+      const startDate = new Date(task.date);
+      const endDate = task.endDate ? new Date(task.endDate) : new Date(task.date);
+
+      // Normalize to midnight to avoid time issues
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+
+      // Iterate from start to end
+      const current = new Date(startDate);
+      while (current <= endDate) {
+        // Format as YYYY-MM-DD
+        const year = current.getFullYear();
+        const month = String(current.getMonth() + 1).padStart(2, '0');
+        const day = String(current.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
+        if (!byDate[dateStr]) byDate[dateStr] = [];
+        byDate[dateStr].push(task);
+
+        // Next day
+        current.setDate(current.getDate() + 1);
+      }
     }
 
     const sortedDates = Object.keys(byDate).sort();

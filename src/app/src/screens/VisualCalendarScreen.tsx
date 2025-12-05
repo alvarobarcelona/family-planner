@@ -13,6 +13,15 @@ const toLocalDateString = (date: Date) => {
     return `${year}-${month}-${day}`;
 };
 
+// Helper to check if a task covers a specific date
+const isTaskOnDate = (task: any, dateStr: string) => {
+    if (task.date === dateStr) return true;
+    if (!task.endDate) return false;
+
+    // Simple string comparison works for YYYY-MM-DD
+    return dateStr >= task.date && dateStr <= task.endDate;
+};
+
 export function VisualCalendarScreen() {
     const navigate = useNavigate();
     const { tasks, familyMembers } = useTaskStore();
@@ -192,7 +201,7 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
                 <div className="grid grid-cols-7 gap-1">
                     {weekDays.map(d => {
                         const dateStr = toLocalDateString(d);
-                        const dayTasks = tasks.filter(t => t.date === dateStr).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
+                        const dayTasks = tasks.filter(t => isTaskOnDate(t, dateStr)).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
 
                         return (
                             <div key={dateStr} className="flex flex-col gap-1 min-h-[80px] border-r last:border-r-0 border-gray-100 px-0.5 pt-1 bg-slate-50/50 rounded-lg">
@@ -219,7 +228,7 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agenda de la semana</h3>
                 {weekDays.map(d => {
                     const dateStr = toLocalDateString(d);
-                    const dayTasks = tasks.filter(t => t.date === dateStr).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
+                    const dayTasks = tasks.filter(t => isTaskOnDate(t, dateStr)).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
 
                     if (dayTasks.length === 0) return null;
 
@@ -324,7 +333,7 @@ function MiniMonthGrid({ year, month, tasks }: { year: number, month: number, ta
                 if (!day) return <div key={idx} className="w-full pt-[100%]" />;
 
                 const dateStr = toLocalDateString(new Date(year, month, day));
-                const hasTask = tasks.some(t => t.date === dateStr);
+                const hasTask = tasks.some(t => isTaskOnDate(t, dateStr));
 
                 return (
                     <div key={idx} className="w-full pt-[100%] relative">
@@ -379,7 +388,7 @@ function MonthView({ currentDate, tasks, onDayClick }: { currentDate: Date, task
             <div className="grid grid-cols-7 grid-rows-6 flex-1 gap-1">
                 {days.map((d, idx) => {
                     const dateStr = toLocalDateString(d.date);
-                    const dayTasks = tasks.filter(t => t.date === dateStr);
+                    const dayTasks = tasks.filter(t => isTaskOnDate(t, dateStr));
                     const isToday = toLocalDateString(new Date()) === dateStr;
 
                     return (
