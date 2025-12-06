@@ -11,8 +11,6 @@ import {
 import { getTasks, createTasks, deleteTask, updateTask as apiUpdateTask } from "../api/tasksApi";
 
 
-//const useLocal = import.meta.env.VITE_USE_LOCAL_STORAGE === 'true';
-
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
 export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM_WEEKLY";
 
@@ -90,154 +88,6 @@ const familyMembersMap: Record<string, Assignee> = {
   familia: { id: "familia", name: "Familia", color: "#6366f1" },
 };
 
-/* ============================================
-   MODO LOCAL — SOLO PARA TESTING
-   (Descomentado cuando VITE_USE_LOCAL_STORAGE=true)
-   ============================================ */
-
-/*
-const initialTasks: Task[] = [
-  {
-    id: "1",
-    title: "Pediatra Ariadna",
-    date: todayStr(),
-    timeLabel: "09:30",
-    priority: "HIGH",
-    assignees: [familyMembersMap.mama],
-    recurrence: "NONE",
-    description: "Revisión rutinaria de los ojos",
-  },
-  {
-    id: "2",
-    title: "Reunión en Kita",
-    date: todayStr(),
-    timeLabel: "16:00",
-    priority: "MEDIUM",
-    assignees: [familyMembersMap.papa],
-    recurrence: "NONE",
-    description: "Laternefest",
-  },
-  {
-    id: "3",
-    title: "Compra semanal",
-    date: todayStr(),
-    priority: "LOW",
-    assignees: [familyMembersMap.familia],
-    recurrence: "NONE",
-    description: "Revisión rutinaria de los ojos",
-  },
-];
-
-const STORAGE_KEY = "family-planner-tasks";
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function addMonths(dateStr: string, months: number): string {
-  const d = new Date(dateStr);
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
-
-function generateSeriesTasks(
-  input: CreateTaskInput,
-  member: Assignee,
-  existingSeriesId?: string
-): Task[] {
-  const seriesId =
-    existingSeriesId ??
-    (input.recurrence !== "NONE"
-      ? crypto.randomUUID?.() ?? Date.now().toString()
-      : undefined);
-
-  const base: Omit<Task, "id"> = {
-    title: input.title.trim(),
-    date: input.date,
-    timeLabel: input.time || undefined,
-    assignees: [member],
-    priority: input.priority,
-    recurrence: input.recurrence,
-    description: input.description?.trim(),
-    seriesId,
-    daysOfWeek: input.daysOfWeek,
-    durationWeeks: input.durationWeeks,
-    color: input.color,
-  };
-
-  const tasksToAdd: Task[] = [];
-
-  if (
-    input.recurrence === "CUSTOM_WEEKLY" &&
-    Array.isArray(input.daysOfWeek) &&
-    input.daysOfWeek.length > 0
-  ) {
-    const weeks =
-      input.durationWeeks && input.durationWeeks > 0 ? input.durationWeeks : 4;
-
-    for (let week = 0; week < weeks; week++) {
-      for (const weekday of input.daysOfWeek) {
-        const jsTarget = weekday === 7 ? 0 : weekday;
-        const baseDate = new Date(input.date);
-        baseDate.setHours(12, 0, 0, 0);
-        baseDate.setDate(baseDate.getDate() + week * 7);
-        const diff = (jsTarget - baseDate.getDay() + 7) % 7;
-        baseDate.setDate(baseDate.getDate() + diff);
-        const taskDate = baseDate.toISOString().slice(0, 10);
-        tasksToAdd.push({
-          ...base,
-          id: crypto.randomUUID?.() ?? `${Date.now()}-cw-${week}-${weekday}`,
-          date: taskDate,
-        });
-      }
-    }
-  } else {
-    const baseTask: Task = {
-      ...base,
-      id: crypto.randomUUID?.() ?? Date.now().toString(),
-    };
-    tasksToAdd.push(baseTask);
-
-    if (input.recurrence === "DAILY") {
-      for (let i = 1; i <= 6; i++) {
-        tasksToAdd.push({
-          ...base,
-          id: crypto.randomUUID?.() ?? `${Date.now()}-d${i}`,
-          date: addDays(input.date, i),
-        });
-      }
-    }
-
-    if (input.recurrence === "WEEKLY") {
-      for (let i = 1; i <= 3; i++) {
-        tasksToAdd.push({
-          ...base,
-          id: crypto.randomUUID?.() ?? `${Date.now()}-w${i}`,
-          date: addDays(input.date, 7 * i),
-        });
-      }
-    }
-
-    if (input.recurrence === "MONTHLY") {
-      for (let i = 1; i <= 11; i++) {
-        tasksToAdd.push({
-          ...base,
-          id: crypto.randomUUID?.() ?? `${Date.now()}-m${i}`,
-          date: addMonths(input.date, i),
-        });
-      }
-    }
-  }
-
-  return tasksToAdd;
-}
-*/
-
-/* ============================================
-   FIN MODO LOCAL
-   ============================================ */
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
@@ -251,23 +101,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     const load = async () => {
-      /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
-      if (useLocal) {
-        try {
-          const raw = window.localStorage.getItem(STORAGE_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) {
-              setTasks(parsed);
-              return;
-            }
-          }
-          setTasks(initialTasks);
-        } catch {
-          setTasks(initialTasks);
-        }
-      } else {
-      */
+     
       // Carga desde API
       setIsLoading(true);
       setError(null);
@@ -292,27 +126,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
-  useEffect(() => {
-    if (!useLocal) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    } catch {
-      // empty
-    }
-  }, [tasks]);
-  */
-
   const addTask = async (input: CreateTaskInput) => {
     const member = familyMembersMap[input.assigneeId];
     if (!member) return;
 
-    /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
-    if (useLocal) {
-      const tasksToAdd = generateSeriesTasks(input, member);
-      setTasks((prev) => [...prev, ...tasksToAdd]);
-    } else {
-    */
+ 
     try {
       const created = await createTasks(input);
       const normalized = created.map(t => ({ ...t, date: normalizeDate(t.date) }));
@@ -321,22 +139,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       console.error("Error creando tarea(s)", err);
       throw err;
     }
-    /* } */
+   
   };
 
   const removeTask = async (id: string, deleteAll?: boolean) => {
-    /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
-    if (useLocal) {
-      setTasks((prev) => {
-        const target = prev.find((t) => t.id === id);
-        if (!target) return prev;
-        if (deleteAll && target.seriesId) {
-          return prev.filter((t) => t.seriesId !== target.seriesId);
-        }
-        return prev.filter((t) => t.id !== id);
-      });
-    } else {
-    */
+   
     try {
       await deleteTask(id, deleteAll);
       setTasks((prev) => {
@@ -351,48 +158,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       console.error("Error borrando tarea", err);
       throw err;
     }
-    /* } */
+   
   };
 
   const updateTask = async (id: string, input: CreateTaskInput, updateAll?: boolean) => {
     const member = familyMembersMap[input.assigneeId];
     if (!member) return;
 
-    /* MODO LOCAL COMENTADO - Descomentar si VITE_USE_LOCAL_STORAGE=true
-    if (useLocal) {
-      setTasks((prev) => {
-        const target = prev.find((t) => t.id === id);
-        if (!target) return prev;
-
-        if (updateAll && target.seriesId) {
-          const filtered = prev.filter((t) => t.seriesId !== target.seriesId);
-          const newTasks = generateSeriesTasks(input, member, target.seriesId);
-          return [...filtered, ...newTasks];
-        }
-
-        const updatedFields = {
-          title: input.title.trim(),
-          timeLabel: input.time || undefined,
-          assignees: [member],
-          priority: input.priority,
-          recurrence: input.recurrence,
-          description: input.description?.trim(),
-          daysOfWeek: input.daysOfWeek,
-          durationWeeks: input.durationWeeks,
-          color: input.color,
-        };
-
-        return prev.map((t) => {
-          if (t.id !== id) return t;
-          return {
-            ...t,
-            ...updatedFields,
-            date: input.date,
-          };
-        });
-      });
-    } else {
-    */
+  
     try {
       const result = await apiUpdateTask(id, input, updateAll);
 

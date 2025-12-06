@@ -195,6 +195,32 @@ app.post("/api/subscribe", async (req, res) => {
   }
 });
 
+// POST Unsubscribe from Push Notifications
+app.post("/api/unsubscribe", async (req, res) => {
+  const { endpoint } = req.body;
+
+  if (!endpoint) {
+    return res.status(400).json({ message: "Endpoint required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM push_subscriptions WHERE endpoint = $1",
+      [endpoint]
+    );
+
+    if (result.rowCount === 0) {
+      // It's okay if it didn't exist, we achieved the goal: it's not there anymore.
+      // But maybe we want to know? mostly irrelevent for client.
+    }
+
+    res.status(200).json({ message: "Unsubscribed successfully" });
+  } catch (err) {
+    console.error("Error unsubscribing:", err);
+    res.status(500).json({ message: "Error unsubscribing" });
+  }
+});
+
 // Init DB
 async function initDb() {
   await pool.query(`
@@ -577,6 +603,31 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
         });
       }
     }
+  } else if (
+    (!recurrence || recurrence === "NONE") &&
+    endDate &&
+    endDate > date
+  ) {
+    // RANGO DE FECHAS -> Convertir a serie diaria
+    const start = new Date(date);
+    const end = new Date(endDate);
+
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Generate a new Series ID if not already present
+    const rangeSeriesId = base.seriesId || randomUUID();
+
+    for (let i = 0; i <= diffDays; i++) {
+      tasksToAdd.push({
+        ...base,
+        id: randomUUID(),
+        date: addDays(date, i),
+        endDate: undefined,
+        seriesId: rangeSeriesId,
+        recurrence: "NONE",
+      });
+    }
   } else {
     const baseTask: Task = {
       ...base,
@@ -703,7 +754,6 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
         await pool.query("DELETE FROM tasks WHERE series_id = $1", [seriesId]);
 
         // 2. Generate new tasks
-        // Reuse logic from POST (simplified for now by duplicating, ideally refactor to helper)
         const base: Omit<Task, "id"> = {
           title: title.trim(),
           date,
@@ -739,6 +789,30 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
               const taskDate = baseDate.toISOString().slice(0, 10);
               tasksToAdd.push({ ...base, id: randomUUID(), date: taskDate });
             }
+          }
+        } else if (
+          (!recurrence || recurrence === "NONE") &&
+          endDate &&
+          endDate > date
+        ) {
+          // RANGO DE FECHAS -> Convertir a serie diaria
+          const start = new Date(date);
+          const end = new Date(endDate);
+          const diffTime = Math.abs(end.getTime() - start.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          // Reuse existing seriesId if available
+          const rangeSeriesId = base.seriesId || randomUUID();
+
+          for (let i = 0; i <= diffDays; i++) {
+            tasksToAdd.push({
+              ...base,
+              id: randomUUID(),
+              date: addDays(date, i),
+              endDate: undefined,
+              seriesId: rangeSeriesId,
+              recurrence: "NONE",
+            });
           }
         } else {
           // Normal recurrence logic
@@ -796,9 +870,6 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
         );
         await Promise.all(insertPromises);
 
-        // Return the first task or all? Let's return the first one to satisfy the client expecting a single task,
-        // or we could return the list. The client currently expects a single Task return for update.
-        // But since we refreshed the list in the client, it might not matter much what we return as long as it's valid.
         return res.json(tasksToAdd[0]);
       }
     }

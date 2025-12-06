@@ -12,7 +12,7 @@ export function HomeScreen() {
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
 
-  const { permission, isSubscribed, subscribeToPush, loading } = usePushNotifications();
+  const { permission, isSubscribed, subscribeToPush, unsubscribeFromPush, loading } = usePushNotifications();
 
   const filteredTasks = useMemo(() => {
     if (selectedAssigneeId === "all") return tasksToday;
@@ -64,6 +64,24 @@ export function HomeScreen() {
             className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full font-medium shadow-sm active:scale-95 transition-transform disabled:opacity-50"
           >
             {loading ? 'Activando...' : 'Activar'}
+          </button>
+        </div>
+      )}
+
+      {isSubscribed && (
+        <div className="mb-3 bg-green-50 border border-green-100 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">✅</span>
+            <p className="text-xs text-green-800">
+              Notificaciones activadas.
+            </p>
+          </div>
+          <button
+            onClick={() => unsubscribeFromPush()}
+            disabled={loading}
+            className="text-xs bg-white border border-green-200 text-green-700 px-3 py-1.5 rounded-full font-medium shadow-sm active:scale-95 transition-transform disabled:opacity-50 hover:bg-green-50"
+          >
+            {loading ? 'Desactivando...' : 'Desactivar'}
           </button>
         </div>
       )}
