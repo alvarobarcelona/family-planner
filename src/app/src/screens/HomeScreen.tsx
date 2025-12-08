@@ -274,26 +274,27 @@ export function HomeScreen() {
                   </p>
                 )}
 
-                <div className="mt-auto flex justify-between">
-                  <span className="mr-1">Prioridad:</span>
+                <div className="mt-auto flex justify-between ">
+                  <span className="mr-1">Prioridad: 
                   {task.priority === "HIGH" && (
-                    <span className="text[10px] text-red-500 font-semibold">
+                    <span className=" ml-1 text[10px] text-red-500 font-semibold">
                       Alta
                     </span>
                   )}
                   {task.priority === "MEDIUM" && (
-                    <span className="text[10px] text-amber-500">Media</span>
+                    <span className=" ml-1 text[10px] text-amber-500">Media</span>
                   )}
                   {task.priority === "LOW" && (
-                    <span className="text[10px] text-gray-400">Baja</span>
+                    <span className=" ml-1 text[10px] text-gray-400">Baja</span>
                   )}
+                  </span>
                   {task.createdBy && (
-                    <div className="flex gap-1">
-                      <span className="text-[10px] text-gray-500">Creado por:</span>
-                      <span className="text-[10px] text-gray-400">{task.createdBy}</span>
+                    <div className="inline-block align-middle">
+                      <span className="mr-1 text-[10px] text-gray-500">Creado por:</span>
+                      <span className="mr-2 text-[10px] text-gray-400">{task.createdBy}</span>
                       {task.createdAt && (
                         <span className="text-[10px] text-gray-400">
-                          a las {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(task.createdAt).toLocaleString()}
                         </span>
                       )}
                     </div>
