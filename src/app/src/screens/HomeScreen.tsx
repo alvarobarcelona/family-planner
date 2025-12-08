@@ -14,6 +14,7 @@ export function HomeScreen() {
     useState<FilterAssigneeId>("all");
 
   const { permission, isSubscribed, subscribeToPush, unsubscribeFromPush, loading } = usePushNotifications();
+  const [selectedNotificationMember, setSelectedNotificationMember] = useState<string>("mama");
 
   // Auto-refresh on visibility change
   useEffect(() => {
@@ -119,20 +120,33 @@ export function HomeScreen() {
       </header>
 
       {!isSubscribed && permission !== 'denied' && (
-        <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">🔔</span>
             <p className="text-xs text-indigo-800">
               Activa las notificaciones para recibir recordatorios.
             </p>
           </div>
-          <button
-            onClick={() => subscribeToPush()}
-            disabled={loading}
-            className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full font-medium shadow-sm active:scale-95 transition-transform disabled:opacity-50"
-          >
-            {loading ? 'Activando...' : 'Activar'}
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedNotificationMember}
+              onChange={(e) => setSelectedNotificationMember(e.target.value)}
+              className="flex-1 text-xs border border-indigo-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {familyMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => subscribeToPush(selectedNotificationMember)}
+              disabled={loading}
+              className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full font-medium shadow-sm active:scale-95 transition-transform disabled:opacity-50"
+            >
+              {loading ? 'Activando...' : 'Activar'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -275,18 +289,18 @@ export function HomeScreen() {
                 )}
 
                 <div className="mt-auto flex justify-between ">
-                  <span className="mr-1">Prioridad: 
-                  {task.priority === "HIGH" && (
-                    <span className=" ml-1 text[10px] text-red-500 font-semibold">
-                      Alta
-                    </span>
-                  )}
-                  {task.priority === "MEDIUM" && (
-                    <span className=" ml-1 text[10px] text-amber-500">Media</span>
-                  )}
-                  {task.priority === "LOW" && (
-                    <span className=" ml-1 text[10px] text-gray-400">Baja</span>
-                  )}
+                  <span className="mr-1">Prioridad:
+                    {task.priority === "HIGH" && (
+                      <span className=" ml-1 text[10px] text-red-500 font-semibold">
+                        Alta
+                      </span>
+                    )}
+                    {task.priority === "MEDIUM" && (
+                      <span className=" ml-1 text[10px] text-amber-500">Media</span>
+                    )}
+                    {task.priority === "LOW" && (
+                      <span className=" ml-1 text[10px] text-gray-400">Baja</span>
+                    )}
                   </span>
                   {task.createdBy && (
                     <div className="inline-block align-middle">
