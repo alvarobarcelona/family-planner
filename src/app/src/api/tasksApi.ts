@@ -14,6 +14,7 @@ export interface CreateTaskDto {
   seriesId?: string;
   notificationTime?: number;
   color?: string;
+  createdBy?: string;
 }
 
 const rawBaseUrl = import.meta.env.VITE_API_URL ?? "";

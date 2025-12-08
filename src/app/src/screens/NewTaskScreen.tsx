@@ -30,7 +30,7 @@ const notificationOptions = [
 
 export function NewTaskScreen() {
   const navigate = useNavigate();
-  const { addTask, familyMembers } = useTaskStore();
+  const { addTask, familyMembers, createdBy } = useTaskStore();
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(todayStr());
@@ -41,6 +41,7 @@ export function NewTaskScreen() {
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [description, setDescription] = useState("");
   const [notificationTime, setNotificationTime] = useState<number>(0);
+  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>("default");
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,6 +101,7 @@ export function NewTaskScreen() {
         durationWeeks: useCustomDays ? customDurationWeeks : undefined,
         notificationTime: notificationTime > 0 ? notificationTime : undefined,
         color: selectedColor,
+        createdBy: selectedCreatedBy,
       });
 
       // Reset básico y volvemos a Hoy
@@ -297,6 +299,21 @@ export function NewTaskScreen() {
             {familyMembers.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <span className="block text-xs text-gray-600">Creado por</span>
+          <select
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={selectedCreatedBy}
+            onChange={(e) => setSelectedCreatedBy(e.target.value)}
+          >
+            {createdBy.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.name}
               </option>
             ))}
           </select>

@@ -38,6 +38,7 @@ export function EditTaskScreen() {
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [description, setDescription] = useState("");
   const [notificationTime, setNotificationTime] = useState<number>(0);
+  const [storedCreatedBy, setStoredCreatedBy] = useState<string>("");
 
   const [useCustomDays, setUseCustomDays] = useState(false);
   const [customDays, setCustomDays] = useState<number[]>([]);
@@ -83,6 +84,7 @@ export function EditTaskScreen() {
         setDescription(task.description || "");
         setNotificationTime(task.notificationTime || 0);
         setSelectedColor(task.color);
+        setStoredCreatedBy(task.createdBy || "familia");
 
         // Initialize custom days if applicable
         if (task.recurrence === "CUSTOM_WEEKLY") {
@@ -133,6 +135,7 @@ export function EditTaskScreen() {
         description: description || undefined,
         notificationTime: notificationTime > 0 ? notificationTime : undefined,
         color: selectedColor,
+        createdBy: storedCreatedBy,
       });
 
       navigate(-1); // Go back
@@ -461,8 +464,8 @@ export function EditTaskScreen() {
                 Opciones de serie
               </p>
               <div className="flex gap-2">
-                
-                
+
+
                 <button
                   type="button"
                   onClick={async () => {
@@ -508,6 +511,8 @@ export function EditTaskScreen() {
                             durationWeeks: useCustomDays ? customDurationWeeks : undefined,
                             notificationTime: notificationTime > 0 ? notificationTime : undefined,
                             color: selectedColor,
+                            createdBy: storedCreatedBy,
+
                           },
                           true // updateAll
                         );

@@ -4,6 +4,7 @@ import {
   useMemo,
   useState,
   useEffect,
+  useCallback,
   type ReactNode,
 } from "react";
 
@@ -18,6 +19,10 @@ export interface Assignee {
   id: string;
   name: string;
   color: string;
+}
+export interface CreatedBy {
+  id: string;
+  name: string;
 }
 
 export interface Task {
@@ -36,6 +41,8 @@ export interface Task {
   notificationTime?: number; // minutes before event
   color?: string;
   isCompleted?: boolean; // whether task is marked as done
+  createdBy?: string;
+  createdAt?: string;
 }
 
 export interface CreateTaskInput {
@@ -51,6 +58,7 @@ export interface CreateTaskInput {
   durationWeeks?: number;
   notificationTime?: number;
   color?: string;
+  createdBy: string;
 }
 
 interface TaskContextValue {
@@ -62,6 +70,8 @@ interface TaskContextValue {
   updateTask: (id: string, input: CreateTaskInput, updateAll?: boolean) => Promise<void>;
   toggleTaskCompletion: (id: string) => Promise<void>;
   isLoading: boolean;
+  refreshTasks: () => Promise<void>;
+  createdBy: CreatedBy[];
 }
 
 function todayStr(): string {
@@ -88,6 +98,14 @@ const familyMembersMap: Record<string, Assignee> = {
   familia: { id: "familia", name: "Familia", color: "#6366f1" },
 };
 
+//Mock de createdBy
+const createdByMap: Record<string, CreatedBy> = {
+  default: { id: "default", name: "Sin Asignar" },
+  mama: { id: "mama", name: "Maria" },
+  papa: { id: "papa", name: "Alvaro" },
+  familia: { id: "familia", name: "Familia" },
+};
+
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
@@ -96,54 +114,48 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [, setError] = useState<string | null>(null);
 
+  // Function to load tasks - defined with useCallback to be exposed
+  const load = useCallback(async () => {
+    // Carga desde API
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getTasks();
+      // Normalize dates
+      const normalized = data.map(t => ({ ...t, date: normalizeDate(t.date) }));
+      setTasks(normalized);
+    } catch (err) {
+      console.error("Error cargando tareas", err);
+      setError("No se han podido cargar las tareas");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Carga inicial
   useEffect(() => {
-    let isMounted = true;
-
-    const load = async () => {
-     
-      // Carga desde API
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await getTasks();
-        if (!isMounted) return;
-        // Normalize dates
-        const normalized = data.map(t => ({ ...t, date: normalizeDate(t.date) }));
-        setTasks(normalized);
-      } catch (err) {
-        console.error("Error cargando tareas", err);
-        if (isMounted) setError("No se han podido cargar las tareas");
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-      /* } */
-    };
-
     load();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  }, [load]);
 
   const addTask = async (input: CreateTaskInput) => {
     const member = familyMembersMap[input.assigneeId];
     if (!member) return;
+    const createdByObj = createdByMap[input.createdBy];
 
- 
     try {
-      const created = await createTasks(input);
+      const created = await createTasks({
+        ...input,
+        createdBy: createdByObj?.name || input.createdBy
+      });
       const normalized = created.map(t => ({ ...t, date: normalizeDate(t.date) }));
       setTasks((prev) => [...prev, ...normalized]);
     } catch (err) {
       console.error("Error creando tarea(s)", err);
       throw err;
     }
-   
   };
 
   const removeTask = async (id: string, deleteAll?: boolean) => {
-   
     try {
       await deleteTask(id, deleteAll);
       setTasks((prev) => {
@@ -158,14 +170,16 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       console.error("Error borrando tarea", err);
       throw err;
     }
-   
   };
 
   const updateTask = async (id: string, input: CreateTaskInput, updateAll?: boolean) => {
     const member = familyMembersMap[input.assigneeId];
     if (!member) return;
 
-  
+    // createdBy validation removed to allow names
+    // const createdBy = createdByMap[input.createdBy];
+    // if (!createdBy) return;
+
     try {
       const result = await apiUpdateTask(id, input, updateAll);
 
@@ -186,7 +200,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       console.error("Error actualizando tarea", err);
       throw err;
     }
-    /* } */
   };
 
   const toggleTaskCompletion = async (id: string) => {
@@ -254,6 +267,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         updateTask,
         toggleTaskCompletion,
         isLoading,
+        refreshTasks: load, // Expose load as refreshTasks
+        createdBy: Object.values(createdByMap),
       }}
     >
       {children}

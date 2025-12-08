@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -8,11 +8,56 @@ type FilterAssigneeId = "all" | string;
 
 export function HomeScreen() {
   const navigate = useNavigate();
-  const { tasksToday, familyMembers, removeTask, toggleTaskCompletion, isLoading } = useTaskStore();
+  // Destructure refreshTasks
+  const { tasksToday, familyMembers, removeTask, toggleTaskCompletion, isLoading, refreshTasks } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
 
   const { permission, isSubscribed, subscribeToPush, unsubscribeFromPush, loading } = usePushNotifications();
+
+  // Auto-refresh on visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshTasks();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshTasks]);
+
+  // Pull to Refresh Logic
+  const [pullStartPoint, setPullStartPoint] = useState(0);
+  const [pullChange, setPullChange] = useState(0);
+  const refreshThreshold = 150; // pixels to trigger refresh
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      setPullStartPoint(e.targetTouches[0].clientY);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (pullStartPoint > 0 && window.scrollY === 0) {
+      const touchY = e.targetTouches[0].clientY;
+      const diff = touchY - pullStartPoint;
+      if (diff > 0) {
+        // Add resistance
+        setPullChange(diff < refreshThreshold ? diff : refreshThreshold + (diff - refreshThreshold) * 0.3);
+      }
+    }
+  };
+
+  const handleTouchEnd = async () => {
+    if (pullChange >= refreshThreshold) {
+      await refreshTasks();
+    }
+    setPullStartPoint(0);
+    setPullChange(0);
+  };
 
   const filteredTasks = useMemo(() => {
     if (selectedAssigneeId === "all") return tasksToday;
@@ -23,7 +68,30 @@ export function HomeScreen() {
   }, [tasksToday, selectedAssigneeId]);
 
   return (
-    <div className="space-y-3">
+    <div
+      className="space-y-3 min-h-[80vh]"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull to Refresh Indicator */}
+      <div
+        className="fixed top-0 left-0 right-0 flex justify-center items-center pointer-events-none transition-transform duration-200 z-50"
+        style={{
+          height: '50px',
+          transform: `translateY(${pullChange > 0 ? (pullChange - 50) : -50}px)`,
+          opacity: pullChange > 0 ? 1 : 0
+        }}
+      >
+        <div className="bg-white rounded-full shadow-md p-2">
+          {pullChange >= refreshThreshold ? (
+            <span className="animate-spin block text-indigo-600">↻</span>
+          ) : (
+            <span className={`text-gray-400 transform transition-transform ${pullChange > 50 ? 'rotate-180' : ''}`}>↓</span>
+          )}
+        </div>
+      </div>
+
       <header className="mt-1 mb-2">
         <div className="flex justify-between items-center mt-2">
           <h1 className="text-xl font-semibold">Hoy {new Date().toLocaleDateString()}</h1>
@@ -206,7 +274,7 @@ export function HomeScreen() {
                   </p>
                 )}
 
-                <div className="mt-auto flex">
+                <div className="mt-auto flex justify-between">
                   <span className="mr-1">Prioridad:</span>
                   {task.priority === "HIGH" && (
                     <span className="text[10px] text-red-500 font-semibold">
@@ -218,6 +286,17 @@ export function HomeScreen() {
                   )}
                   {task.priority === "LOW" && (
                     <span className="text[10px] text-gray-400">Baja</span>
+                  )}
+                  {task.createdBy && (
+                    <div className="flex gap-1">
+                      <span className="text-[10px] text-gray-500">Creado por:</span>
+                      <span className="text-[10px] text-gray-400">{task.createdBy}</span>
+                      {task.createdAt && (
+                        <span className="text-[10px] text-gray-400">
+                          a las {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <button

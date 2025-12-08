@@ -58,6 +58,8 @@ interface Task {
   notificationTime?: number; // minutes before event
   color?: string;
   isCompleted?: boolean; // whether task is marked as done
+  createdBy?: string;
+  createdAt?: string;
 }
 
 // Mock de miembros de la familia
@@ -297,6 +299,32 @@ async function initDb() {
       err
     );
   }
+
+  // Add created_by column
+  try {
+    await pool.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS created_by text;
+    `);
+  } catch (err) {
+    console.log(
+      "Column created_by might already exist or error adding it:",
+      err
+    );
+  }
+
+  // Add created_at column
+  try {
+    await pool.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+    `);
+  } catch (err) {
+    console.log(
+      "Column created_at might already exist or error adding it:",
+      err
+    );
+  }
   // 1. Households
   await pool.query(`
     CREATE TABLE IF NOT EXISTS households (
@@ -484,7 +512,7 @@ initDb()
 app.get("/api/tasks", authMiddleware, async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed
+      SELECT id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at
       FROM tasks
       ORDER BY date, time_label NULLS FIRST, title;
     `);
@@ -509,6 +537,8 @@ app.get("/api/tasks", authMiddleware, async (_req, res) => {
         | undefined,
       color: (row.color ?? undefined) as string | undefined,
       isCompleted: (row.is_completed ?? undefined) as boolean | undefined,
+      createdBy: (row.created_by ?? undefined) as string | undefined,
+      createdAt: (row.created_at ?? undefined) as string | undefined,
     }));
 
     res.json(tasks);
@@ -547,6 +577,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
     seriesId?: string;
     notificationTime?: number;
     color?: string;
+    createdBy?: string;
   };
 
   if (!title || !date || !assigneeId || !priority || !recurrence) {
@@ -572,6 +603,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
     durationWeeks,
     notificationTime,
     color,
+    createdBy: req.body.createdBy,
   };
 
   const tasksToAdd: Task[] = [];
@@ -666,8 +698,8 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
     const insertPromises = tasksToAdd.map((t) =>
       pool.query(
         `
-        INSERT INTO tasks (id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        INSERT INTO tasks (id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       `,
         [
           t.id,
@@ -684,6 +716,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
           t.durationWeeks ?? null,
           t.notificationTime ?? null,
           t.color ?? null,
+          t.createdBy ?? null,
         ]
       )
     );
