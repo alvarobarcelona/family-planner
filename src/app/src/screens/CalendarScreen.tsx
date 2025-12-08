@@ -198,20 +198,33 @@ export function CalendarScreen() {
                     </p>
                   )}
 
-                  <div className="mt-auto flex">
-                    <span className="mr-1">Prioridad:</span>
-                    {task.priority === "HIGH" && (
-                      <span className="text[10px] text-red-500 font-semibold">
-                        Alta
-                      </span>
-                    )}
-                    {task.priority === "MEDIUM" && (
-                      <span className="text[10px] text-amber-500">Media</span>
-                    )}
-                    {task.priority === "LOW" && (
-                      <span className="text[10px] text-gray-400">Baja</span>
+                  <div className="mt-auto flex justify-between ">
+                    <span className="mr-1">Prioridad:
+                      {task.priority === "HIGH" && (
+                        <span className=" ml-1 text[10px] text-red-500 font-semibold">
+                          Alta
+                        </span>
+                      )}
+                      {task.priority === "MEDIUM" && (
+                        <span className=" ml-1 text[10px] text-amber-500">Media</span>
+                      )}
+                      {task.priority === "LOW" && (
+                        <span className=" ml-1 text[10px] text-gray-400">Baja</span>
+                      )}
+                    </span>
+                    {task.createdBy && (
+                      <div className="inline-block align-middle">
+                        <span className="mr-1 text-[10px] text-gray-500">Creado por:</span>
+                        <span className="mr-2 text-[10px] text-gray-400">{task.createdBy}</span>
+                        {task.createdAt && (
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(task.createdAt).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
+
                   <button
                     type="button"
                     onClick={(e) => {

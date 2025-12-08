@@ -183,7 +183,7 @@ app.post("/api/subscribe", async (req, res) => {
       [
         randomUUID(),
         householdId,
-        familyMemberId || null,
+        familyMemberId ?? null,
         subscription.endpoint,
         JSON.stringify(subscription.keys),
         req.headers["user-agent"],
