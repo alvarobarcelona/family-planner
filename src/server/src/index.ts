@@ -451,9 +451,8 @@ async function checkAndSendNotifications(): Promise<{
       WHERE date >= $1 
       AND notification_time IS NOT NULL 
       AND time_label IS NOT NULL
+      AND (notification_sent IS NULL OR notification_sent = false)
     `,
-    //no lo tenemos en cuenta ya que si cambiamos el evento de fecha, ya no selecciona las notificaciones al estar en true
-    /* AND (notification_sent IS NULL OR notification_sent = false) */
       [todayStr]
     );
 
@@ -491,8 +490,8 @@ async function checkAndSendNotifications(): Promise<{
 
       const diff = now.getTime() - notifyTime.getTime();
 
-      // Check if within last 60 seconds
-      if (diff >= 0 && diff < 60000) {
+      // Check if within last 30 seconds (matching scheduler interval)
+      if (diff >= 0 && diff < 30000) {
         console.log(`Sending notification for task: ${task.title}`);
 
         const householdId = "00000000-0000-0000-0000-000000000000";
@@ -504,6 +503,7 @@ async function checkAndSendNotifications(): Promise<{
           SELECT * FROM push_subscriptions 
           WHERE household_id = $1 
           AND (family_member_id = ANY($2) OR family_member_id IS NULL)
+          AND is_active = true;
         `,
           [householdId, assigneeIds]
         );
@@ -525,6 +525,11 @@ async function checkAndSendNotifications(): Promise<{
           const success = await sendNotification(pushSub, payload);
           if (success) {
             sentCount++;
+            // Update last_used_at to track when subscription was last used
+            await pool.query(
+              "UPDATE push_subscriptions SET last_used_at = now() WHERE endpoint = $1",
+              [sub.endpoint]
+            );
           } else {
             errorCount++;
           }
@@ -966,7 +971,12 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
     const result = await pool.query(
       `
       UPDATE tasks
-      SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13
+      SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13,
+          notification_sent = CASE 
+            WHEN date::text != $2 OR time_label != $4 OR notification_time != $11 
+            THEN false 
+            ELSE notification_sent 
+          END
       WHERE id = $14
       RETURNING *
     `,
