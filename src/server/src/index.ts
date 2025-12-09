@@ -451,8 +451,9 @@ async function checkAndSendNotifications(): Promise<{
       WHERE date >= $1 
       AND notification_time IS NOT NULL 
       AND time_label IS NOT NULL
-      AND (notification_sent IS NULL OR notification_sent = false)
     `,
+    //no lo tenemos en cuenta ya que si cambiamos el evento de fecha, ya no selecciona las notificaciones al estar en true
+    /* AND (notification_sent IS NULL OR notification_sent = false) */
       [todayStr]
     );
 
