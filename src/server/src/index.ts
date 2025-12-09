@@ -160,6 +160,43 @@ app.get("/api/vapid-public-key", (_req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
 });
 
+// Cron Job Endpoint - for external cron services to trigger notification checks
+app.get("/api/cron/check-notifications", async (req, res) => {
+  // Verify cron secret
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret) {
+    return res.status(500).json({
+      error: "CRON_SECRET not configured on server",
+    });
+  }
+
+  const providedSecret = authHeader?.replace("Bearer ", "");
+
+  if (providedSecret !== cronSecret) {
+    return res.status(401).json({
+      error: "Unauthorized - Invalid cron secret",
+    });
+  }
+
+  try {
+    const result = await checkAndSendNotifications();
+    return res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      notificationsSent: result.sent,
+      errors: result.errors,
+    });
+  } catch (error) {
+    console.error("Cron job error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to check notifications",
+    });
+  }
+});
+
 // POST Subscribe to Push Notifications
 app.post("/api/subscribe", async (req, res) => {
   const { subscription, familyMemberId } = req.body;
@@ -396,6 +433,116 @@ async function initDb() {
   }
 }
 
+// Notification Checker Function (used by scheduler and cron job)
+async function checkAndSendNotifications(): Promise<{
+  sent: number;
+  errors: number;
+}> {
+  let sentCount = 0;
+  let errorCount = 0;
+
+  try {
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    const result = await pool.query(
+      `
+      SELECT * FROM tasks 
+      WHERE date >= $1 
+      AND notification_time IS NOT NULL 
+      AND time_label IS NOT NULL
+      AND (notification_sent IS NULL OR notification_sent = false)
+    `,
+      [todayStr]
+    );
+
+    for (const task of result.rows) {
+      const [hours, minutes] = task.time_label.split(":").map(Number);
+
+      // Construct target date in Europe/Madrid timezone
+      let dateStr = "";
+      if (task.date instanceof Date) {
+        const y = task.date.getFullYear();
+        const m = String(task.date.getMonth() + 1).padStart(2, "0");
+        const d = String(task.date.getDate()).padStart(2, "0");
+        dateStr = `${y}-${m}-${d}`;
+      } else {
+        dateStr = task.date;
+      }
+
+      // Create date in Europe/Madrid timezone (CET/CEST)
+      // Parse the date components
+      const [year, month, day] = dateStr.split("-").map(Number);
+
+      // Create a date in UTC, then adjust for CET timezone
+      const utcDate = new Date(
+        Date.UTC(year, month - 1, day, hours, minutes, 0)
+      );
+
+      // Get the correct timezone offset (60 or 120 minutes) based on DST
+      const cetOffsetMinutes = getCETOffset(utcDate);
+      const targetDate = new Date(utcDate.getTime() - cetOffsetMinutes * 60000);
+
+      // Subtract notification time
+      const notifyTime = new Date(
+        targetDate.getTime() - task.notification_time * 60000
+      );
+
+      const diff = now.getTime() - notifyTime.getTime();
+
+      // Check if within last 60 seconds
+      if (diff >= 0 && diff < 60000) {
+        console.log(`Sending notification for task: ${task.title}`);
+
+        const householdId = "00000000-0000-0000-0000-000000000000";
+        const assignees = task.assignees;
+        const assigneeIds = assignees.map((a: any) => a.id);
+
+        const subsRes = await pool.query(
+          `
+          SELECT * FROM push_subscriptions 
+          WHERE household_id = $1 
+          AND (family_member_id = ANY($2) OR family_member_id IS NULL)
+        `,
+          [householdId, assigneeIds]
+        );
+
+        for (const sub of subsRes.rows) {
+          const payload = {
+            title: `Evento: ${task.title}`,
+            body: `Comienza en ${task.notification_time} minutos`,
+            url: "/",
+            icon: "/icon-192x192.png",
+          };
+
+          // Construct subscription object expected by web-push
+          const pushSub = {
+            endpoint: sub.endpoint,
+            keys: sub.keys,
+          };
+
+          const success = await sendNotification(pushSub, payload);
+          if (success) {
+            sentCount++;
+          } else {
+            errorCount++;
+          }
+        }
+
+        await pool.query(
+          "UPDATE tasks SET notification_sent = true WHERE id = $1",
+          [task.id]
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Notification check error:", err);
+    errorCount++;
+  }
+
+  return { sent: sentCount, errors: errorCount };
+}
+
 initDb()
   .then(() => {
     const PORT = process.env.PORT ?? 4000;
@@ -404,102 +551,9 @@ initDb()
 
       // Start Scheduler
 
+      // Start Scheduler (backup for when cron jobs work)
       setInterval(async () => {
-        try {
-          const now = new Date();
-          const todayStr = now.toISOString().slice(0, 10);
-
-          const result = await pool.query(
-            `
-            SELECT * FROM tasks 
-            WHERE date >= $1 
-            AND notification_time IS NOT NULL 
-            AND time_label IS NOT NULL
-            AND (notification_sent IS NULL OR notification_sent = false)
-          `,
-            [todayStr]
-          );
-
-          for (const task of result.rows) {
-            const [hours, minutes] = task.time_label.split(":").map(Number);
-
-            // Construct target date in Europe/Madrid timezone
-            let dateStr = "";
-            if (task.date instanceof Date) {
-              const y = task.date.getFullYear();
-              const m = String(task.date.getMonth() + 1).padStart(2, "0");
-              const d = String(task.date.getDate()).padStart(2, "0");
-              dateStr = `${y}-${m}-${d}`;
-            } else {
-              dateStr = task.date;
-            }
-
-            // Create date in Europe/Madrid timezone (CET/CEST)
-            // Automatically detects UTC+1 (winter) or UTC+2 (summer)
-            // Parse the date components
-            const [year, month, day] = dateStr.split("-").map(Number);
-
-            // Create a date in UTC, then adjust for CET timezone
-            const utcDate = new Date(
-              Date.UTC(year, month - 1, day, hours, minutes, 0)
-            );
-
-            // Get the correct timezone offset (60 or 120 minutes) based on DST
-            const cetOffsetMinutes = getCETOffset(utcDate);
-            const targetDate = new Date(
-              utcDate.getTime() - cetOffsetMinutes * 60000
-            );
-
-            // Subtract notification time
-            const notifyTime = new Date(
-              targetDate.getTime() - task.notification_time * 60000
-            );
-
-            const diff = now.getTime() - notifyTime.getTime();
-
-            // Check if within last 60 seconds
-            if (diff >= 0 && diff < 60000) {
-              console.log(`Sending notification for task: ${task.title}`);
-
-              const householdId = "00000000-0000-0000-0000-000000000000";
-              const assignees = task.assignees;
-              const assigneeIds = assignees.map((a: any) => a.id);
-
-              const subsRes = await pool.query(
-                `
-                SELECT * FROM push_subscriptions 
-                WHERE household_id = $1 
-                AND (family_member_id = ANY($2) OR family_member_id IS NULL)
-              `,
-                [householdId, assigneeIds]
-              );
-
-              for (const sub of subsRes.rows) {
-                const payload = {
-                  title: `Evento: ${task.title}`,
-                  body: `Comienza en ${task.notification_time} minutos`,
-                  url: "/",
-                  icon: "/icon-192x192.png",
-                };
-
-                // Construct subscription object expected by web-push
-                const pushSub = {
-                  endpoint: sub.endpoint,
-                  keys: sub.keys,
-                };
-
-                await sendNotification(pushSub, payload);
-              }
-
-              await pool.query(
-                "UPDATE tasks SET notification_sent = true WHERE id = $1",
-                [task.id]
-              );
-            }
-          }
-        } catch (err) {
-          console.error("Scheduler error:", err);
-        }
+        await checkAndSendNotifications();
       }, 30000); // Check every 30 seconds
     });
   })
