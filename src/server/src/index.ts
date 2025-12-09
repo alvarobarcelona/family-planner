@@ -834,6 +834,9 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
   }
 
   try {
+    console.log("PUT /api/tasks/:id - Received isCompleted:", isCompleted);
+    console.log("PUT /api/tasks/:id - Full body:", req.body);
+
     // SERIES UPDATE
     if (updateAll === "true") {
       const taskRes = await pool.query(

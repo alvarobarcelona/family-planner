@@ -1,7 +1,7 @@
 {
   "name": "Family Planner",
-  "short_name": "FamilyPlan",
-  "start_url": "/",
+  "short_name": "Family Planner",
+  "start_url": "/${task.id}",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#020617",
