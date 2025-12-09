@@ -288,7 +288,7 @@ export function HomeScreen() {
                   </p>
                 )}
 
-                <div className="mt-auto flex justify-between ">
+                <div className="mt-auto  ">
                   <span className="mr-1">Prioridad:
                     {task.priority === "HIGH" && (
                       <span className=" ml-1 text[10px] text-red-500 font-semibold">
@@ -303,7 +303,7 @@ export function HomeScreen() {
                     )}
                   </span>
                   {task.createdBy && (
-                    <div className="inline-block align-middle">
+                    <div className="flex justify-end">
                       <span className="mr-1 text-[10px] text-gray-500">Creado por:</span>
                       <span className="mr-2 text-[10px] text-gray-400">{task.createdBy}</span>
                       {task.createdAt && (

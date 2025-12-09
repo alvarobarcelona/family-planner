@@ -100,10 +100,8 @@ const familyMembersMap: Record<string, Assignee> = {
 
 //Mock de createdBy
 const createdByMap: Record<string, CreatedBy> = {
-  default: { id: "default", name: "Sin Asignar" },
   mama: { id: "mama", name: "Maria" },
   papa: { id: "papa", name: "Alvaro" },
-  familia: { id: "familia", name: "Familia" },
 };
 
 

@@ -310,13 +310,19 @@ export function NewTaskScreen() {
             className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={selectedCreatedBy}
             onChange={(e) => setSelectedCreatedBy(e.target.value)}
+            required
           >
+            <option value="">Seleccionar un nombre...</option>
+
             {createdBy.map((opt) => (
               <option key={opt.id} value={opt.id}>
                 {opt.name}
               </option>
             ))}
           </select>
+          <p className="text-[10px] text-gray-400">
+            * Campo obligatorio
+          </p>
         </div>
 
         <div className="space-y-1">
