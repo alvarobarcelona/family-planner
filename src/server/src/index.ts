@@ -971,12 +971,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
     const result = await pool.query(
       `
       UPDATE tasks
-      SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13,
-          notification_sent = CASE 
-            WHEN date::text != $2 OR time_label != $4 OR notification_time != $11 
-            THEN false 
-            ELSE notification_sent 
-          END
+      SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13
       WHERE id = $14
       RETURNING *
     `,
