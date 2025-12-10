@@ -199,7 +199,7 @@ app.get("/api/cron/check-notifications", async (req, res) => {
 
 // POST Subscribe to Push Notifications
 app.post("/api/subscribe", async (req, res) => {
-  const { subscription, familyMemberId } = req.body;
+  const { subscription, familyMemberId, familyMemberIds } = req.body;
 
   if (!subscription || !subscription.endpoint) {
     return res.status(400).json({ message: "Invalid subscription" });
@@ -207,20 +207,30 @@ app.post("/api/subscribe", async (req, res) => {
 
   const householdId = "00000000-0000-0000-0000-000000000000"; // Default household
 
+  // Normalize familyMemberIds
+  let finalFamilyMemberIds: string[] = [];
+  if (Array.isArray(familyMemberIds)) {
+    finalFamilyMemberIds = familyMemberIds;
+  } else if (familyMemberId) {
+    finalFamilyMemberIds = [familyMemberId];
+  }
+
   try {
     await pool.query(
       `
-      INSERT INTO push_subscriptions (id, household_id, family_member_id, endpoint, keys, user_agent)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO push_subscriptions (id, household_id, family_member_id, family_member_ids, endpoint, keys, user_agent)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (endpoint) DO UPDATE
-      SET family_member_id = EXCLUDED.family_member_id,
+      SET family_member_ids = EXCLUDED.family_member_ids,
+          family_member_id = EXCLUDED.family_member_id, -- Keep updating legacy column for now
           last_used_at = now(),
           is_active = true
     `,
       [
         randomUUID(),
         householdId,
-        familyMemberId ?? null,
+        finalFamilyMemberIds.length > 0 ? finalFamilyMemberIds[0] : null, // Legacy support: pick first one
+        finalFamilyMemberIds,
         subscription.endpoint,
         JSON.stringify(subscription.keys),
         req.headers["user-agent"],
@@ -397,6 +407,23 @@ async function initDb() {
     );
   `);
 
+  // Add family_member_ids column if it doesn't exist
+  try {
+    await pool.query(`
+      ALTER TABLE push_subscriptions 
+      ADD COLUMN IF NOT EXISTS family_member_ids text[];
+    `);
+
+    // Migration: If we have family_member_id but empty family_member_ids, copy it over.
+    await pool.query(`
+        UPDATE push_subscriptions
+        SET family_member_ids = ARRAY[family_member_id]
+        WHERE family_member_ids IS NULL AND family_member_id IS NOT NULL;
+    `);
+  } catch (err) {
+    console.log("Error adding family_member_ids or migrating:", err);
+  }
+
   // Seed Data
   const householdId = "00000000-0000-0000-0000-000000000000"; // Fixed ID for simplicity
 
@@ -498,12 +525,22 @@ async function checkAndSendNotifications(): Promise<{
         const assignees = task.assignees;
         const assigneeIds = assignees.map((a: any) => a.id);
 
+        /**
+         * Logic update: check if any of the assigneeIds are present in the subscription's family_member_ids
+         * using the Postgres overlap operator '&&' or checking if 'family_member_ids' contains any of the assigneeIds.
+         *
+         * Also fallback for older records: OR family_member_id = ANY($2)
+         */
         const subsRes = await pool.query(
           `
           SELECT * FROM push_subscriptions 
           WHERE household_id = $1 
-          AND (family_member_id = ANY($2) OR family_member_id IS NULL)
-          AND is_active = true;
+          AND is_active = true
+          AND (
+            family_member_ids && $2::text[] 
+            OR 
+            family_member_id = ANY($2::text[])
+          );
         `,
           [householdId, assigneeIds]
         );

@@ -36,7 +36,7 @@ export function usePushNotifications() {
     }
   }, []);
 
-  const subscribeToPush = async (familyMemberId?: string) => {
+  const subscribeToPush = async (familyMemberIds?: string[]) => {
     setLoading(true);
     try {
       if (!("serviceWorker" in navigator)) {
@@ -81,7 +81,7 @@ export function usePushNotifications() {
         method: "POST",
         body: JSON.stringify({
           subscription,
-          familyMemberId,
+          familyMemberIds,
         }),
         headers: {
           "Content-Type": "application/json",

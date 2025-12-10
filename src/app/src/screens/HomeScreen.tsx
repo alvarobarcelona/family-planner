@@ -14,7 +14,26 @@ export function HomeScreen() {
     useState<FilterAssigneeId>("all");
 
   const { permission, isSubscribed, subscribeToPush, unsubscribeFromPush, loading } = usePushNotifications();
-  const [selectedNotificationMember, setSelectedNotificationMember] = useState<string>("mama");
+  const [selectedNotificationMembers, setSelectedNotificationMembers] = useState<string[]>([]);
+
+  // Initialize with all members selected by default or just one, up to preference. Let's start with empty so they choose.
+  // Actually, let's default to "Mama" if available, or just empty.
+  useEffect(() => {
+    if (familyMembers.length > 0 && selectedNotificationMembers.length === 0) {
+      // Optional: Default to selecting the first member? Or wait for user.
+      // Let's not auto-select to force them to choose.
+    }
+  }, [familyMembers]);
+
+  const toggleNotificationMember = (id: string) => {
+    setSelectedNotificationMembers(prev =>
+      prev.includes(id)
+        ? prev.filter(m => m !== id)
+        : [...prev, id]
+    );
+  };
+
+  // ... (rest of code)
 
   // Auto-refresh on visibility change
   useEffect(() => {
@@ -124,27 +143,40 @@ export function HomeScreen() {
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">🔔</span>
             <p className="text-xs text-indigo-800">
-              Activa las notificaciones para recibir recordatorios.
+              Activa notificaciones para uno o varios miembros:
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedNotificationMember}
-              onChange={(e) => setSelectedNotificationMember(e.target.value)}
-              className="flex-1 text-xs border border-indigo-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {familyMembers.map((m) => (
-                <option key={m.id} value={m.id}>
+
+          <div className="flex flex-wrap gap-2 mb-3">
+            {familyMembers.map((m) => {
+              const isSelected = selectedNotificationMembers.includes(m.id);
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => toggleNotificationMember(m.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors flex items-center gap-1.5 ${isSelected
+                      ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
+                      : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                    }`}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: m.color }}
+                  />
                   {m.name}
-                </option>
-              ))}
-            </select>
+                  {isSelected && <span>✓</span>}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="flex justify-end">
             <button
-              onClick={() => subscribeToPush(selectedNotificationMember)}
-              disabled={loading}
-              className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full font-medium shadow-sm active:scale-95 transition-transform disabled:opacity-50"
+              onClick={() => subscribeToPush(selectedNotificationMembers)}
+              disabled={loading || selectedNotificationMembers.length === 0}
+              className="text-xs bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium shadow-sm active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Activando...' : 'Activar'}
+              {loading ? 'Activando...' : 'Activar Notificaciones'}
             </button>
           </div>
         </div>
