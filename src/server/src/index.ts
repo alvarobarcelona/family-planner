@@ -1019,8 +1019,8 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
     const result = await pool.query(
       `
       UPDATE tasks
-      SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13, created_by = $14
-      WHERE id = $15
+      SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13, created_by = COALESCE($14, created_by), created_at = COALESCE($15, created_at)
+      WHERE id = $16
       RETURNING *
     `,
       [
