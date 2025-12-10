@@ -59,6 +59,7 @@ export interface CreateTaskInput {
   notificationTime?: number;
   color?: string;
   createdBy: string;
+  createdAt?: string;
 }
 
 interface TaskContextValue {
@@ -227,6 +228,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           notificationTime: task.notificationTime,
           color: task.color,
           isCompleted: !task.isCompleted,
+          createdBy: task.createdBy,
         }),
       });
 

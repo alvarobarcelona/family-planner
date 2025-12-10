@@ -267,6 +267,18 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
                                                 </span>
                                             ))}
                                         </div>
+
+                                        {task.createdBy && (
+                                            <div className="flex justify-end">
+                                                <span className="mr-1 text-[10px] text-gray-500">Creado por:</span>
+                                                <span className="mr-2 text-[10px] text-gray-400">{task.createdBy}</span>
+                                                {task.createdAt && (
+                                                    <span className="text-[10px] text-gray-400">
+                                                        {new Date(task.createdAt).toLocaleString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

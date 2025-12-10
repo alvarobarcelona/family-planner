@@ -39,6 +39,7 @@ export function EditTaskScreen() {
   const [description, setDescription] = useState("");
   const [notificationTime, setNotificationTime] = useState<number>(0);
   const [storedCreatedBy, setStoredCreatedBy] = useState<string>("");
+  const [storedCreatedAt, setStoredCreatedAt] = useState<string | undefined>(undefined);
 
   const [useCustomDays, setUseCustomDays] = useState(false);
   const [customDays, setCustomDays] = useState<number[]>([]);
@@ -85,6 +86,7 @@ export function EditTaskScreen() {
         setNotificationTime(task.notificationTime || 0);
         setSelectedColor(task.color);
         setStoredCreatedBy(task.createdBy || "familia");
+        setStoredCreatedAt(task.createdAt);
 
         // Initialize custom days if applicable
         if (task.recurrence === "CUSTOM_WEEKLY") {
@@ -136,6 +138,7 @@ export function EditTaskScreen() {
         notificationTime: notificationTime > 0 ? notificationTime : undefined,
         color: selectedColor,
         createdBy: storedCreatedBy,
+        createdAt: storedCreatedAt,
       });
 
       navigate(-1); // Go back
@@ -512,7 +515,7 @@ export function EditTaskScreen() {
                             notificationTime: notificationTime > 0 ? notificationTime : undefined,
                             color: selectedColor,
                             createdBy: storedCreatedBy,
-
+                            createdAt: storedCreatedAt,
                           },
                           true // updateAll
                         );
