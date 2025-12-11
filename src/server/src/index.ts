@@ -675,6 +675,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
     notificationTime?: number;
     color?: string;
     createdBy?: string;
+    createdAt?: string;
   };
 
   if (!title || !date || !assigneeId || !priority || !recurrence) {

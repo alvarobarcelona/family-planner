@@ -158,7 +158,7 @@ export function NewTaskScreen() {
           <input
             id="date"
             type="date"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
@@ -172,7 +172,7 @@ export function NewTaskScreen() {
           <input
             id="endDate"
             type="date"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             min={date}
@@ -191,7 +191,7 @@ export function NewTaskScreen() {
           <input
             id="time"
             type="time"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={time}
             onChange={(e) => setTime(e.target.value)}
           />
