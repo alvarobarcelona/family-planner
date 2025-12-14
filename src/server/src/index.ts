@@ -546,9 +546,14 @@ async function checkAndSendNotifications(): Promise<{
         );
 
         for (const sub of subsRes.rows) {
+          const timeText =
+            task.notification_time === 1440
+              ? "1 día"
+              : `${task.notification_time} minutos`;
+
           const payload = {
-            title: `Evento: ${task.title}`,
-            body: `Comienza en ${task.notification_time} minutos`,
+            title: `${task.title}`,
+            body: `Comienza en ${timeText}`,
             url: "/",
             icon: "/icon-192x192.png",
           };

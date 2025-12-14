@@ -137,10 +137,10 @@ export function CalendarScreen() {
       )}
 
       <div className="space-y-3">
-        {grouped.map(({ date, tasks }) => (
+        {grouped.map(({ date, tasks }, index) => (
           <section
             key={date}
-            className="bg-white rounded-xl shadow-sm px-3 py-2 space-y-1"
+            className={`rounded-xl shadow-sm px-3 py-2 space-y-1 ${index % 2 === 0 ? " bg-white" : "bg-gray-200"}`}
           >
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-sm font-semibold">{formatDate(date)}</span>

@@ -234,7 +234,7 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
 
                     return (
                         <div key={dateStr} className="space-y-2">
-                            <h4 className="text-sm font-semibold text-slate-600 sticky top-0 bg-white/95 backdrop-blur-sm py-1 z-10 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-600 sticky top-0 bg-gray-200 backdrop-blur-sm py-1 z-10 flex items-center gap-2">
                                 <span className="capitalize">{d.toLocaleDateString("es-ES", { weekday: 'long' })}</span>
                                 <span className="text-slate-400 font-normal">{d.getDate()}</span>
                             </h4>
