@@ -64,6 +64,7 @@ interface Task {
 
 // Mock de miembros de la familia
 const familyMembers: Record<string, Assignee> = {
+  mamaWork: { id: "mamaWork", name: "Maria/Work", color: "#c5e03aff" },
   mama: { id: "mama", name: "Maria", color: "#f97316" },
   papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
   familia: { id: "familia", name: "Familia", color: "#6366f1" },
