@@ -36,7 +36,7 @@ export function NewTaskScreen() {
   const [date, setDate] = useState(todayStr());
   const [endDate, setEndDate] = useState("");
   const [time, setTime] = useState("");
-  const [assigneeId, setAssigneeId] = useState("familia");
+  const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [description, setDescription] = useState("");
@@ -142,7 +142,7 @@ export function NewTaskScreen() {
           <input
             id="title"
             type="text"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             placeholder="Pediatra Leo, Reunión Kita..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -295,13 +295,19 @@ export function NewTaskScreen() {
             className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
+            required
           >
+            <option value="">Seleccionar un nombre...</option>
+
             {familyMembers.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
               </option>
             ))}
           </select>
+          <p className="text-[10px] text-gray-400">
+            * Campo obligatorio
+          </p>
         </div>
 
         <div className="space-y-1">
