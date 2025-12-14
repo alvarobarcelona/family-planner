@@ -442,6 +442,7 @@ async function initDb() {
 
   // Seed Members
   const members = [
+    { id: "mamaWork", name: "Maria/Work", color: "#c5e03aff" },
     { id: "mama", name: "Maria", color: "#f97316" },
     { id: "papa", name: "Alvaro", color: "#22c55e" },
     { id: "familia", name: "Todos", color: "#6366f1" },
