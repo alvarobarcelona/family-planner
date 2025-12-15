@@ -160,8 +160,8 @@ export function CalendarScreen() {
                     className="absolute left-0 top-0 bottom-0 w-1.5"
                     style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
                   />
-                  <div className="flex-1">
-                    <div className="flex justify-between">
+                  <div className="">
+                    <div className="flex justify-between items-start">
                       <p
                         className={
                           "text-sm font-medium leading-snug " +
@@ -172,11 +172,18 @@ export function CalendarScreen() {
                       >
                         {task.title}
                       </p>
-                      {task.timeLabel && (
-                        <p className="text[5px] text-gray-500">
-                          {task.timeLabel} h
-                        </p>
-                      )}
+                      <div className="flex gap-1">
+
+                        {task.notificationTime != null && (
+                          <span>🔔</span>
+                        )}
+
+                        {task.timeLabel && (
+                          <p className="text[5px] text-gray-500">
+                            {task.timeLabel} h
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex gap-1 mt-1 flex-wrap">

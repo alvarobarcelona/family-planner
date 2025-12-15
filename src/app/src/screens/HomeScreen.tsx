@@ -155,8 +155,8 @@ export function HomeScreen() {
                   key={m.id}
                   onClick={() => toggleNotificationMember(m.id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors flex items-center gap-1.5 ${isSelected
-                      ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
-                      : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                    ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
+                    : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
                     }`}
                 >
                   <span
@@ -296,6 +296,12 @@ export function HomeScreen() {
                       </p>
                     </div>
 
+                    <div>
+                      {task.notificationTime != null && (
+                        <span>🔔</span>
+                      )}
+                    </div>
+                    
                     {task.timeLabel && (
                       <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>
                     )}

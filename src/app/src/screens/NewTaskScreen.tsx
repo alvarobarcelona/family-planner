@@ -431,13 +431,24 @@ export function NewTaskScreen() {
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-lg bg-slate-900 text-white py-2 text-sm font-medium disabled:opacity-60"
-        >
-          {isSubmitting ? "Guardando..." : "Guardar"}
-        </button>
+
+        <div className="flex justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex-1 rounded-lg border border-gray-300 text-slate-700 py-2 text-sm font-medium"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex-1 rounded-lg bg-slate-900 text-white py-2 text-sm font-medium disabled:opacity-60"
+          >
+            {isSubmitting ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+
       </form>
     </div>
   );

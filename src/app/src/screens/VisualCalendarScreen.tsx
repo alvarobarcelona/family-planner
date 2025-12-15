@@ -225,7 +225,7 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
 
             {/* Bottom: List View */}
             <div className="flex-1 overflow-y-auto px-1 space-y-4 pb-4 border-t border-slate-100 pt-2">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agenda de la semana</h3>
+                <h3 className="text-sm font-bold text-dark-400 uppercase tracking-wider">Agenda de la semana</h3>
                 {weekDays.map(d => {
                     const dateStr = toLocalDateString(d);
                     const dayTasks = tasks.filter(t => isTaskOnDate(t, dateStr)).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
@@ -234,8 +234,8 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
 
                     return (
                         <div key={dateStr} className="space-y-2">
-                            <h4 className="text-sm font-semibold text-slate-600 sticky top-0 bg-gray-200 backdrop-blur-sm py-1 z-10 flex items-center gap-2">
-                                <span className="capitalize">{d.toLocaleDateString("es-ES", { weekday: 'long' })}</span>
+                            <h4 className=" rounded-lg text-sm font-semibold text-slate-600 sticky top-0 bg-gray-200 backdrop-blur-sm py-1 z-10 flex items-center gap-2">
+                                <span className="capitalize ml-2">{d.toLocaleDateString("es-ES", { weekday: 'long' })}</span>
                                 <span className="text-slate-400 font-normal">{d.getDate()}</span>
                             </h4>
                             <div className="space-y-2 pl-2">
@@ -251,11 +251,19 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
                                         />
                                         <div className="flex justify-between items-start pl-1">
                                             <span className="font-medium text-slate-700 text-sm">{task.title}</span>
-                                            {task.timeLabel && (
-                                                <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                                                    {task.timeLabel}
-                                                </span>
-                                            )}
+
+                                            <div className="flex items-center gap-1">
+                                                {task.notificationTime != null && (
+                                                    <span>🔔</span>
+                                                )}
+
+                                                {task.timeLabel && (
+                                                    <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                        {task.timeLabel}
+                                                    </span>
+                                                )}
+                                            </div>
+
                                         </div>
                                         {task.description && (
                                             <p className="text-xs text-slate-400 line-clamp-1 pl-1">{task.description}</p>
