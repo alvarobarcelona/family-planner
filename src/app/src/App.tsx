@@ -6,6 +6,7 @@ import { CalendarScreen } from "./screens/CalendarScreen";
 import { VisualCalendarScreen } from "./screens/VisualCalendarScreen";
 import { NewTaskScreen } from "./screens/NewTaskScreen";
 import { EditTaskScreen } from "./screens/EditTaskScreen";
+import { ShoppingListScreen } from "./screens/ShoppingListScreen";
 import { TaskProvider } from "./store/useTaskStore";
 import { useNotifications } from "./hooks/useNotifications";
 
@@ -43,6 +44,14 @@ function AppContent() {
             </NavLink>
 
             <NavLink
+              to="/shopping-list" className={({ isActive }) => `flex flex-col items-center gap-0.5 transition 
+              ${isActive ? "text-slate-900 font-semibold" : "text-gray-500"} hover:text-slate-900`
+              }
+            >
+              <span className="text-lg">Compras</span>
+            </NavLink>
+
+            <NavLink
               to="/new" className={({ isActive }) => `flex flex-col items-center justify-center rounded-full w-10 h-10 shadow-lg shadow-indigo-500/30 text-sm font-medium transition-transform active:scale-95 
               ${isActive ? "bg-indigo-600" : "bg-indigo-600"} text-white hover:bg-indigo-700`
               }
@@ -58,6 +67,7 @@ function AppContent() {
           <Route path="/" element={<HomeScreen />} />
           <Route path="/calendar" element={<CalendarScreen />} />
           <Route path="/visual-calendar" element={<VisualCalendarScreen />} />
+          <Route path="/shopping-list" element={<ShoppingListScreen />} />
           <Route path="/new" element={<NewTaskScreen />} />
           <Route path="/edit/:taskId" element={<EditTaskScreen />} />
         </Routes>
