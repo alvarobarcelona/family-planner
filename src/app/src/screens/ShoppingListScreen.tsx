@@ -127,7 +127,7 @@ export function ShoppingListScreen() {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder="¿Qué necesitas comprar?"
-                        className="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        className="w-50 bg-slate-50 border-none font-size: small; rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                     />
                     <input
                         type="number"
@@ -135,7 +135,7 @@ export function ShoppingListScreen() {
                         value={quantityValue}
                         onChange={(e) => setQuantityValue(e.target.value)}
                         placeholder="Cant."
-                        className="w-20 bg-slate-50 border-none rounded-xl px-3 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-center"
+                        className="w-15 bg-slate-50 border-none rounded-xl px-3 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-center"
                     />
                     <button
                         type="submit"
