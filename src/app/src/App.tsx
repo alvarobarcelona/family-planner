@@ -15,8 +15,8 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-slate-900 flex flex-col relative">
-      <main className="flex-1 w-full mx-auto px-4 py-4 pb-24 max-w-md md:max-w-4xl lg:max-w-6xl transition-all duration-300">
-        <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] max-w-[600px] bg-white/80 backdrop-blur-md border border-white/50 shadow-xl rounded-2xl z-50 transition-all duration-300">
+      <main className="flex-1 w-full mx-auto px-4 py-4 pb-36 pb-[calc(9rem+env(safe-area-inset-bottom))] max-w-md md:max-w-4xl lg:max-w-6xl transition-all duration-300">
+        <nav className="fixed bottom-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] max-w-[600px] bg-white/80 backdrop-blur-md border border-white/50 shadow-xl rounded-2xl z-50 transition-all duration-300">
           <div className="flex flex-col gap-2 py-3 px-2">
             {/* First Row: Hoy, Agenda, Calendario, + */}
             <div className="flex justify-around items-center w-full">
