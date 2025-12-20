@@ -175,7 +175,7 @@ export function ShoppingListScreen() {
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="¿Qué necesitas comprar?"
+                        placeholder="¿Qué necesitas?"
                         className="w-50 bg-slate-50 border-none font-size: small; rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                     />
                     <input
