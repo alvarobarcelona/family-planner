@@ -112,11 +112,59 @@ export function ShoppingListScreen() {
         .sort((a, b) => b.usageCount - a.usageCount)
         .slice(0, 15);
 
+    // Share functionality
+    const handleShare = async () => {
+        const activeItemsToShare = items.filter(i => !i.completed);
+        if (activeItemsToShare.length === 0) {
+            alert("No hay productos pendientes para compartir");
+            return;
+        }
+
+        const textList = "🛒 Lista de la Compra:\n\n" + activeItemsToShare
+            .map(item => `- ${item.name}${Number(item.quantity) > 1 ? ` (x${item.quantity})` : ''}`)
+            .join("\n");
+
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: 'Lista de la Compra',
+                    text: textList,
+                });
+            } else {
+                await navigator.clipboard.writeText(textList);
+                alert("¡Lista copiada al portapapeles!");
+            }
+        } catch (error) {
+            console.error("Error compartiendo:", error);
+        }
+    };
+
+    const deleteFavorite = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (confirm("¿Eliminar de favoritos?")) {
+            setFavorites((prev) => prev.filter((f) => f.id !== id));
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-[#fdfbf7]">
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-slate-800 mb-2">Lista de la Compra</h1>
-                <p className="text-slate-500">Organizador de la compra inteligente</p>
+            <div className="mb-6 flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-800 mb-2">Lista de la Compra</h1>
+                    <p className="text-slate-500">Organizador de la compra inteligente</p>
+                </div>
+
+                {activeItems.length > 0 && (
+                    <button
+                        onClick={handleShare}
+                        className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
+                        title="Compartir lista pendiente"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                        </svg>
+                    </button>
+                )}
             </div>
 
             {/* Add Item Form */}
@@ -191,14 +239,27 @@ export function ShoppingListScreen() {
                     {showFavorites && (
                         <div className="mt-3 flex flex-wrap gap-2 p-3 bg-indigo-50/50 rounded-xl animate-in slide-in-from-top-2 border border-indigo-100">
                             {suggestedFavorites.map(fav => (
-                                <button
+                                <div
                                     key={fav.id}
-                                    onClick={() => addItem(fav.name, fav.category)}
-                                    className="bg-white hover:bg-indigo-50 text-slate-700 border border-indigo-100 text-sm px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1 active:scale-95"
+                                    className="group flex items-center bg-white hover:bg-indigo-50 border border-indigo-100 rounded-lg shadow-sm transition-all active:scale-95 overflow-hidden"
                                 >
-                                    <span>+</span>
-                                    {fav.name}
-                                </button>
+                                    <button
+                                        onClick={() => addItem(fav.name, fav.category)}
+                                        className="px-3 py-1.5 text-slate-700 text-sm flex items-center gap-1 hover:text-indigo-700"
+                                    >
+                                        <span>+</span>
+                                        {fav.name}
+                                    </button>
+                                    <button
+                                        onClick={(e) => deleteFavorite(fav.id, e)}
+                                        className="pr-2 pl-1 py-1.5 text-slate-300 hover:text-red-400 hover:bg-red-50 h-full border-l border-transparent hover:border-red-100 transition-colors"
+                                        title="Eliminar de favoritos"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     )}
@@ -247,7 +308,7 @@ export function ShoppingListScreen() {
 
                                 <button
                                     onClick={() => deleteItem(item.id)}
-                                    className="text-slate-300 hover:text-red-500 p-2 transition-colors opacity-0 group-hover:opacity-100"
+                                    className="text-slate-300 hover:text-red-500 p-2 transition-colors "
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
