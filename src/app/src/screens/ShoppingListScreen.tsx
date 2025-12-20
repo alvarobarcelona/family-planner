@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 interface ShoppingItem {
     id: string;
     name: string;
-    quantity: string;
+    quantity: number;
     category: string;
     completed: boolean;
 }
@@ -20,6 +20,7 @@ const CATEGORIES = [
     { id: "fruitsVegetables", label: "Frutas y Verduras", icon: "🍎" },
     { id: "meat", label: "Carnes", icon: "🥩" },
     { id: "milk", label: "Lácteos", icon: "🥛" },
+    { id: "drinks", label: "Bebidas", icon: "🥤" },
     { id: "sweets", label: "Dulces", icon: "🍬" },
     { id: "cleaning", label: "Limpieza", icon: "🧹" },
     { id: "other", label: "Otros", icon: "📦" },
@@ -48,7 +49,7 @@ export function ShoppingListScreen() {
         localStorage.setItem("shopping_list_favorites", JSON.stringify(favorites));
     }, [items, favorites]);
 
-    const addItem = (name: string, category: string, quantity: string = "1") => {
+    const addItem = (name: string, category: string, quantity: number = 1) => {
         const newItem: ShoppingItem = {
             id: crypto.randomUUID(),
             name: name.trim(),
@@ -80,7 +81,7 @@ export function ShoppingListScreen() {
     const handleAddSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
-        addItem(inputValue, selectedCategory, quantityValue);
+        addItem(inputValue, selectedCategory, parseInt(quantityValue) || 1);
         setInputValue("");
         setQuantityValue("1");
     };
@@ -121,7 +122,7 @@ export function ShoppingListScreen() {
         }
 
         const textList = "🛒 Lista de la Compra:\n\n" + activeItemsToShare
-            .map(item => `- ${item.name}${Number(item.quantity) > 1 ? ` (x${item.quantity})` : ''}`)
+            .map(item => `- ${item.name}${item.quantity > 1 ? ` (x${item.quantity})` : ''}`)
             .join("\n");
 
         try {
@@ -289,6 +290,7 @@ export function ShoppingListScreen() {
                 {/* Active Items */}
                 {activeItems.length > 0 ? (
                     <div className="space-y-3">
+                        <div className="text-slate-900 font-semibold text-lg uppercase">Comprar:</div>
                         {activeItems.map((item) => (
                             <div
                                 key={item.id}
@@ -302,7 +304,7 @@ export function ShoppingListScreen() {
                                 </button>
 
                                 <div className="flex-1">
-                                    <span className="text-slate-800 font-medium">{item.name} {item.quantity && Number(item.quantity) > 1 && <span className="text-indigo-600 bg-indigo-50 rounded-md px-1.5 py-0.5 text-xs font-bold ml-1">x{item.quantity}</span>}</span>
+                                    <span className="text-slate-800 font-medium">{item.name} {item.quantity > 1 && <span className="text-indigo-600 bg-indigo-50 rounded-md px-1.5 py-0.5 text-xs font-bold ml-1">x{item.quantity}</span>}</span>
                                     <span className="text-xs text-slate-400 block">{CATEGORIES.find(c => c.id === item.category)?.label}</span>
                                 </div>
 
@@ -348,7 +350,7 @@ export function ShoppingListScreen() {
                                         </svg>
                                     </button>
 
-                                    <span className="flex-1 text-slate-500 line-through decoration-slate-400 decoration-2">{item.name} {item.quantity && Number(item.quantity) > 1 && <span className="text-slate-400 text-xs ml-1">(x{item.quantity})</span>}</span>
+                                    <span className="flex-1 text-slate-500 line-through decoration-slate-400 decoration-2">{item.name} {item.quantity > 1 && <span className="text-slate-400 text-xs ml-1">(x{item.quantity})</span>}</span>
 
                                     <button
                                         onClick={() => deleteItem(item.id)}
