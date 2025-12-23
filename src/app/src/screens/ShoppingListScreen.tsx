@@ -13,6 +13,7 @@ interface FavoriteItem {
     name: string;
     category: string;
     usageCount: number;
+    lastQuantity?: number;
 }
 
 const CATEGORIES = [
@@ -59,20 +60,20 @@ export function ShoppingListScreen() {
         };
 
         setItems((prev) => [newItem, ...prev]);
-        updateFavorites(name, category);
+        updateFavorites(name, category, quantity);
     };
 
-    const updateFavorites = (name: string, category: string) => {
+    const updateFavorites = (name: string, category: string, quantity: number) => {
         setFavorites((prev) => {
             const existing = prev.find((f) => f.name.toLowerCase() === name.toLowerCase());
             if (existing) {
                 return prev.map((f) =>
-                    f.id === existing.id ? { ...f, usageCount: f.usageCount + 1 } : f
+                    f.id === existing.id ? { ...f, usageCount: f.usageCount + 1, lastQuantity: quantity } : f
                 );
             } else {
                 return [
                     ...prev,
-                    { id: crypto.randomUUID(), name: name.trim(), category, usageCount: 1 },
+                    { id: crypto.randomUUID(), name: name.trim(), category, usageCount: 1, lastQuantity: quantity },
                 ];
             }
         });
@@ -245,11 +246,11 @@ export function ShoppingListScreen() {
                                     className="group flex items-center bg-white hover:bg-indigo-50 border border-indigo-100 rounded-lg shadow-sm transition-all active:scale-95 overflow-hidden"
                                 >
                                     <button
-                                        onClick={() => addItem(fav.name, fav.category)}
+                                        onClick={() => addItem(fav.name, fav.category, fav.lastQuantity || 1)}
                                         className="px-3 py-1.5 text-slate-700 text-sm flex items-center gap-1 hover:text-indigo-700"
                                     >
-                                        <span>+</span>
-                                        {fav.name}
+                                        <span>➕</span>
+                                        {fav.name} {(fav.lastQuantity || 1) > 1 && <span className="text-indigo-600 bg-indigo-50 rounded-md px-1.5 py-0.5 text-xs font-bold ml-1">x{fav.lastQuantity}</span>}
                                     </button>
                                     <button
                                         onClick={(e) => deleteFavorite(fav.id, e)}
@@ -304,6 +305,7 @@ export function ShoppingListScreen() {
                                 </button>
 
                                 <div className="flex-1">
+
                                     <span className="text-slate-800 font-medium">{item.name} {item.quantity > 1 && <span className="text-indigo-600 bg-indigo-50 rounded-md px-1.5 py-0.5 text-xs font-bold ml-1">x{item.quantity}</span>}</span>
                                     <span className="text-xs text-slate-400 block">{CATEGORIES.find(c => c.id === item.category)?.label}</span>
                                 </div>
@@ -334,7 +336,7 @@ export function ShoppingListScreen() {
                 {/* Completed Items */}
                 {completedItems.length > 0 && (
                     <div className="pt-4 border-t border-slate-100">
-                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 px-1">Comprado/Favoritos</h3>
+                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 px-1">Comprado</h3>
                         <div className="space-y-2 opacity-60">
                             {completedItems.map((item) => (
                                 <div
