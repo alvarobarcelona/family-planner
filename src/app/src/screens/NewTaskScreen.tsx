@@ -142,59 +142,60 @@ export function NewTaskScreen() {
           <input
             id="title"
             type="text"
-            className="w-full rounded-lg border border-gray-300 px-2 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             placeholder="Pediatra Leo, Reunión Kita..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
 
+        <div className="flex gap-1">
+          {/* Fecha */}
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-600" htmlFor="date">
+              Fecha
+            </label>
+            <input
+              id="date"
+              type="date"
+              className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
 
-        {/* Fecha */}
-        <div className="space-y-1">
-          <label className="block text-xs text-gray-600" htmlFor="date">
-            Fecha
-          </label>
-          <input
-            id="date"
-            type="date"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
-
-        {/* Fecha fin (opcional, solo para eventos de varios días seguidos) */}
-        <div className="space-y-1">
-          <label className="block text-xs text-gray-600" htmlFor="endDate">
-            Fecha fin (opcional)
-          </label>
-          <input
-            id="endDate"
-            type="date"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            min={date}
-          />
-          <p className="text-[10px] text-gray-400">
-            * Para eventos de varios días seguidos
-          </p>
-        </div>
+          {/* Fecha fin (opcional, solo para eventos de varios días seguidos) */}
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-600" htmlFor="endDate">
+              Fecha fin (opcional)
+            </label>
+            <input
+              id="endDate"
+              type="date"
+              className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={date}
+            />
+            <p className="text-[10px] text-gray-400">
+              Para varios días seguidos
+            </p>
+          </div>
 
 
-        {/* Hora */}
-        <div className="space-y-1">
-          <label className="block text-xs text-gray-600" htmlFor="time">
-            Hora (opcional)
-          </label>
-          <input
-            id="time"
-            type="time"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          />
+          {/* Hora */}
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-600" htmlFor="time">
+              Hora (opcional)
+            </label>
+            <input
+              id="time"
+              type="time"
+              className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* Notificación */}
@@ -204,7 +205,7 @@ export function NewTaskScreen() {
           </label>
           <select
             id="notification"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={notificationTime}
             onChange={(e) => setNotificationTime(Number(e.target.value))}
             disabled={!time} // Disable if no time is set, as notification depends on time
@@ -217,7 +218,7 @@ export function NewTaskScreen() {
           </select>
           {!time && (
             <p className="text-[10px] text-gray-400">
-              * Requiere hora para activar notificaciones
+              Requiere hora para activar notificaciones
             </p>
           )}
         </div>
@@ -226,6 +227,7 @@ export function NewTaskScreen() {
         <div className="space-y-1">
           <label className="flex items-center gap-2 text-xs text-gray-600">
             <input
+              className="w-4 h-4"
               type="checkbox"
               checked={useCustomDays}
               onChange={(e) => {
@@ -263,7 +265,7 @@ export function NewTaskScreen() {
 
               {/* duración de la recurrencia personalizada */}
               <div className="mt-2 flex items-center gap-2">
-                <span className="text-[11px] text-gray-600">
+                <span className="text-xs text-gray-600">
                   Repetir durante
                 </span>
                 <select
@@ -288,47 +290,49 @@ export function NewTaskScreen() {
             </>
           )}
         </div>
+        <div className="flex gap-1">
+          <div className="space-y-1">
+            <span className="block text-xs text-gray-600">Asignado a</span>
+            <select
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              required
+            >
+              <option value="">Seleccionar un nombre...</option>
 
-        <div className="space-y-1">
-          <span className="block text-xs text-gray-600">Asignado a</span>
-          <select
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-            value={assigneeId}
-            onChange={(e) => setAssigneeId(e.target.value)}
-            required
-          >
-            <option value="">Seleccionar un nombre...</option>
+              {familyMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-gray-400">
+              * Campo obligatorio
+            </p>
+          </div>
 
-            {familyMembers.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-[10px] text-gray-400">
-            * Campo obligatorio
-          </p>
-        </div>
+          <div className="space-y-1">
+            <span className="block text-xs text-gray-600">Creado por</span>
+            <select
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+              value={selectedCreatedBy}
+              onChange={(e) => setSelectedCreatedBy(e.target.value)}
+              required
+            >
+              <option value="">Seleccionar un nombre...</option>
 
-        <div className="space-y-1">
-          <span className="block text-xs text-gray-600">Creado por</span>
-          <select
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-            value={selectedCreatedBy}
-            onChange={(e) => setSelectedCreatedBy(e.target.value)}
-            required
-          >
-            <option value="">Seleccionar un nombre...</option>
+              {createdBy.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-gray-400">
+              * Campo obligatorio
+            </p>
+          </div>
 
-            {createdBy.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-[10px] text-gray-400">
-            * Campo obligatorio
-          </p>
         </div>
 
         <div className="space-y-1">
@@ -349,7 +353,7 @@ export function NewTaskScreen() {
                 title={c.label}
               >
                 {selectedColor === c.value && (
-                  <span className="text-[10px] text-white font-bold">✓</span>
+                  <span className="text-[10px] text-black font-bold">✓</span>
                 )}
                 {!c.value && !selectedColor && (
                   <span className="text-[10px] text-slate-500 font-bold">?</span>
@@ -361,11 +365,11 @@ export function NewTaskScreen() {
 
         <div className="space-y-1">
           <label className="block text-xs text-gray-600" htmlFor="description">
-            Notas / descripción (opcional)
+            Notas / descripción
           </label>
           <textarea
             id="description"
-            className="w-full min-h-[70px] rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60 resize-y"
+            className="w-full min-h-[80px] rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60 resize-y"
             placeholder="Detalles, direcciones, cosas a llevar..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -381,7 +385,7 @@ export function NewTaskScreen() {
                 type="button"
                 onClick={() => setPriority(p)}
                 className={
-                  "flex-1 rounded-full border px-2 py-1 text-xs " +
+                  "flex-1 rounded-full border px-2 py-2 text-xs " +
                   (priority === p
                     ? "bg-slate-900 text-white border-slate-900"
                     : "bg-white text-slate-700 border-gray-300")
@@ -402,8 +406,8 @@ export function NewTaskScreen() {
               [
                 { value: "NONE", label: "No repetir" },
                 { value: "DAILY", label: "Diariamente" },
-                { value: "WEEKLY", label: "Semanalmente" },
-                { value: "MONTHLY", label: "Mensualmente" },
+                { value: "WEEKLY", label: "Semanal" },
+                { value: "MONTHLY", label: "Mensual" },
               ] as { value: Recurrence; label: string }[]
             ).map((r) => (
               <button
@@ -449,7 +453,7 @@ export function NewTaskScreen() {
           </button>
         </div>
 
-      </form>
-    </div>
+      </form >
+    </div >
   );
 }
