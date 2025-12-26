@@ -423,15 +423,18 @@ function MonthView({ currentDate, tasks, onDayClick }: { currentDate: Date, task
                             <span className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'text-slate-600'}`}>{d.day}</span>
 
                             {/* Task Indicators */}
-                            <div className="flex flex-wrap justify-center gap-0.5 mt-1 w-full">
-                                {dayTasks.slice(0, 4).map((t: any) => (
+                            <div className="flex flex-col gap-0.5 mt-1 w-full overflow-hidden">
+                                {dayTasks.slice(0, 5).map((t: any) => (
                                     <div
                                         key={t.id}
-                                        className="w-1.5 h-1.5 rounded-full"
-                                        style={{ backgroundColor: t.color || t.assignees[0]?.color || '#ccc' }}
-                                    />
+                                        className="text-[8px] px-1 py-0.5 rounded truncate text-white leading-tight font-medium"
+                                        style={{ backgroundColor: t.color || t.assignees[0]?.color || '#94a3b8' }}
+                                        title={t.title}
+                                    >
+                                        {t.title}
+                                    </div>
                                 ))}
-                                {dayTasks.length > 4 && <span className="text-[8px] leading-none">+</span>}
+                           {dayTasks.length > 5 && <span className="text-[6px] text-slate-400 text-center leading-none">+{dayTasks.length - 5}</span>}
                             </div>
                         </div>
                     );
