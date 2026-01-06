@@ -134,8 +134,8 @@ export function NewTaskScreen() {
         </p>
       </header>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 text-sm">
-        <div className="col-span-2 space-y-1">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div className="col-span-1 sm:col-span-2 space-y-1">
           <label className="block text-xs text-gray-600" htmlFor="title">
             Título
           </label>
@@ -258,7 +258,7 @@ export function NewTaskScreen() {
           </p>
         </div>
 
-        <div className="col-span-2 space-y-1">
+        <div className="col-span-1 sm:col-span-2 space-y-1">
           <label className="flex items-center gap-2 text-xs text-gray-600">
             <input
               className="w-4 h-4"
@@ -324,7 +324,7 @@ export function NewTaskScreen() {
           )}
         </div>
 
-        <div className="col-span-2 space-y-1">
+        <div className="col-span-1 sm:col-span-2 space-y-1">
           <span className="block text-xs text-gray-600">Prioridad</span>
           <div className="flex gap-2">
             {(["LOW", "MEDIUM", "HIGH"] as Priority[]).map((p) => (
@@ -347,7 +347,7 @@ export function NewTaskScreen() {
           </div>
         </div>
 
-        <div className="col-span-2 space-y-1">
+        <div className="col-span-1 sm:col-span-2 space-y-1">
           <span className="block text-xs text-gray-600">Repetir</span>
           <div className="flex flex-wrap gap-2">
             {(
@@ -381,7 +381,7 @@ export function NewTaskScreen() {
           </div>
         </div>
 
-        <div className="col-span-2 space-y-1">
+        <div className="col-span-1 sm:col-span-2 space-y-1">
           <span className="block text-xs text-gray-600">Color</span>
           <div className="flex flex-wrap gap-2">
             {colorOptions.map((c) => (
@@ -409,7 +409,7 @@ export function NewTaskScreen() {
           </div>
         </div>
 
-        <div className="col-span-2 space-y-1">
+        <div className="col-span-1 sm:col-span-2 space-y-1">
           <label className="block text-xs text-gray-600" htmlFor="description">
             Notas / descripción
           </label>
@@ -422,9 +422,9 @@ export function NewTaskScreen() {
           />
         </div>
 
-        {error && <p className="col-span-2 text-xs text-red-500">{error}</p>}
+        {error && <p className="col-span-1 sm:col-span-2 text-xs text-red-500">{error}</p>}
 
-        <div className="col-span-2 flex justify-between gap-2 pt-4">
+        <div className="col-span-1 sm:col-span-2 flex justify-between gap-2 pt-4">
           <button
             type="button"
             onClick={() => navigate(-1)}
