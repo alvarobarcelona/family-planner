@@ -167,7 +167,7 @@ export function EditTaskScreen() {
           <input
             id="title"
             type="text"
-            className="w-full rounded-lg border border-gray-300 px-2 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -182,7 +182,7 @@ export function EditTaskScreen() {
           <input
             id="date"
             type="date"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
@@ -196,7 +196,7 @@ export function EditTaskScreen() {
           <input
             id="endDate"
             type="date"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             min={date}
@@ -214,7 +214,7 @@ export function EditTaskScreen() {
           <input
             id="time"
             type="time"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={time}
             onChange={(e) => setTime(e.target.value)}
           />
@@ -228,7 +228,7 @@ export function EditTaskScreen() {
           </label>
           <select
             id="notification"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={notificationTime}
             onChange={(e) => setNotificationTime(Number(e.target.value))}
             disabled={!time} // Disable if no time is set, as notification depends on time
@@ -315,7 +315,7 @@ export function EditTaskScreen() {
         <div className="space-y-1">
           <span className="block text-xs text-gray-600">Asignado a</span>
           <select
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
           >
@@ -361,7 +361,7 @@ export function EditTaskScreen() {
           </label>
           <textarea
             id="description"
-            className="w-full min-h-[70px] rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60 resize-y"
+            className="w-full min-h-[70px] rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60 resize-y"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />

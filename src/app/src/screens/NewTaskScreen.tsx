@@ -142,7 +142,7 @@ export function NewTaskScreen() {
           <input
             id="title"
             type="text"
-            className="w-full rounded-lg border border-gray-300 px-2 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             placeholder="Pediatra Leo, Reunión Kita..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -156,7 +156,7 @@ export function NewTaskScreen() {
           <input
             id="date"
             type="date"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
@@ -169,7 +169,7 @@ export function NewTaskScreen() {
           <input
             id="endDate"
             type="date"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             min={date}
@@ -186,7 +186,7 @@ export function NewTaskScreen() {
           <input
             id="time"
             type="time"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={time}
             onChange={(e) => setTime(e.target.value)}
           />
@@ -198,7 +198,7 @@ export function NewTaskScreen() {
           </label>
           <select
             id="notification"
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={notificationTime}
             onChange={(e) => setNotificationTime(Number(e.target.value))}
             disabled={!time}
@@ -219,7 +219,7 @@ export function NewTaskScreen() {
         <div className="space-y-1">
           <span className="block text-xs text-gray-600">Asignado a</span>
           <select
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
             required
@@ -240,7 +240,7 @@ export function NewTaskScreen() {
         <div className="space-y-1">
           <span className="block text-xs text-gray-600">Creado por</span>
           <select
-            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={selectedCreatedBy}
             onChange={(e) => setSelectedCreatedBy(e.target.value)}
             required
@@ -415,7 +415,7 @@ export function NewTaskScreen() {
           </label>
           <textarea
             id="description"
-            className="w-full min-h-[80px] rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60 resize-y"
+            className="w-full min-h-[80px] rounded-lg border border-gray-300 px-2 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-slate-900/60 resize-y"
             placeholder="Detalles, direcciones, cosas a llevar..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
