@@ -134,81 +134,74 @@ export function NewTaskScreen() {
         </p>
       </header>
 
-      <form onSubmit={handleSubmit} className="space-y-3 text-sm">
-        <div className="space-y-1">
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 text-sm">
+        <div className="col-span-2 space-y-1">
           <label className="block text-xs text-gray-600" htmlFor="title">
             Título
           </label>
           <input
             id="title"
             type="text"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             placeholder="Pediatra Leo, Reunión Kita..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-3">
-          {/* Fecha */}
-          <div className="space-y-1">
-            <label className="block text-xs text-gray-600" htmlFor="date">
-              Fecha
-            </label>
-            <input
-              id="date"
-              type="date"
-              className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-
-          {/* Fecha fin (opcional, solo para eventos de varios días seguidos) */}
-          <div className="space-y-1">
-            <label className="block text-xs text-gray-600" htmlFor="endDate">
-              Fecha fin (opcional)
-            </label>
-            <input
-              id="endDate"
-              type="date"
-              className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              min={date}
-            />
-            <p className="text-[10px] text-gray-400">
-              Para varios días seguidos
-            </p>
-          </div>
-
-
-          {/* Hora */}
-          <div className="space-y-1">
-            <label className="block text-xs text-gray-600" htmlFor="time">
-              Hora (opcional)
-            </label>
-            <input
-              id="time"
-              type="time"
-              className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </div>
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="date">
+            Fecha
+          </label>
+          <input
+            id="date"
+            type="date"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
         </div>
 
-        {/* Notificación */}
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="endDate">
+            Fecha fin (opcional)
+          </label>
+          <input
+            id="endDate"
+            type="date"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            min={date}
+          />
+          <p className="text-[10px] text-gray-400">
+            Para varios días seguidos
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="time">
+            Hora (opcional)
+          </label>
+          <input
+            id="time"
+            type="time"
+            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          />
+        </div>
+
         <div className="space-y-1">
           <label className="block text-xs text-gray-600" htmlFor="notification">
             Notificación
           </label>
           <select
             id="notification"
-            className="w-full max-w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
             value={notificationTime}
             onChange={(e) => setNotificationTime(Number(e.target.value))}
-            disabled={!time} // Disable if no time is set, as notification depends on time
+            disabled={!time}
           >
             {notificationOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -218,13 +211,54 @@ export function NewTaskScreen() {
           </select>
           {!time && (
             <p className="text-[10px] text-gray-400">
-              Requiere hora para activar notificaciones
+              Requiere hora
             </p>
           )}
         </div>
 
-        {/*recurrencia personalizada por días */}
         <div className="space-y-1">
+          <span className="block text-xs text-gray-600">Asignado a</span>
+          <select
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={assigneeId}
+            onChange={(e) => setAssigneeId(e.target.value)}
+            required
+          >
+            <option value="">Seleccionar un miembro...</option>
+
+            {familyMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-gray-400">
+            * Campo obligatorio
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <span className="block text-xs text-gray-600">Creado por</span>
+          <select
+            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
+            value={selectedCreatedBy}
+            onChange={(e) => setSelectedCreatedBy(e.target.value)}
+            required
+          >
+            <option value="">Seleccionar un miembro...</option>
+
+            {createdBy.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-gray-400">
+            * Campo obligatorio
+          </p>
+        </div>
+
+        <div className="col-span-2 space-y-1">
           <label className="flex items-center gap-2 text-xs text-gray-600">
             <input
               className="w-4 h-4"
@@ -263,7 +297,6 @@ export function NewTaskScreen() {
                 })}
               </div>
 
-              {/* duración de la recurrencia personalizada */}
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-xs text-gray-600">
                   Repetir durante
@@ -290,93 +323,8 @@ export function NewTaskScreen() {
             </>
           )}
         </div>
-        <div className="flex gap-1">
-          <div className="space-y-1">
-            <span className="block text-xs text-gray-600">Asignado a</span>
-            <select
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-              required
-            >
-              <option value="">Seleccionar un nombre...</option>
 
-              {familyMembers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-gray-400">
-              * Campo obligatorio
-            </p>
-          </div>
-
-          <div className="space-y-1">
-            <span className="block text-xs text-gray-600">Creado por</span>
-            <select
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60"
-              value={selectedCreatedBy}
-              onChange={(e) => setSelectedCreatedBy(e.target.value)}
-              required
-            >
-              <option value="">Seleccionar un nombre...</option>
-
-              {createdBy.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-gray-400">
-              * Campo obligatorio
-            </p>
-          </div>
-
-        </div>
-
-        <div className="space-y-1">
-          <span className="block text-xs text-gray-600">Color</span>
-          <div className="flex flex-wrap gap-2">
-            {colorOptions.map((c) => (
-              <button
-                key={c.value || "default"}
-                type="button"
-                onClick={() => setSelectedColor(c.value)}
-                className={
-                  "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all " +
-                  (selectedColor === c.value
-                    ? "border-slate-900 scale-110"
-                    : "border-transparent hover:scale-105")
-                }
-                style={{ backgroundColor: c.value || "#e2e8f0" }}
-                title={c.label}
-              >
-                {selectedColor === c.value && (
-                  <span className="text-[10px] text-black font-bold">✓</span>
-                )}
-                {!c.value && !selectedColor && (
-                  <span className="text-[10px] text-slate-500 font-bold">?</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className="block text-xs text-gray-600" htmlFor="description">
-            Notas / descripción
-          </label>
-          <textarea
-            id="description"
-            className="w-full min-h-[80px] rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60 resize-y"
-            placeholder="Detalles, direcciones, cosas a llevar..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1">
+        <div className="col-span-2 space-y-1">
           <span className="block text-xs text-gray-600">Prioridad</span>
           <div className="flex gap-2">
             {(["LOW", "MEDIUM", "HIGH"] as Priority[]).map((p) => (
@@ -399,7 +347,7 @@ export function NewTaskScreen() {
           </div>
         </div>
 
-        <div className="space-y-1">
+        <div className="col-span-2 space-y-1">
           <span className="block text-xs text-gray-600">Repetir</span>
           <div className="flex flex-wrap gap-2">
             {(
@@ -433,10 +381,50 @@ export function NewTaskScreen() {
           </div>
         </div>
 
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        <div className="col-span-2 space-y-1">
+          <span className="block text-xs text-gray-600">Color</span>
+          <div className="flex flex-wrap gap-2">
+            {colorOptions.map((c) => (
+              <button
+                key={c.value || "default"}
+                type="button"
+                onClick={() => setSelectedColor(c.value)}
+                className={
+                  "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all " +
+                  (selectedColor === c.value
+                    ? "border-slate-900 scale-110"
+                    : "border-transparent hover:scale-105")
+                }
+                style={{ backgroundColor: c.value || "#e2e8f0" }}
+                title={c.label}
+              >
+                {selectedColor === c.value && (
+                  <span className="text-[10px] text-black font-bold">✓</span>
+                )}
+                {!c.value && !selectedColor && (
+                  <span className="text-[10px] text-slate-500 font-bold">?</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
+        <div className="col-span-2 space-y-1">
+          <label className="block text-xs text-gray-600" htmlFor="description">
+            Notas / descripción
+          </label>
+          <textarea
+            id="description"
+            className="w-full min-h-[80px] rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/60 resize-y"
+            placeholder="Detalles, direcciones, cosas a llevar..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
 
-        <div className="flex justify-between gap-2">
+        {error && <p className="col-span-2 text-xs text-red-500">{error}</p>}
+
+        <div className="col-span-2 flex justify-between gap-2 pt-4">
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -453,7 +441,7 @@ export function NewTaskScreen() {
           </button>
         </div>
 
-      </form >
+      </form>
     </div >
   );
 }
