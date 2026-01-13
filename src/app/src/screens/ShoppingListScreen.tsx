@@ -5,11 +5,14 @@ import { useModal } from "../context/ModalContext";
 const CATEGORIES = [
     { id: "all", label: "Todos", icon: "🛒" },
     { id: "fruitsVegetables", label: "Frutas y Verduras", icon: "🍎" },
+    { id: "bread", label: "Pan", icon: "🍞" },
+    { id: "pasta/rice", label: "Pasta/Arroz", icon: "🍝" },
     { id: "meat", label: "Carnes", icon: "🥩" },
     { id: "milk", label: "Lácteos", icon: "🥛" },
     { id: "drinks", label: "Bebidas", icon: "🥤" },
     { id: "sweets", label: "Dulces", icon: "🍬" },
     { id: "cleaning", label: "Limpieza", icon: "🧹" },
+    { id: "fish", label: "Pescado", icon: "🐟" },
     { id: "other", label: "Otros", icon: "📦" },
 ];
 
