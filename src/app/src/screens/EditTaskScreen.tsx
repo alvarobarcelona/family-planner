@@ -5,6 +5,7 @@ import {
   type Priority,
   type Recurrence,
 } from "../store/useTaskStore";
+import { useModal } from "../context/ModalContext";
 
 const weekdays = [
   { value: 1, label: "L" },
@@ -27,6 +28,7 @@ const notificationOptions = [
 export function EditTaskScreen() {
   const { taskId } = useParams();
   const navigate = useNavigate();
+  const { confirm } = useModal();
   const { tasks, updateTask, removeTask, familyMembers } = useTaskStore();
 
   const [title, setTitle] = useState("");
@@ -434,7 +436,7 @@ export function EditTaskScreen() {
             <button
               type="button"
               onClick={async () => {
-                if (window.confirm("¿Borrar solo este evento?")) {
+                if (await confirm("¿Borrar solo este evento?", { confirmText: "Borrar evento" })) {
                   setIsSubmitting(true);
                   try {
                     await removeTask(taskId!, false); // deleteAll = false
@@ -472,7 +474,7 @@ export function EditTaskScreen() {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (window.confirm("¿Borrar TODA la serie?")) {
+                    if (await confirm("¿Borrar TODA la serie?", { confirmText: "Borrar Serie" })) {
                       setIsSubmitting(true);
                       try {
                         await removeTask(taskId!, true); // deleteAll = true
@@ -494,8 +496,9 @@ export function EditTaskScreen() {
                   type="button"
                   onClick={async () => {
                     if (
-                      window.confirm(
-                        "¿Actualizar toda la serie? (Se mantendrán las fechas originales de cada evento)"
+                      await confirm(
+                        "¿Actualizar toda la serie? (Se mantendrán las fechas originales de cada evento)",
+                        { confirmText: "Guardar Serie", title: "Actualizar Serie" }
                       )
                     ) {
                       setIsSubmitting(true);

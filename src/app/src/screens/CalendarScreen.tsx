@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
+import { useModal } from "../context/ModalContext";
 
 type FilterAssigneeId = "all" | string;
 
@@ -28,6 +29,7 @@ function isTodayOrFuture(dateStr: string): boolean {
 
 export function CalendarScreen() {
   const navigate = useNavigate();
+  const { confirm } = useModal();
   const { tasks, familyMembers, removeTask } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
@@ -234,28 +236,30 @@ export function CalendarScreen() {
 
                   <button
                     type="button"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
                       if (task.seriesId) {
-                        const deleteAll = window.confirm(
-                          "Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?\n(Aceptar = Toda la serie, Cancelar = Solo este evento)"
+                        const deleteAll = await confirm(
+                          "Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?",
+                          {
+                            title: "Serie Recurrente",
+                            confirmText: "Borrar Serie Completa",
+                            cancelText: "No borrar serie"
+                          }
                         );
                         if (deleteAll) {
                           removeTask(task.id, true);
                         } else {
-                          // If they cancel the "Delete All", we ask if they want to delete just this one
-                          // actually, standard behavior for "Cancel" in this prompt implies "No, not all", so we can interpret it as "Single"
-                          // BUT to be safe and allow "Cancel Action", we might need a second confirm.
-                          // Let's try a safer flow:
-                          const deleteSingle = window.confirm(
-                            "¿Borrar solo este evento de la serie?"
+                          const deleteSingle = await confirm(
+                            "¿Borrar solo este evento de la serie?",
+                            { title: "Evento único", confirmText: "Borrar evento" }
                           );
                           if (deleteSingle) {
                             removeTask(task.id, false);
                           }
                         }
                       } else {
-                        const ok = window.confirm("¿Borrar tarea?");
+                        const ok = await confirm("¿Borrar tarea?", { confirmText: "Borrar" });
                         if (ok) removeTask(task.id);
                       }
                     }}

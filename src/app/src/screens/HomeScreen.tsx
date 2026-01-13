@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { logout } from "../api/tasksApi";
+import { useModal } from "../context/ModalContext";
 
 type FilterAssigneeId = "all" | string;
 
 export function HomeScreen() {
   const navigate = useNavigate();
+  const { confirm } = useModal();
   // Destructure refreshTasks
   const { tasksToday, familyMembers, removeTask, toggleTaskCompletion, isLoading, refreshTasks } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
@@ -120,7 +122,7 @@ export function HomeScreen() {
             className="group flex items-center gap-2 text-xs font-medium text-red-500 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.97] transition-all duration-200"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m10 17 5-5-5-5m5 5H3m12-9h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path></svg>
-             Cerrar Sesión
+            Cerrar Sesión
           </button>
         </div>
         <p className="text-xs text-gray-500">
@@ -299,7 +301,7 @@ export function HomeScreen() {
                         <span>🔔</span>
                       )}
                     </div>
-                    
+
                     {task.timeLabel && (
                       <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>
                     )}
@@ -352,24 +354,43 @@ export function HomeScreen() {
                 </div>
                 <button
                   type="button"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
                     if (task.seriesId) {
-                      const deleteAll = window.confirm(
-                        "Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?\n(Aceptar = Toda la serie, Cancelar = Solo este evento)"
+                      const deleteAll = await confirm(
+                        "Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?",
+                        {
+                          title: "Serie Recurrente",
+                          confirmText: "Borrar Serie Completa",
+                          cancelText: "Borrar solo este evento"
+                        }
                       );
+
                       if (deleteAll) {
                         removeTask(task.id, true);
                       } else {
-                        const deleteSingle = window.confirm(
-                          "¿Borrar solo este evento de la serie?"
+                        // In our custom modal, "Cancel" returns false.
+                        // So if they clicked "Borrar solo este evento" (mapped to Cancel button for this specific logic flow... wait, button labels are confusing).
+                        // Better approach:
+                        // Confirm Dialog 1: Delete Series? Yes/No
+                        // If No, Confirm Dialog 2: Delete single event? Yes/No
+                        // Implementing strictly as requested:
+
+                        // Let's refine the UX with two sequential modals as previously coded in the raw window.confirm logic
+                        // But wait, the previous logic was:
+                        // "Aceptar = Toda la serie, Cancelar = Solo este evento" -> Wait, actually window.confirm returns false on Cancel.
+                        // So logic was: if (deleteAll) -> remove series. else -> ask delete single.
+
+                        const deleteSingle = await confirm(
+                          "¿Borrar solo este evento de la serie?",
+                          { title: "Evento único", confirmText: "Borrar evento" }
                         );
                         if (deleteSingle) {
                           removeTask(task.id, false);
                         }
                       }
                     } else {
-                      const ok = window.confirm("¿Borrar tarea?");
+                      const ok = await confirm("¿Borrar tarea?", { confirmText: "Borrar", title: "Confirmar" });
                       if (ok) removeTask(task.id);
                     }
                   }}

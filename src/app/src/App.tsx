@@ -9,6 +9,7 @@ import { EditTaskScreen } from "./screens/EditTaskScreen";
 import { ShoppingListScreen } from "./screens/ShoppingListScreen";
 import { TaskProvider } from "./store/useTaskStore";
 import { useNotifications } from "./hooks/useNotifications";
+import { ShoppingProvider } from "./store/useShoppingStore";
 
 function AppContent() {
   useNotifications();
@@ -96,6 +97,12 @@ function AppContent() {
   );
 }
 
+import { ModalProvider } from "./context/ModalContext";
+
+// ... imports remain the same
+
+// ... AppContent component remains the same
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -112,7 +119,11 @@ export default function App() {
 
   return (
     <TaskProvider>
-      <AppContent />
+      <ModalProvider>
+        <ShoppingProvider>
+          <AppContent />
+        </ShoppingProvider>
+      </ModalProvider>
     </TaskProvider>
   );
 }

@@ -460,7 +460,171 @@ async function initDb() {
       );
     }
   }
+  // 4. Shopping List Items
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS shopping_items (
+      id SERIAL PRIMARY KEY,
+      name text NOT NULL,
+      category text NOT NULL,
+      quantity integer NOT NULL DEFAULT 1,
+      completed boolean NOT NULL DEFAULT false,
+      created_at timestamptz DEFAULT now()
+    );
+  `);
+
+  // 5. Shopping List Favorites
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS shopping_favorites (
+      id SERIAL PRIMARY KEY,
+      name text NOT NULL,
+      category text NOT NULL,
+      usage_count integer NOT NULL DEFAULT 1,
+      last_quantity integer DEFAULT 1
+    );
+  `);
 }
+
+// ----------------------------------------------------------------------
+// Shopping List Endpoints
+// ----------------------------------------------------------------------
+
+// GET /api/shopping
+app.get("/api/shopping", authMiddleware, async (_req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM shopping_items ORDER BY created_at DESC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error al obtener lista de compras:", err);
+    res.status(500).json({ message: "Error interno" });
+  }
+});
+
+// POST /api/shopping (Add item)
+app.post("/api/shopping", authMiddleware, async (req, res) => {
+  const { name, category, quantity } = req.body;
+  if (!name || !category) {
+    return res.status(400).json({ message: "Faltan datos" });
+  }
+
+  try {
+    // 1. Insert item
+    const newItem = await pool.query(
+      "INSERT INTO shopping_items (name, category, quantity) VALUES ($1, $2, $3) RETURNING *",
+      [name, category, quantity || 1]
+    );
+
+    // 2. Update/Insert favorite
+    // Check if exists (case insensitive for name)
+    const favRes = await pool.query(
+      "SELECT * FROM shopping_favorites WHERE lower(name) = lower($1)",
+      [name]
+    );
+
+    if (favRes.rowCount && favRes.rowCount > 0) {
+      // Update
+      await pool.query(
+        "UPDATE shopping_favorites SET usage_count = usage_count + 1, last_quantity = $1 WHERE id = $2",
+        [quantity || 1, favRes.rows[0].id]
+      );
+    } else {
+      // Insert
+      await pool.query(
+        "INSERT INTO shopping_favorites (name, category, last_quantity) VALUES ($1, $2, $3)",
+        [name, category, quantity || 1]
+      );
+    }
+
+    res.json(newItem.rows[0]);
+  } catch (err) {
+    console.error("Error al añadir item:", err);
+    res.status(500).json({ message: "Error interno" });
+  }
+});
+
+// PUT /api/shopping/:id (Update item)
+app.put("/api/shopping/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { completed, quantity, name, category } = req.body;
+
+  try {
+    // Dynamic update
+    // We can just update specific fields if provided
+    // For simplicity, let's assuming we principally toggle completed or change quantity
+    let query = "UPDATE shopping_items SET ";
+    const params = [];
+    let idx = 1;
+
+    if (typeof completed === "boolean") {
+      query += `completed = $${idx++}, `;
+      params.push(completed);
+    }
+    if (quantity !== undefined) {
+      query += `quantity = $${idx++}, `;
+      params.push(quantity);
+    }
+    if (name !== undefined) {
+      query += `name = $${idx++}, `;
+      params.push(name);
+    }
+    if (category !== undefined) {
+      query += `category = $${idx++}, `;
+      params.push(category);
+    }
+
+    // Remove last comma
+    query = query.slice(0, -2);
+    query += ` WHERE id = $${idx} RETURNING *`;
+    params.push(id);
+
+    const result = await pool.query(query, params);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Item no encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error actualizando item:", err);
+    res.status(500).json({ message: "Error interno" });
+  }
+});
+
+// DELETE /api/shopping/:id (Remove item)
+app.delete("/api/shopping/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM shopping_items WHERE id = $1", [id]);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    console.error("Error borrando item:", err);
+    res.status(500).json({ message: "Error interno" });
+  }
+});
+
+// GET /api/shopping/favorites
+app.get("/api/shopping/favorites", authMiddleware, async (_req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM shopping_favorites ORDER BY usage_count DESC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error obteniendo favoritos:", err);
+    res.status(500).json({ message: "Error interno" });
+  }
+});
+
+// DELETE /api/shopping/favorites/:id
+app.delete("/api/shopping/favorites/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM shopping_favorites WHERE id = $1", [id]);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    console.error("Error borrando favorito:", err);
+    res.status(500).json({ message: "Error interno" });
+  }
+});
 
 // Notification Checker Function (used by scheduler and cron job)
 async function checkAndSendNotifications(): Promise<{

@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useModal } from "../context/ModalContext";
 import {
   useTaskStore,
   type Priority,
@@ -25,11 +26,13 @@ const notificationOptions = [
   { value: 10, label: "10 minutos antes" },
   { value: 30, label: "30 minutos antes" },
   { value: 60, label: "1 hora antes" },
+  { value: 120, label: "2 horas antes" },
   { value: 1440, label: "1 día antes" },
 ];
 
 export function NewTaskScreen() {
   const navigate = useNavigate();
+  const { alert } = useModal();
   const { addTask, familyMembers, createdBy } = useTaskStore();
 
   const [title, setTitle] = useState("");
@@ -72,7 +75,7 @@ export function NewTaskScreen() {
     { value: "#64748b", label: "Gris" },
   ];
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -121,7 +124,7 @@ export function NewTaskScreen() {
       setError("No se ha podido crear la tarea");
     } finally {
       setIsSubmitting(false);
-      window.alert("Tarea creada existosamente!");
+      await alert("Tarea creada existosamente!");
     }
   };
 

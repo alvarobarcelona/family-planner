@@ -16,9 +16,13 @@ function urlBase64ToUint8Array(base64String: string) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+  return outputArray;
 }
 
+import { useModal } from "../context/ModalContext";
+
 export function usePushNotifications() {
+  const { alert } = useModal();
   const [permission, setPermission] = useState<NotificationPermission>(
     Notification.permission
   );

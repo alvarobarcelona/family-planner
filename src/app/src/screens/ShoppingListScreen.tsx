@@ -1,20 +1,6 @@
-import { useState, useEffect } from "react";
-
-interface ShoppingItem {
-    id: string;
-    name: string;
-    quantity: number;
-    category: string;
-    completed: boolean;
-}
-
-interface FavoriteItem {
-    id: string;
-    name: string;
-    category: string;
-    usageCount: number;
-    lastQuantity?: number;
-}
+import { useState } from "react";
+import { useShoppingStore } from "../store/useShoppingStore";
+import { useModal } from "../context/ModalContext";
 
 const CATEGORIES = [
     { id: "all", label: "Todos", icon: "🛒" },
@@ -28,75 +14,37 @@ const CATEGORIES = [
 ];
 
 export function ShoppingListScreen() {
-    const [items, setItems] = useState<ShoppingItem[]>([]);
-    const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+    const { items, favorites, addItem: storeAddItem, updateItem, deleteItem, deleteFavorite: storeDeleteFavorite, isLoading } = useShoppingStore();
+    const { confirm, alert } = useModal();
+
     const [inputValue, setInputValue] = useState("");
     const [quantityValue, setQuantityValue] = useState("1");
     const [selectedCategory, setSelectedCategory] = useState("other");
     const [filter, setFilter] = useState("all");
     const [showFavorites, setShowFavorites] = useState(false);
 
-    // Load from LocalStorage TODO: DB 
-    useEffect(() => {
-        const savedItems = localStorage.getItem("shopping_list_items");
-        const savedFavorites = localStorage.getItem("shopping_list_favorites");
-        if (savedItems) setItems(JSON.parse(savedItems));
-        if (savedFavorites) setFavorites(JSON.parse(savedFavorites));
-    }, []);
-
-    // Save to LocalStorage
-    useEffect(() => {
-        localStorage.setItem("shopping_list_items", JSON.stringify(items));
-        localStorage.setItem("shopping_list_favorites", JSON.stringify(favorites));
-    }, [items, favorites]);
-
-    const addItem = (name: string, category: string, quantity: number = 1) => {
-        const newItem: ShoppingItem = {
-            id: crypto.randomUUID(),
-            name: name.trim(),
-            quantity,
-            category,
-            completed: false,
-        };
-
-        setItems((prev) => [newItem, ...prev]);
-        updateFavorites(name, category, quantity);
-    };
-
-    const updateFavorites = (name: string, category: string, quantity: number) => {
-        setFavorites((prev) => {
-            const existing = prev.find((f) => f.name.toLowerCase() === name.toLowerCase());
-            if (existing) {
-                return prev.map((f) =>
-                    f.id === existing.id ? { ...f, usageCount: f.usageCount + 1, lastQuantity: quantity } : f
-                );
-            } else {
-                return [
-                    ...prev,
-                    { id: crypto.randomUUID(), name: name.trim(), category, usageCount: 1, lastQuantity: quantity },
-                ];
-            }
-        });
-    };
-
-    const handleAddSubmit = (e: React.FormEvent) => {
+    const handleAddSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
-        addItem(inputValue, selectedCategory, parseInt(quantityValue) || 1);
-        setInputValue("");
-        setQuantityValue("1");
+
+        try {
+            await storeAddItem(inputValue, selectedCategory, parseInt(quantityValue) || 1);
+            setInputValue("");
+            setQuantityValue("1");
+        } catch (err) {
+            await alert("Error al añadir producto");
+        }
     };
 
-    const toggleComplete = (id: string) => {
-        setItems((prev) =>
-            prev.map((item) =>
-                item.id === id ? { ...item, completed: !item.completed } : item
-            )
-        );
+    const toggleComplete = (id: number, current: boolean) => {
+        updateItem(id, { completed: !current });
     };
 
-    const deleteItem = (id: string) => {
-        setItems((prev) => prev.filter((item) => item.id !== id));
+    const handleDeleteItem = async (id: number) => {
+        const ok = await confirm("¿Borrar elemento?", { title: "Confirmar borrado", confirmText: "Borrar" });
+        if (ok) {
+            deleteItem(id);
+        }
     };
 
     const filteredItems = items.filter((item) => {
@@ -108,17 +56,17 @@ export function ShoppingListScreen() {
     const completedItems = filteredItems.filter((i) => i.completed);
 
     // Frequent suggestion logic: Sort favorites by usage, take top 10, exclude items already in list
-    const activeItemNames = new Set(items.map(i => i.name.toLowerCase()));
+    const activeItemNames = new Set(items.filter(i => !i.completed).map(i => i.name.toLowerCase()));
     const suggestedFavorites = favorites
         .filter(f => !activeItemNames.has(f.name.toLowerCase()))
-        .sort((a, b) => b.usageCount - a.usageCount)
+        .sort((a, b) => b.usage_count - a.usage_count)
         .slice(0, 15);
 
     // Share functionality
     const handleShare = async () => {
         const activeItemsToShare = items.filter(i => !i.completed);
         if (activeItemsToShare.length === 0) {
-            alert("No hay productos pendientes para compartir");
+            await alert("No hay productos pendientes para compartir");
             return;
         }
 
@@ -134,19 +82,23 @@ export function ShoppingListScreen() {
                 });
             } else {
                 await navigator.clipboard.writeText(textList);
-                alert("¡Lista copiada al portapapeles!");
+                await alert("¡Lista copiada al portapapeles!");
             }
         } catch (error) {
             console.error("Error compartiendo:", error);
         }
     };
 
-    const deleteFavorite = (id: string, e: React.MouseEvent) => {
+    const handleDeleteFavorite = async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (confirm("¿Eliminar de favoritos?")) {
-            setFavorites((prev) => prev.filter((f) => f.id !== id));
+        if (await confirm("¿Eliminar de favoritos?", { confirmText: "Eliminar" })) {
+            storeDeleteFavorite(id);
         }
     };
+
+    if (isLoading && items.length === 0) {
+        return <div className="p-4 text-center text-slate-500">Cargando lista...</div>;
+    }
 
     return (
         <div className="flex flex-col h-full bg-[#fdfbf7]">
@@ -198,13 +150,13 @@ export function ShoppingListScreen() {
                     </button>
                 </div>
 
-                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                <div className="grid grid-rows-2 grid-flow-col gap-2 overflow-x-auto pb-1 no-scrollbar">
                     {CATEGORIES.filter(c => c.id !== 'all').map((cat) => (
                         <button
                             key={cat.id}
                             type="button"
                             onClick={() => setSelectedCategory(cat.id)}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${selectedCategory === cat.id
+                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${selectedCategory === cat.id
                                 ? "bg-indigo-50 border-indigo-200 text-indigo-700"
                                 : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                 }`}
@@ -246,14 +198,14 @@ export function ShoppingListScreen() {
                                     className="group flex items-center bg-white hover:bg-indigo-50 border border-indigo-100 rounded-lg shadow-sm transition-all active:scale-95 overflow-hidden"
                                 >
                                     <button
-                                        onClick={() => addItem(fav.name, fav.category, fav.lastQuantity || 1)}
+                                        onClick={() => storeAddItem(fav.name, fav.category, fav.last_quantity || 1)}
                                         className="px-3 py-1.5 text-slate-700 text-sm flex items-center gap-1 hover:text-indigo-700"
                                     >
                                         <span>➕</span>
-                                        {fav.name} {(fav.lastQuantity || 1) > 1 && <span className="text-indigo-600 bg-indigo-50 rounded-md px-1.5 py-0.5 text-xs font-bold ml-1">x{fav.lastQuantity}</span>}
+                                        {fav.name} {(fav.last_quantity || 1) > 1 && <span className="text-indigo-600 bg-indigo-50 rounded-md px-1.5 py-0.5 text-xs font-bold ml-1">x{fav.last_quantity}</span>}
                                     </button>
                                     <button
-                                        onClick={(e) => deleteFavorite(fav.id, e)}
+                                        onClick={(e) => handleDeleteFavorite(fav.id, e)}
                                         className="pr-2 pl-1 py-1.5 text-slate-300 hover:text-red-400 hover:bg-red-50 h-full border-l border-transparent hover:border-red-100 transition-colors"
                                         title="Eliminar de favoritos"
                                     >
@@ -267,9 +219,8 @@ export function ShoppingListScreen() {
                     )}
                 </div>
             )}
-
             {/* Filters */}
-            <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar mb-2">
+            <div className="grid grid-rows-2 grid-flow-col gap-2 overflow-x-auto pb-4 no-scrollbar mb-2">
                 {CATEGORIES.map((cat) => (
                     <button
                         key={cat.id}
@@ -298,7 +249,7 @@ export function ShoppingListScreen() {
                                 className="group bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 transition-all hover:shadow-md"
                             >
                                 <button
-                                    onClick={() => toggleComplete(item.id)}
+                                    onClick={() => toggleComplete(item.id, item.completed)}
                                     className="w-6 h-6 rounded-full border-2 border-slate-300 flex items-center justify-center text-transparent hover:border-indigo-500 transition-colors"
                                 >
                                     <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 scale-0 transition-transform" />
@@ -311,7 +262,7 @@ export function ShoppingListScreen() {
                                 </div>
 
                                 <button
-                                    onClick={() => deleteItem(item.id)}
+                                    onClick={() => handleDeleteItem(item.id)}
                                     className="text-slate-300 hover:text-red-500 p-2 transition-colors "
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -344,7 +295,7 @@ export function ShoppingListScreen() {
                                     className="bg-slate-50 p-3 rounded-xl border border-transparent flex items-center gap-3"
                                 >
                                     <button
-                                        onClick={() => toggleComplete(item.id)}
+                                        onClick={() => toggleComplete(item.id, item.completed)}
                                         className="w-6 h-6 rounded-full border-2 border-indigo-200 bg-indigo-50 flex items-center justify-center text-indigo-600 hover:bg-white transition-colors"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3.5 h-3.5">
@@ -355,7 +306,7 @@ export function ShoppingListScreen() {
                                     <span className="flex-1 text-slate-500 line-through decoration-slate-400 decoration-2">{item.name} {item.quantity > 1 && <span className="text-slate-400 text-xs ml-1">(x{item.quantity})</span>}</span>
 
                                     <button
-                                        onClick={() => deleteItem(item.id)}
+                                        onClick={() => handleDeleteItem(item.id)}
                                         className="text-slate-300 hover:text-red-500 p-2 transition-colors"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">

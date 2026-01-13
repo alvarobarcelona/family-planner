@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useModal } from "../context/ModalContext";
 
 export function useNotifications() {
+  const { alert } = useModal();
   const [permission, setPermission] = useState<NotificationPermission>(
     "Notification" in window ? Notification.permission : "denied"
   );
