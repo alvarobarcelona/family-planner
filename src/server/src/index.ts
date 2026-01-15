@@ -482,6 +482,20 @@ async function initDb() {
       last_quantity integer DEFAULT 1
     );
   `);
+
+  // 6. Family Wall Notes
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS family_wall_notes (
+      id uuid PRIMARY KEY,
+      household_id uuid NOT NULL,
+      content text NOT NULL,
+      author_id text NOT NULL,
+      color text NOT NULL,
+      rotation real NOT NULL,
+      image_url text,
+      created_at timestamptz DEFAULT now()
+    );
+  `);
 }
 
 // ----------------------------------------------------------------------
@@ -623,6 +637,102 @@ app.delete("/api/shopping/favorites/:id", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Error borrando favorito:", err);
     res.status(500).json({ message: "Error interno" });
+  }
+});
+
+// ----------------------------------------------------------------------
+// Family Wall Endpoints
+// ----------------------------------------------------------------------
+
+// GET /api/family-wall
+app.get("/api/family-wall", authMiddleware, async (_req, res) => {
+  try {
+    const householdId = "00000000-0000-0000-0000-000000000000"; // Default
+    const result = await pool.query(
+      "SELECT * FROM family_wall_notes WHERE household_id = $1 ORDER BY created_at DESC",
+      [householdId]
+    );
+
+    // Convert snake_case to camelCase for frontend
+    const notes = result.rows.map((row) => ({
+      id: row.id,
+      content: row.content,
+      authorId: row.author_id,
+      color: row.color,
+      rotation: row.rotation,
+      imageUrl: row.image_url,
+      createdAt: new Date(row.created_at).getTime(),
+    }));
+
+    res.json(notes);
+  } catch (err) {
+    console.error("Error getting family wall notes:", err);
+    res.status(500).json({ message: "Error interno" });
+  }
+});
+
+// POST /api/family-wall
+app.post("/api/family-wall", authMiddleware, async (req, res) => {
+  const { content, authorId, color, rotation, imageUrl } = req.body;
+
+  if (!content && !imageUrl) {
+    return res.status(400).json({ message: "Content or Image required" });
+  }
+
+  const householdId = "00000000-0000-0000-0000-000000000000";
+  const id = randomUUID();
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO family_wall_notes (id, household_id, content, author_id, color, rotation, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [id, householdId, content || "", authorId, color, rotation, imageUrl]
+    );
+
+    const row = result.rows[0];
+    res.status(201).json({
+      id: row.id,
+      content: row.content,
+      authorId: row.author_id,
+      color: row.color,
+      rotation: row.rotation,
+      imageUrl: row.image_url,
+      createdAt: new Date(row.created_at).getTime(),
+    });
+  } catch (err) {
+    console.error("Error creating note:", err);
+    res.status(500).json({ message: "Error creando nota" });
+  }
+});
+
+// DELETE /api/family-wall/:id
+app.delete("/api/family-wall/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM family_wall_notes WHERE id = $1", [id]);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    console.error("Error deleting note:", err);
+    res.status(500).json({ message: "Error eliminando nota" });
+  }
+});
+
+// PUT /api/family-wall/:id
+app.put("/api/family-wall/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  try {
+    const result = await pool.query(
+      "UPDATE family_wall_notes SET content = $1 WHERE id = $2 RETURNING *",
+      [content, id]
+    );
+    if (result.rowCount === 0)
+      return res.status(404).json({ message: "Not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error updating note:", err);
+    res.status(500).json({ message: "Error actualizando nota" });
   }
 });
 

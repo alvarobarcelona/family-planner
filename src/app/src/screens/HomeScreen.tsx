@@ -128,9 +128,7 @@ export function HomeScreen() {
             Cerrar Sesión
           </button>
         </div>
-        <p className="text-xs text-gray-500">
-          Esto es lo que tiene la familia para hoy
-        </p>
+        
 
 
 
@@ -146,7 +144,7 @@ export function HomeScreen() {
 
 
       {!isSubscribed && permission !== 'denied' && (
-        <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+        <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-2">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">🔔</span>
             <p className="text-xs text-indigo-800">
@@ -206,6 +204,11 @@ export function HomeScreen() {
           </button>
         </div>
       )}
+
+
+      
+      <div className="text-gray-500 text-xl"> # Esto es lo que tiene la familia para hoy #</div>
+
       <div>Filtros</div>
       {/* Filtros por miembro */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">

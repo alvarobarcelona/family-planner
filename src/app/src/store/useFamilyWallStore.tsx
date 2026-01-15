@@ -5,82 +5,98 @@ import {
     useEffect,
     type ReactNode,
 } from "react";
+import { fetchNotes, createNote, deleteNoteApi, updateNoteApi } from "../api/familyWallApi";
 
 export interface Note {
     id: string;
     content: string;
-    imageUrl?: string; // Base64 string for the image
-    color: string; // Tailwind bg class or hex
-    authorId: string; // 'mama', 'papa', etc.
+    imageUrl?: string;
+    color: string;
+    authorId: string;
     createdAt: number;
-    rotation: number; // Random rotation between -3 and 3 degrees for realism
+    rotation: number;
 }
 
 interface FamilyWallContextValue {
     notes: Note[];
-    addNote: (content: string, authorId: string, color: string, imageUrl?: string) => void;
-    deleteNote: (id: string) => void;
-    updateNote: (id: string, newContent: string) => void;
+    isLoading: boolean;
+    error: string | null;
+    addNote: (content: string, authorId: string, color: string, imageUrl?: string) => Promise<void>;
+    deleteNote: (id: string) => Promise<void>;
+    updateNote: (id: string, newContent: string) => Promise<void>;
 }
 
 const FamilyWallContext = createContext<FamilyWallContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "family-wall-notes";
-
 export function FamilyWallProvider({ children }: { children: ReactNode }) {
-    const [notes, setNotes] = useState<Note[]>(() => {
-        // Lazy initial state
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                return JSON.parse(stored);
-            }
-        } catch (e) {
-            console.error("Failed to parse family wall notes", e);
-        }
-        // Default welcome note
-        return [
-            {
-                id: 'welcome-note',
-                content: '¡Bienvenidos al Muro Familiar! 📌 Aquí podéis dejar notas rápidas.',
-                color: 'bg-yellow-200',
-                authorId: 'familia',
-                createdAt: Date.now(),
-                rotation: -2
-            }
-        ];
-    });
+    const [notes, setNotes] = useState<Note[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    // Persist to localStorage whenever notes change
+    // Initial fetch
     useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-    }, [notes]);
+        loadNotes();
+    }, []);
 
-    const addNote = (content: string, authorId: string, color: string, imageUrl?: string) => {
-        const newNote: Note = {
-            id: crypto.randomUUID(),
-            content,
-            imageUrl,
-            authorId,
-            color,
-            createdAt: Date.now(),
-            rotation: Math.random() * 6 - 3, // Random between -3 and 3
-        };
-        setNotes((prev) => [newNote, ...prev]);
+    const loadNotes = async () => {
+        setIsLoading(true);
+        try {
+            const data = await fetchNotes();
+            setNotes(data);
+        } catch (err) {
+            console.error(err);
+            setError("Failed to load notes");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const deleteNote = (id: string) => {
+    const addNote = async (content: string, authorId: string, color: string, imageUrl?: string) => {
+        const rotation = Math.random() * 6 - 3;
+        try {
+            const savedNote = await createNote({
+                content,
+                authorId,
+                color,
+                rotation,
+                imageUrl
+            });
+            setNotes((prev) => [savedNote, ...prev]);
+        } catch (err) {
+            console.error(err);
+            // Optionally handle error
+        }
+    };
+
+    const deleteNote = async (id: string) => {
+        // Optimistic update
+        const previousNotes = notes;
         setNotes((prev) => prev.filter((n) => n.id !== id));
+
+        try {
+            await deleteNoteApi(id);
+        } catch (err) {
+            console.error(err);
+            setNotes(previousNotes); // Revert
+        }
     };
 
-    const updateNote = (id: string, newContent: string) => {
+    const updateNote = async (id: string, newContent: string) => {
+        const previousNotes = notes;
         setNotes((prev) =>
             prev.map((n) => (n.id === id ? { ...n, content: newContent } : n))
         );
+
+        try {
+            await updateNoteApi(id, newContent);
+        } catch (err) {
+            console.error(err);
+            setNotes(previousNotes);
+        }
     };
 
     return (
-        <FamilyWallContext.Provider value={{ notes, addNote, deleteNote, updateNote }}>
+        <FamilyWallContext.Provider value={{ notes, isLoading, error, addNote, deleteNote, updateNote }}>
             {children}
         </FamilyWallContext.Provider>
     );

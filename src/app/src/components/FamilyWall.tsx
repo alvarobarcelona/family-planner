@@ -12,7 +12,7 @@ const NOTE_COLORS = [
 ];
 
 export function FamilyWall() {
-    const { notes, addNote, deleteNote } = useFamilyWallStore();
+    const { notes, addNote, deleteNote, isLoading } = useFamilyWallStore();
     const { familyMembers } = useTaskStore(); // Reuse existing members
     const { confirm, alert } = useModal();
 
@@ -207,7 +207,11 @@ export function FamilyWall() {
             )}
 
             {/* Notes Grid */}
-            {notes.length === 0 ? (
+            {isLoading ? (
+                <div className="flex justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+            ) : notes.length === 0 ? (
                 <div
                     onClick={() => setIsAdding(true)}
                     className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-sm cursor-pointer hover:border-indigo-200 hover:text-indigo-400 transition-colors"
@@ -241,7 +245,7 @@ export function FamilyWall() {
                                 </span>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }}
-                                    className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-600 transition-opacity"
+                                    className=" p-1 text-red"
                                 >
                                     🗑️
                                 </button>
