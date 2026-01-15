@@ -10,6 +10,7 @@ import { ShoppingListScreen } from "./screens/ShoppingListScreen";
 import { TaskProvider } from "./store/useTaskStore";
 import { useNotifications } from "./hooks/useNotifications";
 import { ShoppingProvider } from "./store/useShoppingStore";
+import { FamilyWallProvider } from "./store/useFamilyWallStore";
 
 function AppContent() {
   useNotifications();
@@ -121,7 +122,9 @@ export default function App() {
     <TaskProvider>
       <ModalProvider>
         <ShoppingProvider>
-          <AppContent />
+          <FamilyWallProvider>
+            <AppContent />
+          </FamilyWallProvider>
         </ShoppingProvider>
       </ModalProvider>
     </TaskProvider>

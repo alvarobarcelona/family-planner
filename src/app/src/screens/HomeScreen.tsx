@@ -4,11 +4,14 @@ import { useTaskStore } from "../store/useTaskStore";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { logout } from "../api/tasksApi";
 import { useModal } from "../context/ModalContext";
+import { FamilyWall } from "../components/FamilyWall";
 
 type FilterAssigneeId = "all" | string;
 
 export function HomeScreen() {
   const navigate = useNavigate();
+  const dayRaw = new Date().toLocaleDateString('es-ES', { weekday: 'long' });
+  const DayString = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
   const { confirm } = useModal();
   // Destructure refreshTasks
   const { tasksToday, familyMembers, removeTask, toggleTaskCompletion, isLoading, refreshTasks } = useTaskStore();
@@ -116,12 +119,12 @@ export function HomeScreen() {
 
       <header className="mt-1 mb-2">
         <div className="flex justify-between items-center mt-2">
-          <h1 className="text-xl font-semibold">Hoy {new Date().toLocaleDateString()}</h1>
+          <h1 className="text-xl font-semibold">Hoy {new Date().toLocaleDateString()} {DayString}</h1>
           <button
             onClick={logout}
-            className="group flex items-center gap-2 text-xs font-medium text-red-500 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.97] transition-all duration-200"
+            className="flex items-center gap-1.5 pr-2 pl-1.5 py-1 rounded-full text-[10px] font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m10 17 5-5-5-5m5 5H3m12-9h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24"><path d="m10 17 5-5-5-5m5 5H3m12-9h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path></svg>
             Cerrar Sesión
           </button>
         </div>
@@ -137,6 +140,10 @@ export function HomeScreen() {
         </div>
 
       </header>
+
+      {/* Family Wall Section */}
+      <FamilyWall />
+
 
       {!isSubscribed && permission !== 'denied' && (
         <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-3">
