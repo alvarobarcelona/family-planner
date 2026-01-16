@@ -8,6 +8,7 @@ import { VisualCalendarScreen } from "./screens/VisualCalendarScreen";
 import { NewTaskScreen } from "./screens/NewTaskScreen";
 import { EditTaskScreen } from "./screens/EditTaskScreen";
 import { ShoppingListScreen } from "./screens/ShoppingListScreen";
+import { MembersScreen } from "./screens/MembersScreen";
 import { TaskProvider } from "./store/useTaskStore";
 import { useNotifications } from "./hooks/useNotifications";
 import { ShoppingProvider } from "./store/useShoppingStore";
@@ -93,6 +94,7 @@ function AppContent() {
           <Route path="/shopping-list" element={<ShoppingListScreen />} />
           <Route path="/new" element={<NewTaskScreen />} />
           <Route path="/edit/:taskId" element={<EditTaskScreen />} />
+          <Route path="/members" element={<MembersScreen />} />
         </Routes>
       </main>
     </div>

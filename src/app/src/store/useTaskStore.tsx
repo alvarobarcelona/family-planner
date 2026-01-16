@@ -10,6 +10,7 @@ import {
 
 // API Imports
 import { getTasks, createTasks, deleteTask, updateTask as apiUpdateTask } from "../api/tasksApi";
+import { getMembers } from "../api/membersApi";
 
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
@@ -93,24 +94,16 @@ function normalizeDate(dateStr: string): string {
 //  MOCK DE FAMILIA
 // -----------------------------------------
 
-const familyMembersMap: Record<string, Assignee> = {
-  mamaWork: { id: "mamaWork", name: "Maria/Work", color: "#c5e03aff" },
-  mama: { id: "mama", name: "Maria", color: "#f97316" },
-  papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
-  familia: { id: "familia", name: "Familia", color: "#6366f1" },
-};
-
-//Mock de createdBy
-const createdByMap: Record<string, CreatedBy> = {
-  mama: { id: "mama", name: "Maria" },
-  papa: { id: "papa", name: "Alvaro" },
-};
+// -----------------------------------------
+//  MOCK DE FAMILIA ELIMINADO
+// -----------------------------------------
 
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<Assignee[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [, setError] = useState<string | null>(null);
 
@@ -120,10 +113,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getTasks();
+      const [loadedTasks, loadedMembers] = await Promise.all([
+        getTasks(),
+        getMembers()
+      ]);
       // Normalize dates
-      const normalized = data.map(t => ({ ...t, date: normalizeDate(t.date) }));
+      const normalized = loadedTasks.map(t => ({ ...t, date: normalizeDate(t.date) }));
       setTasks(normalized);
+      setMembers(loadedMembers);
     } catch (err) {
       console.error("Error cargando tareas", err);
       setError("No se han podido cargar las tareas");
@@ -138,14 +135,16 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   }, [load]);
 
   const addTask = async (input: CreateTaskInput) => {
-    const member = familyMembersMap[input.assigneeId];
+    const member = members.find(m => m.id === input.assigneeId);
     if (!member) return;
-    const createdByObj = createdByMap[input.createdBy];
+    // createdByMap removed, assuming input.createdBy is just a string name now, or we find member
+    const createdByMember = members.find(m => m.id === input.createdBy || m.name === input.createdBy);
 
     try {
       const created = await createTasks({
         ...input,
-        createdBy: createdByObj?.name || input.createdBy
+        ...input,
+        createdBy: createdByMember?.name || input.createdBy
       });
       const normalized = created.map(t => ({ ...t, date: normalizeDate(t.date) }));
       setTasks((prev) => [...prev, ...normalized]);
@@ -173,7 +172,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const updateTask = async (id: string, input: CreateTaskInput, updateAll?: boolean) => {
-    const member = familyMembersMap[input.assigneeId];
+    const member = members.find(m => m.id === input.assigneeId);
     if (!member) return;
 
     // createdBy validation removed to allow names
@@ -263,13 +262,13 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         tasks,
         tasksToday,
         addTask,
-        familyMembers: Object.values(familyMembersMap),
+        familyMembers: members,
         removeTask,
         updateTask,
         toggleTaskCompletion,
         isLoading,
         refreshTasks: load, // Expose load as refreshTasks
-        createdBy: Object.values(createdByMap),
+        createdBy: members, // Reusing members as createdBy list for now
       }}
     >
       {children}

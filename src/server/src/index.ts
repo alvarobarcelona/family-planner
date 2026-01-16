@@ -75,14 +75,6 @@ interface Task {
   createdAt?: string;
 }
 
-// Mock de miembros de la familia
-const familyMembers: Record<string, Assignee> = {
-  mamaWork: { id: "mamaWork", name: "Maria/Work", color: "#c5e03aff" },
-  mama: { id: "mama", name: "Maria", color: "#f97316" },
-  papa: { id: "papa", name: "Alvaro", color: "#22c55e" },
-  familia: { id: "familia", name: "Familia", color: "#6366f1" },
-};
-
 // Helper function to get Central European Time offset (UTC+1 or UTC+2)
 function getCETOffset(date: Date): number {
   // CET (Central European Time) rules:
@@ -206,6 +198,22 @@ app.post("/api/admin/households", adminMiddleware, async (req, res) => {
       "INSERT INTO households (id, name, password_hash) VALUES ($1, $2, $3)",
       [id, name, hash]
     );
+
+    // Seed Members with UUIDs
+    const members = [
+      { name: "Mamá/Trabajo", color: "#c5e03aff" },
+      { name: "Mamá", color: "#f97316" },
+      { name: "Papá", color: "#22c55e" },
+      { name: "Todos", color: "#6366f1" },
+    ];
+
+    for (const m of members) {
+      await pool.query(
+        "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
+        [randomUUID(), id, m.name, m.color]
+      );
+    }
+
     res.status(201).json({ id, name });
   } catch (err: any) {
     console.error("Error creating household:", err);
@@ -1165,11 +1173,6 @@ initDb()
         await checkAndSendNotifications();
       }, 30000); // Check every 30 seconds
     });
-  })
-  .catch((err) => {
-    console.error("Error inicializando la BBDD", err);
-    process.exit(1);
-  });
 
 // GET todas las tareas
 app.get("/api/tasks", authMiddleware, async (req, res) => {
@@ -1256,10 +1259,17 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
     return res.status(400).json({ message: "Faltan campos obligatorios" });
   }
 
-  const member = familyMembers[assigneeId];
-  if (!member) {
+  // Validate Assignee against DB
+  const memberRes = await pool.query(
+    "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
+    [assigneeId, householdId]
+  );
+
+  // Handle legacy "familia" or "todos" if needed, but for now strict check:
+  if (memberRes.rowCount === 0) {
     return res.status(400).json({ message: "Miembro de familia no válido" });
   }
+  const member = memberRes.rows[0];
 
   const base: Omit<Task, "id"> = {
     title: title.trim(),
@@ -1446,10 +1456,15 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
     return res.status(400).json({ message: "Faltan campos obligatorios" });
   }
 
-  const member = familyMembers[assigneeId];
-  if (!member) {
+  // Validate Assignee against DB
+  const memberRes = await pool.query(
+    "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
+    [assigneeId, householdId]
+  );
+  if (memberRes.rowCount === 0) {
     return res.status(400).json({ message: "Miembro de familia no válido" });
   }
+  const member = memberRes.rows[0];
 
   try {
     console.log("PUT /api/tasks/:id - Received isCompleted:", isCompleted);
@@ -1692,3 +1707,96 @@ app.delete("/api/tasks/:id", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Error interno" });
   }
 });
+
+// MEMBERS CRUD
+
+// GET Members
+app.get("/api/members", authMiddleware, async (req, res) => {
+  const householdId = req.user?.householdId;
+  if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    const result = await pool.query(
+      "SELECT * FROM family_members WHERE household_id = $1 ORDER BY created_at ASC",
+      [householdId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching members:", err);
+    res.status(500).json({ message: "Error fetching members" });
+  }
+});
+
+// POST Create Member
+app.post("/api/members", authMiddleware, async (req, res) => {
+  const { name, color } = req.body;
+  const householdId = req.user?.householdId;
+  if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    const id = randomUUID();
+    await pool.query(
+      "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
+      [id, householdId, name, color]
+    );
+    res.status(201).json({ id, household_id: householdId, name, color });
+  } catch (err) {
+    console.error("Error creating member:", err);
+    res.status(500).json({ message: "Error creating member" });
+  }
+});
+
+// PUT Update Member
+app.put("/api/members/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { name, color } = req.body;
+  const householdId = req.user?.householdId;
+  if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    const result = await pool.query(
+      "UPDATE family_members SET name = $1, color = $2 WHERE id = $3 AND household_id = $4 RETURNING *",
+      [name, color, id, householdId]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error updating member:", err);
+    res.status(500).json({ message: "Error updating member" });
+  }
+});
+
+// DELETE Member
+app.delete("/api/members/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const householdId = req.user?.householdId;
+  if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM family_members WHERE id = $1 AND household_id = $2",
+      [id, householdId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+    res.json({ message: "Member deleted" });
+  } catch (err: any) {
+    console.error("Error deleting member:", err);
+    if (err.code === "23503") {
+      return res
+        .status(400)
+        .json({ message: "Cannot delete member with assigned tasks" });
+    }
+    res.status(500).json({ message: "Error deleting member" });
+  }
+});
+
+  })
+  .catch((err) => {
+    console.error("Error inicializando la BBDD", err);
+    process.exit(1);
+  });
