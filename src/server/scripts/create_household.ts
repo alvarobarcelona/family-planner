@@ -5,7 +5,7 @@ import * as dotenv from "dotenv";
 import * as path from "path";
 
 // Load environment variables
-const envPath = path.resolve(__dirname, "../../.env");
+const envPath = path.resolve(__dirname, "../.env");
 dotenv.config({ path: envPath });
 
 const pool = new Pool({
