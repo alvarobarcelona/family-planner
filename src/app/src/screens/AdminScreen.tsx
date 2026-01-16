@@ -13,6 +13,8 @@ export function AdminScreen() {
     const [newHouseholdPassword, setNewHouseholdPassword] = useState("");
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingPassword, setEditingPassword] = useState("");
 
     const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
@@ -83,10 +85,17 @@ export function AdminScreen() {
                 setMessage("Familia eliminada");
                 fetchHouseholds(password);
             } else {
-                setError("Error al borrar");
+                const data = await res.json();
+                console.error("Delete error:", data);
+                // Muestra el detalle técnico si existe
+                setError(
+                    data.detail
+                        ? `Error: ${data.message} (${data.detail})`
+                        : data.message || "Error al borrar"
+                );
             }
         } catch (err) {
-            setError("Error al borrar");
+            setError("Error al borrar (Conexión)");
         }
     };
 
@@ -116,6 +125,36 @@ export function AdminScreen() {
             </div>
         );
     }
+
+    const updatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingId) return;
+
+        try {
+            const res = await fetch(
+                `${API_URL}/api/admin/households/${editingId}/password`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-admin-password": password,
+                    },
+                    body: JSON.stringify({ password: editingPassword }),
+                }
+            );
+
+            if (res.ok) {
+                setMessage("Password actualizado correctamente");
+                setEditingId(null);
+                setEditingPassword("");
+            } else {
+                const data = await res.json();
+                setError(data.message || "Error al actualizar password");
+            }
+        } catch (err) {
+            setError("Error de conexión");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-stone-50 p-8">
@@ -196,7 +235,18 @@ export function AdminScreen() {
                                     <td className="p-4 text-stone-400 font-mono text-xs">
                                         {h.id}
                                     </td>
-                                    <td className="p-4 text-right">
+                                    <td className="p-4 text-right space-x-2">
+                                        <button
+                                            onClick={() => {
+                                                setEditingId(h.id);
+                                                setEditingPassword("");
+                                                setError("");
+                                                setMessage("");
+                                            }}
+                                            className="text-blue-500 hover:text-blue-700 text-sm font-semibold"
+                                        >
+                                            Cambiar Pass
+                                        </button>
                                         <button
                                             onClick={() => deleteHousehold(h.id)}
                                             className="text-red-500 hover:text-red-700 text-sm font-semibold"
@@ -217,6 +267,44 @@ export function AdminScreen() {
                     </table>
                 </div>
             </div>
+
+            {/* Edit Password Modal */}
+            {editingId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+                        <h3 className="text-lg font-bold mb-4">Cambiar Contraseña</h3>
+                        <p className="text-sm text-stone-500 mb-4">
+                            Introduce la nueva contraseña para esta familia.
+                        </p>
+                        <form onSubmit={updatePassword}>
+                            <input
+                                type="text"
+                                value={editingPassword}
+                                onChange={(e) => setEditingPassword(e.target.value)}
+                                className="w-full border p-2 rounded mb-4"
+                                placeholder="Nueva contraseña"
+                                required
+
+                            />
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingId(null)}
+                                    className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

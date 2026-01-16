@@ -242,11 +242,52 @@ app.delete("/api/admin/households/:id", adminMiddleware, async (req, res) => {
     await pool.query("DELETE FROM households WHERE id = $1", [id]);
 
     res.json({ message: "Household deleted" });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error deleting household:", err);
-    res.status(500).json({ message: "Error deleting household" });
+    // Devuelve el mensaje/detalle técnico para saber qué tabla falla
+    res.status(500).json({
+      message: "Error deleting household",
+      error: err.message,
+      detail: err.detail,
+    });
   }
 });
+
+// PUT Update Household Password
+app.put(
+  "/api/admin/households/:id/password",
+  adminMiddleware,
+  async (req, res) => {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ message: "Password required" });
+    }
+
+    try {
+      const saltRounds = 10;
+      const hash = await bcrypt.hash(password, saltRounds);
+
+      const result = await pool.query(
+        "UPDATE households SET password_hash = $1 WHERE id = $2",
+        [hash, id]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({ message: "Household not found" });
+      }
+
+      res.json({ message: "Password updated" });
+    } catch (err: any) {
+      console.error("Error updating password:", err);
+      res.status(500).json({
+        message: "Error updating password",
+        error: err.message,
+      });
+    }
+  }
+);
 
 // --- APP ENDPOINTS ---
 
@@ -577,15 +618,26 @@ async function initDb() {
   const householdId = "00000000-0000-0000-0000-000000000000"; // Fixed ID for simplicity
 
   // Check if household exists
+  // Check if household exists
   const householdRes = await pool.query(
     "SELECT id FROM households WHERE id = $1",
     [householdId]
   );
   if (householdRes.rowCount === 0) {
-    await pool.query("INSERT INTO households (id, name) VALUES ($1, $2)", [
-      householdId,
-      "Familia Barcelona",
-    ]);
+    try {
+      await pool.query("INSERT INTO households (id, name) VALUES ($1, $2)", [
+        householdId,
+        "Familia Barcelona",
+      ]);
+    } catch (err: any) {
+      if (err.code === "23505") {
+        console.log(
+          "Seed household 'Familia Barcelona' name already exists (probably used by real household). Skipping seed."
+        );
+      } else {
+        throw err;
+      }
+    }
   }
 
   // Seed Members
