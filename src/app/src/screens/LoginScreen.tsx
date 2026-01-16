@@ -6,6 +6,7 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+    const [name, setName] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -16,7 +17,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         setError("");
 
         try {
-            await login(password);
+            await login(name, password);
 
             onLoginSuccess();
         } catch (err) {
@@ -36,6 +37,13 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Nombre de Familia"
+                            className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all text-lg mb-4"
+                        />
                         <input
                             type="password"
                             value={password}
@@ -61,7 +69,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
                     <div className="text-center mt-4">
                         <p className="text-sm text-stone-500">
-                            By Alvaro Barcelona Peralta
+                            By Alvaro Barcelona Peralta • <a href="/admin" className="hover:text-stone-800 transition-colors">Admin</a>
                         </p>
                     </div>
                 </form>

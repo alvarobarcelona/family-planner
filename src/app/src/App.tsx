@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
 import { HomeScreen } from "./screens/HomeScreen";
+import { AdminScreen } from "./screens/AdminScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { VisualCalendarScreen } from "./screens/VisualCalendarScreen";
@@ -113,6 +114,11 @@ export default function App() {
       setIsAuthenticated(true);
     }
   }, []);
+
+  const path = window.location.pathname;
+  if (path === "/admin") {
+    return <AdminScreen />;
+  }
 
   if (!isAuthenticated) {
     return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;

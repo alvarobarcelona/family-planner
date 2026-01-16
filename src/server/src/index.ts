@@ -6,12 +6,25 @@ import express from "express";
 import { randomUUID } from "crypto";
 import { pool } from "./db";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 import { sendNotification } from "./services/pushService";
 
 // Try explicit load if missing
 if (!process.env.VAPID_PUBLIC_KEY) {
   const envPath = path.resolve(process.cwd(), ".env");
   require("dotenv").config({ path: envPath });
+}
+
+// Extend Express Request
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        householdId: string;
+        role: string;
+      };
+    }
+  }
 }
 
 const app = express();
@@ -137,23 +150,145 @@ function authMiddleware(
   }
 
   try {
-    jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    req.user = {
+      householdId: decoded.householdId,
+      role: decoded.role,
+    };
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid token" });
   }
 }
 
-// Login Endpoint
-app.post("/api/login", (req, res) => {
-  const { password } = req.body;
-  if (password === APP_SECRET_PASSWORD) {
-    const token = jwt.sign({ role: "family" }, JWT_SECRET, {
-      expiresIn: "365d",
-    });
-    return res.json({ token });
+const ADMIN_PASSWORD =
+  process.env.ADMIN_PASSWORD || process.env.APP_SECRET_PASSWORD;
+
+function adminMiddleware(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const adminAuth = req.headers["x-admin-password"];
+  if (adminAuth !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: "Admin unauthorized" });
   }
-  return res.status(401).json({ message: "Contraseña incorrecta" });
+  next();
+}
+
+// --- ADMIN ENDPOINTS ---
+
+// GET List Households
+app.get("/api/admin/households", adminMiddleware, async (_req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, name FROM households ORDER BY name"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching households:", err);
+    res.status(500).json({ message: "Error fetching households" });
+  }
+});
+
+// POST Create Household
+app.post("/api/admin/households", adminMiddleware, async (req, res) => {
+  const { name, password } = req.body;
+  if (!name || !password)
+    return res.status(400).json({ message: "Missing fields" });
+
+  try {
+    const saltRounds = 10;
+    const hash = await bcrypt.hash(password, saltRounds);
+    const id = randomUUID();
+
+    await pool.query(
+      "INSERT INTO households (id, name, password_hash) VALUES ($1, $2, $3)",
+      [id, name, hash]
+    );
+    res.status(201).json({ id, name });
+  } catch (err: any) {
+    console.error("Error creating household:", err);
+    if (err.code === "23505") {
+      // Unique violation
+      return res.status(409).json({ message: "Household name already exists" });
+    }
+    res.status(500).json({ message: "Error creating household" });
+  }
+});
+
+// DELETE Household
+app.delete("/api/admin/households/:id", adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Basic cleanup - in a real app, strict constraints would handle this via CASCADE or we'd delete related data first
+    await pool.query("DELETE FROM tasks WHERE household_id = $1", [id]);
+    await pool.query("DELETE FROM shopping_items WHERE household_id = $1", [
+      id,
+    ]);
+    await pool.query("DELETE FROM shopping_favorites WHERE household_id = $1", [
+      id,
+    ]);
+    await pool.query("DELETE FROM family_wall_notes WHERE household_id = $1", [
+      id,
+    ]);
+    await pool.query("DELETE FROM push_subscriptions WHERE household_id = $1", [
+      id,
+    ]);
+    await pool.query("DELETE FROM family_members WHERE household_id = $1", [
+      id,
+    ]);
+
+    await pool.query("DELETE FROM households WHERE id = $1", [id]);
+
+    res.json({ message: "Household deleted" });
+  } catch (err) {
+    console.error("Error deleting household:", err);
+    res.status(500).json({ message: "Error deleting household" });
+  }
+});
+
+// --- APP ENDPOINTS ---
+
+// Login Endpoint
+app.post("/api/login", async (req, res) => {
+  const { name, password } = req.body;
+
+  if (!name || !password) {
+    return res
+      .status(400)
+      .json({ message: "Nombre de familia y contraseña requeridos" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT * FROM households WHERE lower(name) = lower($1)",
+      [name]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(401).json({ message: "Credenciales inválidas" });
+    }
+
+    const household = result.rows[0];
+
+    const match = await bcrypt.compare(password, household.password_hash || "");
+    if (!match) {
+      return res.status(401).json({ message: "Credenciales inválidas" });
+    }
+
+    const token = jwt.sign(
+      { householdId: household.id, role: "family" },
+      JWT_SECRET,
+      {
+        expiresIn: "365d",
+      }
+    );
+    return res.json({ token, householdId: household.id, name: household.name });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error interno" });
+  }
 });
 
 // GET Public VAPID Key
@@ -199,14 +334,15 @@ app.get("/api/cron/check-notifications", async (req, res) => {
 });
 
 // POST Subscribe to Push Notifications
-app.post("/api/subscribe", async (req, res) => {
+app.post("/api/subscribe", authMiddleware, async (req, res) => {
   const { subscription, familyMemberId, familyMemberIds } = req.body;
 
   if (!subscription || !subscription.endpoint) {
     return res.status(400).json({ message: "Invalid subscription" });
   }
 
-  const householdId = "00000000-0000-0000-0000-000000000000"; // Default household
+  const householdId = req.user?.householdId;
+  if (!householdId) return res.status(401).json({ message: "No autorizado" });
 
   // Normalize familyMemberIds
   let finalFamilyMemberIds: string[] = [];
@@ -225,7 +361,8 @@ app.post("/api/subscribe", async (req, res) => {
       SET family_member_ids = EXCLUDED.family_member_ids,
           family_member_id = EXCLUDED.family_member_id, -- Keep updating legacy column for now
           last_used_at = now(),
-          is_active = true
+          is_active = true,
+          household_id = EXCLUDED.household_id -- Update household if needed
     `,
       [
         randomUUID(),
@@ -382,6 +519,17 @@ async function initDb() {
     );
   `);
 
+  try {
+    await pool.query(
+      `ALTER TABLE households ADD COLUMN IF NOT EXISTS password_hash text;`
+    );
+    await pool.query(
+      `ALTER TABLE households ADD CONSTRAINT unique_household_name UNIQUE (name);`
+    );
+  } catch (err) {
+    // Ignore constraint already exists error
+  }
+
   // 2. Family Members
   await pool.query(`
     CREATE TABLE IF NOT EXISTS family_members (
@@ -460,10 +608,33 @@ async function initDb() {
       );
     }
   }
+  // Add household_id column to tasks if it doesn't exist
+  try {
+    await pool.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS household_id uuid REFERENCES households(id);
+    `);
+    // Backfill if null
+    const defaultHouseholdId = "00000000-0000-0000-0000-000000000000";
+    await pool.query(
+      `UPDATE tasks SET household_id = $1 WHERE household_id IS NULL`,
+      [defaultHouseholdId]
+    );
+    await pool.query(
+      `ALTER TABLE tasks ALTER COLUMN household_id SET NOT NULL`
+    );
+  } catch (err) {
+    console.log(
+      "Column household_id might already exist or error adding it:",
+      err
+    );
+  }
+
   // 4. Shopping List Items
   await pool.query(`
     CREATE TABLE IF NOT EXISTS shopping_items (
       id SERIAL PRIMARY KEY,
+      household_id uuid NOT NULL REFERENCES households(id),
       name text NOT NULL,
       category text NOT NULL,
       quantity integer NOT NULL DEFAULT 1,
@@ -472,16 +643,51 @@ async function initDb() {
     );
   `);
 
+  // Add household_id to shopping_items if existing
+  try {
+    await pool.query(
+      `ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS household_id uuid REFERENCES households(id);`
+    );
+    const defaultHouseholdId = "00000000-0000-0000-0000-000000000000";
+    await pool.query(
+      `UPDATE shopping_items SET household_id = $1 WHERE household_id IS NULL`,
+      [defaultHouseholdId]
+    );
+    await pool.query(
+      `ALTER TABLE shopping_items ALTER COLUMN household_id SET NOT NULL`
+    );
+  } catch (e) {
+    console.log(e);
+  }
+
   // 5. Shopping List Favorites
   await pool.query(`
     CREATE TABLE IF NOT EXISTS shopping_favorites (
       id SERIAL PRIMARY KEY,
+      household_id uuid NOT NULL REFERENCES households(id),
       name text NOT NULL,
       category text NOT NULL,
       usage_count integer NOT NULL DEFAULT 1,
       last_quantity integer DEFAULT 1
     );
   `);
+
+  // Add household_id to shopping_favorites if existing
+  try {
+    await pool.query(
+      `ALTER TABLE shopping_favorites ADD COLUMN IF NOT EXISTS household_id uuid REFERENCES households(id);`
+    );
+    const defaultHouseholdId = "00000000-0000-0000-0000-000000000000";
+    await pool.query(
+      `UPDATE shopping_favorites SET household_id = $1 WHERE household_id IS NULL`,
+      [defaultHouseholdId]
+    );
+    await pool.query(
+      `ALTER TABLE shopping_favorites ALTER COLUMN household_id SET NOT NULL`
+    );
+  } catch (e) {
+    console.log(e);
+  }
 
   // 6. Family Wall Notes
   await pool.query(`
@@ -503,10 +709,12 @@ async function initDb() {
 // ----------------------------------------------------------------------
 
 // GET /api/shopping
-app.get("/api/shopping", authMiddleware, async (_req, res) => {
+app.get("/api/shopping", authMiddleware, async (req, res) => {
   try {
+    const householdId = req.user?.householdId;
     const result = await pool.query(
-      "SELECT * FROM shopping_items ORDER BY created_at DESC"
+      "SELECT * FROM shopping_items WHERE household_id = $1 ORDER BY created_at DESC",
+      [householdId]
     );
     res.json(result.rows);
   } catch (err) {
@@ -522,18 +730,21 @@ app.post("/api/shopping", authMiddleware, async (req, res) => {
     return res.status(400).json({ message: "Faltan datos" });
   }
 
+  const householdId = req.user?.householdId;
+  if (!householdId) return res.status(401).json({ message: "No autorizado" });
+
   try {
     // 1. Insert item
     const newItem = await pool.query(
-      "INSERT INTO shopping_items (name, category, quantity) VALUES ($1, $2, $3) RETURNING *",
-      [name, category, quantity || 1]
+      "INSERT INTO shopping_items (name, category, quantity, household_id) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, category, quantity || 1, householdId]
     );
 
     // 2. Update/Insert favorite
     // Check if exists (case insensitive for name)
     const favRes = await pool.query(
-      "SELECT * FROM shopping_favorites WHERE lower(name) = lower($1)",
-      [name]
+      "SELECT * FROM shopping_favorites WHERE lower(name) = lower($1) AND household_id = $2",
+      [name, householdId]
     );
 
     if (favRes.rowCount && favRes.rowCount > 0) {
@@ -545,8 +756,8 @@ app.post("/api/shopping", authMiddleware, async (req, res) => {
     } else {
       // Insert
       await pool.query(
-        "INSERT INTO shopping_favorites (name, category, last_quantity) VALUES ($1, $2, $3)",
-        [name, category, quantity || 1]
+        "INSERT INTO shopping_favorites (name, category, last_quantity, household_id) VALUES ($1, $2, $3, $4)",
+        [name, category, quantity || 1, householdId]
       );
     }
 
@@ -561,6 +772,7 @@ app.post("/api/shopping", authMiddleware, async (req, res) => {
 app.put("/api/shopping/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { completed, quantity, name, category } = req.body;
+  const householdId = req.user?.householdId;
 
   try {
     // Dynamic update
@@ -589,8 +801,9 @@ app.put("/api/shopping/:id", authMiddleware, async (req, res) => {
 
     // Remove last comma
     query = query.slice(0, -2);
-    query += ` WHERE id = $${idx} RETURNING *`;
+    query += ` WHERE id = $${idx++} AND household_id = $${idx} RETURNING *`;
     params.push(id);
+    params.push(householdId);
 
     const result = await pool.query(query, params);
     if (result.rowCount === 0) {
@@ -606,8 +819,12 @@ app.put("/api/shopping/:id", authMiddleware, async (req, res) => {
 // DELETE /api/shopping/:id (Remove item)
 app.delete("/api/shopping/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
+  const householdId = req.user?.householdId;
   try {
-    await pool.query("DELETE FROM shopping_items WHERE id = $1", [id]);
+    await pool.query(
+      "DELETE FROM shopping_items WHERE id = $1 AND household_id = $2",
+      [id, householdId]
+    );
     res.json({ message: "Deleted" });
   } catch (err) {
     console.error("Error borrando item:", err);
@@ -616,10 +833,12 @@ app.delete("/api/shopping/:id", authMiddleware, async (req, res) => {
 });
 
 // GET /api/shopping/favorites
-app.get("/api/shopping/favorites", authMiddleware, async (_req, res) => {
+app.get("/api/shopping/favorites", authMiddleware, async (req, res) => {
+  const householdId = req.user?.householdId;
   try {
     const result = await pool.query(
-      "SELECT * FROM shopping_favorites ORDER BY usage_count DESC"
+      "SELECT * FROM shopping_favorites WHERE household_id = $1 ORDER BY usage_count DESC",
+      [householdId]
     );
     res.json(result.rows);
   } catch (err) {
@@ -631,8 +850,12 @@ app.get("/api/shopping/favorites", authMiddleware, async (_req, res) => {
 // DELETE /api/shopping/favorites/:id
 app.delete("/api/shopping/favorites/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
+  const householdId = req.user?.householdId;
   try {
-    await pool.query("DELETE FROM shopping_favorites WHERE id = $1", [id]);
+    await pool.query(
+      "DELETE FROM shopping_favorites WHERE id = $1 AND household_id = $2",
+      [id, householdId]
+    );
     res.json({ message: "Deleted" });
   } catch (err) {
     console.error("Error borrando favorito:", err);
@@ -645,9 +868,9 @@ app.delete("/api/shopping/favorites/:id", authMiddleware, async (req, res) => {
 // ----------------------------------------------------------------------
 
 // GET /api/family-wall
-app.get("/api/family-wall", authMiddleware, async (_req, res) => {
+app.get("/api/family-wall", authMiddleware, async (req, res) => {
   try {
-    const householdId = "00000000-0000-0000-0000-000000000000"; // Default
+    const householdId = req.user?.householdId;
     const result = await pool.query(
       "SELECT * FROM family_wall_notes WHERE household_id = $1 ORDER BY created_at DESC",
       [householdId]
@@ -679,7 +902,7 @@ app.post("/api/family-wall", authMiddleware, async (req, res) => {
     return res.status(400).json({ message: "Content or Image required" });
   }
 
-  const householdId = "00000000-0000-0000-0000-000000000000";
+  const householdId = req.user?.householdId;
   const id = randomUUID();
 
   try {
@@ -709,8 +932,12 @@ app.post("/api/family-wall", authMiddleware, async (req, res) => {
 // DELETE /api/family-wall/:id
 app.delete("/api/family-wall/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
+  const householdId = req.user?.householdId;
   try {
-    await pool.query("DELETE FROM family_wall_notes WHERE id = $1", [id]);
+    await pool.query(
+      "DELETE FROM family_wall_notes WHERE id = $1 AND household_id = $2",
+      [id, householdId]
+    );
     res.json({ message: "Deleted" });
   } catch (err) {
     console.error("Error deleting note:", err);
@@ -722,10 +949,11 @@ app.delete("/api/family-wall/:id", authMiddleware, async (req, res) => {
 app.put("/api/family-wall/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
+  const householdId = req.user?.householdId;
   try {
     const result = await pool.query(
-      "UPDATE family_wall_notes SET content = $1 WHERE id = $2 RETURNING *",
-      [content, id]
+      "UPDATE family_wall_notes SET content = $1 WHERE id = $2 AND household_id = $3 RETURNING *",
+      [content, id, householdId]
     );
     if (result.rowCount === 0)
       return res.status(404).json({ message: "Not found" });
@@ -797,7 +1025,12 @@ async function checkAndSendNotifications(): Promise<{
       if (diff >= 0 && diff < 30000) {
         console.log(`Sending notification for task: ${task.title}`);
 
-        const householdId = "00000000-0000-0000-0000-000000000000";
+        const householdId = task.household_id; // Now dynamic!
+        if (!householdId) {
+          console.error("Task missing household_id", task.id);
+          continue;
+        }
+
         const assignees = task.assignees;
         const assigneeIds = assignees.map((a: any) => a.id);
 
@@ -887,13 +1120,18 @@ initDb()
   });
 
 // GET todas las tareas
-app.get("/api/tasks", authMiddleware, async (_req, res) => {
+app.get("/api/tasks", authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query(`
+    const householdId = req.user?.householdId;
+    const result = await pool.query(
+      `
       SELECT id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at
       FROM tasks
+      WHERE household_id = $1
       ORDER BY date, time_label NULLS FIRST, title;
-    `);
+    `,
+      [householdId]
+    );
 
     const rows = result.rows as any[];
 
@@ -958,6 +1196,9 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
     createdBy?: string;
     createdAt?: string;
   };
+
+  const householdId = req.user?.householdId;
+  if (!householdId) return res.status(401).json({ message: "No autorizado" });
 
   if (!title || !date || !assigneeId || !priority || !recurrence) {
     return res.status(400).json({ message: "Faltan campos obligatorios" });
@@ -1077,11 +1318,12 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
     const insertPromises = tasksToAdd.map((t) =>
       pool.query(
         `
-        INSERT INTO tasks (id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        INSERT INTO tasks (id, household_id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       `,
         [
           t.id,
+          householdId,
           t.title,
           t.date,
           t.endDate ?? null,
@@ -1095,7 +1337,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
           t.durationWeeks ?? null,
           t.notificationTime ?? null,
           t.color ?? null,
-          t.createdBy ?? null,
+          req.user?.role + "/" + req.user?.householdId, // Simple createdBy tracking
         ]
       )
     );
@@ -1113,6 +1355,7 @@ app.post("/api/tasks", authMiddleware, async (req, res) => {
 app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { updateAll } = req.query;
+  const householdId = req.user?.householdId;
   const {
     title,
     date,
@@ -1269,10 +1512,11 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
         // Insert all
         const insertPromises = tasksToAdd.map((t) =>
           pool.query(
-            `INSERT INTO tasks (id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+            `INSERT INTO tasks (id, household_id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
             [
               t.id,
+              householdId, // Add householdId
               t.title,
               t.date,
               t.endDate ?? null,
@@ -1302,7 +1546,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
       `
       UPDATE tasks
       SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13, created_by = COALESCE($14, created_by), created_at = COALESCE($15, created_at)
-      WHERE id = $16
+      WHERE id = $16 AND household_id = $17
       RETURNING *
     `,
       [
@@ -1322,6 +1566,7 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
         createdBy ?? null,
         createdAt ?? null,
         id,
+        householdId,
       ]
     );
 
@@ -1361,22 +1606,29 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
 app.delete("/api/tasks/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { deleteAll } = req.query;
+  const householdId = req.user?.householdId;
 
   try {
     if (deleteAll === "true") {
       // Get series_id first
       const taskRes = await pool.query(
-        "SELECT series_id FROM tasks WHERE id = $1",
-        [id]
+        "SELECT series_id FROM tasks WHERE id = $1 AND household_id = $2",
+        [id, householdId]
       );
       if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
         const seriesId = taskRes.rows[0].series_id;
-        await pool.query("DELETE FROM tasks WHERE series_id = $1", [seriesId]);
+        await pool.query(
+          "DELETE FROM tasks WHERE series_id = $1 AND household_id = $2",
+          [seriesId, householdId]
+        );
         return res.status(200).json({ ok: true });
       }
     }
 
-    const result = await pool.query("DELETE FROM tasks WHERE id = $1", [id]);
+    const result = await pool.query(
+      "DELETE FROM tasks WHERE id = $1 AND household_id = $2",
+      [id, householdId]
+    );
 
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Tarea no encontrada" });
