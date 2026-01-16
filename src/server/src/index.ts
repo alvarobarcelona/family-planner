@@ -329,7 +329,7 @@ app.post("/api/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { householdId: household.id, role: "family" },
+      { householdId: household.id, name: household.name, role: "family" },
       JWT_SECRET,
       {
         expiresIn: "365d",
@@ -1393,7 +1393,6 @@ initDb()
             [
               t.id,
               householdId,
-              req.user?.name,
               t.title,
               t.date,
               t.endDate ?? null,
