@@ -21,6 +21,7 @@ declare global {
     interface Request {
       user?: {
         householdId: string;
+        name: string;
         role: string;
       };
     }
@@ -145,6 +146,7 @@ function authMiddleware(
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     req.user = {
       householdId: decoded.householdId,
+      name: decoded.name,
       role: decoded.role,
     };
     next();
@@ -1391,6 +1393,7 @@ initDb()
             [
               t.id,
               householdId,
+              req.user?.name,
               t.title,
               t.date,
               t.endDate ?? null,
@@ -1404,7 +1407,7 @@ initDb()
               t.durationWeeks ?? null,
               t.notificationTime ?? null,
               t.color ?? null,
-              req.user?.role + "/" + req.user?.householdId, // Simple createdBy tracking
+              req.user?.role + "/" + req.user?.name, // Simple createdBy tracking
             ]
           )
         );
