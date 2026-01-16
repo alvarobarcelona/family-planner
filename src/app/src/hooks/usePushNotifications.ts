@@ -79,7 +79,7 @@ export function usePushNotifications() {
         applicationServerKey: convertedVapidKey,
       });
 
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("auth_token");
 
       const subscribeResponse = await fetch(`${API_URL}/subscribe`, {
         method: "POST",
