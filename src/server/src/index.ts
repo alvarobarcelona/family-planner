@@ -937,7 +937,7 @@ app.get("/api/family-wall", authMiddleware, async (req, res) => {
     );
 
     // Convert snake_case to camelCase for frontend
-    const notes = result.rows.map((row) => ({
+    const notes = result.rows.map((row: any) => ({
       id: row.id,
       content: row.content,
       authorId: row.author_id,
@@ -1174,416 +1174,223 @@ initDb()
       }, 30000); // Check every 30 seconds
     });
 
-// GET todas las tareas
-app.get("/api/tasks", authMiddleware, async (req, res) => {
-  try {
-    const householdId = req.user?.householdId;
-    const result = await pool.query(
-      `
+    // GET todas las tareas
+    app.get("/api/tasks", authMiddleware, async (req, res) => {
+      try {
+        const householdId = req.user?.householdId;
+        const result = await pool.query(
+          `
       SELECT id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at
       FROM tasks
       WHERE household_id = $1
       ORDER BY date, time_label NULLS FIRST, title;
     `,
-      [householdId]
-    );
+          [householdId]
+        );
 
-    const rows = result.rows as any[];
+        const rows = result.rows as any[];
 
-    const tasks: Task[] = rows.map((row) => ({
-      id: row.id as string,
-      title: row.title as string,
-      date: row.date as string, // "YYYY-MM-DD"
-      endDate: (row.end_date ?? undefined) as string | undefined,
-      timeLabel: (row.time_label ?? undefined) as string | undefined,
-      priority: row.priority as Priority,
-      recurrence: (row.recurrence ?? undefined) as Recurrence | undefined,
-      description: (row.description ?? undefined) as string | undefined,
-      assignees: row.assignees as Assignee[],
-      seriesId: (row.series_id ?? undefined) as string | undefined,
-      daysOfWeek: (row.days_of_week ?? undefined) as number[] | undefined,
-      durationWeeks: (row.duration_weeks ?? undefined) as number | undefined,
-      notificationTime: (row.notification_time ?? undefined) as
-        | number
-        | undefined,
-      color: (row.color ?? undefined) as string | undefined,
-      isCompleted: (row.is_completed ?? undefined) as boolean | undefined,
-      createdBy: (row.created_by ?? undefined) as string | undefined,
-      createdAt: (row.created_at ?? undefined) as string | undefined,
-    }));
+        const tasks: Task[] = rows.map((row) => ({
+          id: row.id as string,
+          title: row.title as string,
+          date: row.date as string, // "YYYY-MM-DD"
+          endDate: (row.end_date ?? undefined) as string | undefined,
+          timeLabel: (row.time_label ?? undefined) as string | undefined,
+          priority: row.priority as Priority,
+          recurrence: (row.recurrence ?? undefined) as Recurrence | undefined,
+          description: (row.description ?? undefined) as string | undefined,
+          assignees: row.assignees as Assignee[],
+          seriesId: (row.series_id ?? undefined) as string | undefined,
+          daysOfWeek: (row.days_of_week ?? undefined) as number[] | undefined,
+          durationWeeks: (row.duration_weeks ?? undefined) as
+            | number
+            | undefined,
+          notificationTime: (row.notification_time ?? undefined) as
+            | number
+            | undefined,
+          color: (row.color ?? undefined) as string | undefined,
+          isCompleted: (row.is_completed ?? undefined) as boolean | undefined,
+          createdBy: (row.created_by ?? undefined) as string | undefined,
+          createdAt: (row.created_at ?? undefined) as string | undefined,
+        }));
 
-    res.json(tasks);
-  } catch (err) {
-    console.error("Error en GET /api/tasks", err);
-    res.status(500).json({ message: "Error interno" });
-  }
-});
-
-// POST crear tarea(s)
-app.post("/api/tasks", authMiddleware, async (req, res) => {
-  const {
-    title,
-    date,
-    endDate,
-    time,
-    assigneeId,
-    priority,
-    recurrence,
-    description,
-    daysOfWeek,
-    durationWeeks,
-    notificationTime,
-    color,
-  } = req.body as {
-    title?: string;
-    date?: string;
-    endDate?: string;
-    time?: string;
-    assigneeId?: string;
-    priority?: Priority;
-    recurrence?: Recurrence;
-    description?: string;
-    daysOfWeek?: number[];
-    durationWeeks?: number;
-    seriesId?: string;
-    notificationTime?: number;
-    color?: string;
-    createdBy?: string;
-    createdAt?: string;
-  };
-
-  const householdId = req.user?.householdId;
-  if (!householdId) return res.status(401).json({ message: "No autorizado" });
-
-  if (!title || !date || !assigneeId || !priority || !recurrence) {
-    return res.status(400).json({ message: "Faltan campos obligatorios" });
-  }
-
-  // Validate Assignee against DB
-  const memberRes = await pool.query(
-    "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
-    [assigneeId, householdId]
-  );
-
-  // Handle legacy "familia" or "todos" if needed, but for now strict check:
-  if (memberRes.rowCount === 0) {
-    return res.status(400).json({ message: "Miembro de familia no válido" });
-  }
-  const member = memberRes.rows[0];
-
-  const base: Omit<Task, "id"> = {
-    title: title.trim(),
-    date,
-    endDate,
-    timeLabel: time || undefined,
-    priority,
-    assignees: [member],
-    recurrence,
-    description: description?.trim() || undefined,
-    seriesId: recurrence !== "NONE" ? randomUUID() : undefined,
-    daysOfWeek,
-    durationWeeks,
-    notificationTime,
-    color,
-    createdBy: req.body.createdBy,
-  };
-
-  const tasksToAdd: Task[] = [];
-
-  if (
-    recurrence === "CUSTOM_WEEKLY" &&
-    Array.isArray(daysOfWeek) &&
-    daysOfWeek.length
-  ) {
-    const weeks = durationWeeks && durationWeeks > 0 ? durationWeeks : 4;
-
-    for (let week = 0; week < weeks; week++) {
-      for (const weekday of daysOfWeek) {
-        const jsTarget = weekday === 7 ? 0 : weekday;
-
-        const baseDate = new Date(date);
-        baseDate.setHours(12, 0, 0, 0);
-        baseDate.setDate(baseDate.getDate() + week * 7);
-
-        const diff = (jsTarget - baseDate.getDay() + 7) % 7;
-        baseDate.setDate(baseDate.getDate() + diff);
-
-        const taskDate = baseDate.toISOString().slice(0, 10);
-
-        tasksToAdd.push({
-          ...base,
-          id: randomUUID(),
-          date: taskDate,
-        });
+        res.json(tasks);
+      } catch (err) {
+        console.error("Error en GET /api/tasks", err);
+        res.status(500).json({ message: "Error interno" });
       }
-    }
-  } else if (
-    (!recurrence || recurrence === "NONE") &&
-    endDate &&
-    endDate > date
-  ) {
-    // RANGO DE FECHAS -> Convertir a serie diaria
-    const start = new Date(date);
-    const end = new Date(endDate);
+    });
 
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // POST crear tarea(s)
+    app.post("/api/tasks", authMiddleware, async (req, res) => {
+      const {
+        title,
+        date,
+        endDate,
+        time,
+        assigneeId,
+        priority,
+        recurrence,
+        description,
+        daysOfWeek,
+        durationWeeks,
+        notificationTime,
+        color,
+      } = req.body as {
+        title?: string;
+        date?: string;
+        endDate?: string;
+        time?: string;
+        assigneeId?: string;
+        priority?: Priority;
+        recurrence?: Recurrence;
+        description?: string;
+        daysOfWeek?: number[];
+        durationWeeks?: number;
+        seriesId?: string;
+        notificationTime?: number;
+        color?: string;
+        createdBy?: string;
+        createdAt?: string;
+      };
 
-    // Generate a new Series ID if not already present
-    const rangeSeriesId = base.seriesId || randomUUID();
+      const householdId = req.user?.householdId;
+      if (!householdId)
+        return res.status(401).json({ message: "No autorizado" });
 
-    for (let i = 0; i <= diffDays; i++) {
-      tasksToAdd.push({
-        ...base,
-        id: randomUUID(),
-        date: addDays(date, i),
-        endDate: undefined,
-        seriesId: rangeSeriesId,
-        recurrence: "NONE",
-      });
-    }
-  } else {
-    const baseTask: Task = {
-      ...base,
-      id: randomUUID(),
-    };
-    tasksToAdd.push(baseTask);
-
-    if (recurrence === "DAILY") {
-      for (let i = 1; i <= 6; i++) {
-        tasksToAdd.push({
-          ...base,
-          id: randomUUID(),
-          date: addDays(date, i),
-        });
+      if (!title || !date || !assigneeId || !priority || !recurrence) {
+        return res.status(400).json({ message: "Faltan campos obligatorios" });
       }
-    } else if (recurrence === "WEEKLY") {
-      for (let i = 1; i <= 3; i++) {
-        tasksToAdd.push({
-          ...base,
-          id: randomUUID(),
-          date: addDays(date, i * 7),
-        });
-      }
-    } else if (recurrence === "MONTHLY") {
-      for (let i = 1; i <= 11; i++) {
-        tasksToAdd.push({
-          ...base,
-          id: randomUUID(),
-          date: addMonths(date, i),
-        });
-      }
-    }
-  }
 
-  try {
-    const insertPromises = tasksToAdd.map((t) =>
-      pool.query(
-        `
-        INSERT INTO tasks (id, household_id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-      `,
-        [
-          t.id,
-          householdId,
-          t.title,
-          t.date,
-          t.endDate ?? null,
-          t.timeLabel ?? null,
-          t.priority,
-          t.recurrence ?? null,
-          t.description ?? null,
-          JSON.stringify(t.assignees),
-          t.seriesId ?? null,
-          t.daysOfWeek ?? null,
-          t.durationWeeks ?? null,
-          t.notificationTime ?? null,
-          t.color ?? null,
-          req.user?.role + "/" + req.user?.householdId, // Simple createdBy tracking
-        ]
-      )
-    );
-
-    await Promise.all(insertPromises);
-
-    res.status(201).json(tasksToAdd);
-  } catch (err) {
-    console.error("Error en POST /api/tasks", err);
-    res.status(500).json({ message: "Error interno" });
-  }
-});
-
-// PUT actualizar tarea
-app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
-  const { id } = req.params;
-  const { updateAll } = req.query;
-  const householdId = req.user?.householdId;
-  const {
-    title,
-    date,
-    endDate,
-    time,
-    assigneeId,
-    priority,
-    recurrence,
-    description,
-    daysOfWeek,
-    durationWeeks,
-    notificationTime,
-    color,
-    isCompleted,
-    createdBy,
-    createdAt,
-  } = req.body as {
-    title?: string;
-    date?: string;
-    endDate?: string;
-    time?: string;
-    assigneeId?: string;
-    priority?: Priority;
-    recurrence?: Recurrence;
-    description?: string;
-    daysOfWeek?: number[];
-    durationWeeks?: number;
-    notificationTime?: number;
-    color?: string;
-    isCompleted?: boolean;
-    createdBy?: string;
-    createdAt?: string;
-  };
-
-  if (!title || !date || !assigneeId || !priority) {
-    return res.status(400).json({ message: "Faltan campos obligatorios" });
-  }
-
-  // Validate Assignee against DB
-  const memberRes = await pool.query(
-    "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
-    [assigneeId, householdId]
-  );
-  if (memberRes.rowCount === 0) {
-    return res.status(400).json({ message: "Miembro de familia no válido" });
-  }
-  const member = memberRes.rows[0];
-
-  try {
-    console.log("PUT /api/tasks/:id - Received isCompleted:", isCompleted);
-    console.log("PUT /api/tasks/:id - Full body:", req.body);
-
-    // SERIES UPDATE
-    if (updateAll === "true") {
-      const taskRes = await pool.query(
-        "SELECT series_id FROM tasks WHERE id = $1",
-        [id]
+      // Validate Assignee against DB
+      const memberRes = await pool.query(
+        "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
+        [assigneeId, householdId]
       );
-      if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
-        const seriesId = taskRes.rows[0].series_id;
 
-        // 1. Delete old series
-        await pool.query("DELETE FROM tasks WHERE series_id = $1", [seriesId]);
+      // Handle legacy "familia" or "todos" if needed, but for now strict check:
+      if (memberRes.rowCount === 0) {
+        return res
+          .status(400)
+          .json({ message: "Miembro de familia no válido" });
+      }
+      const member = memberRes.rows[0];
 
-        // 2. Generate new tasks
-        const base: Omit<Task, "id"> = {
-          title: title.trim(),
-          date,
-          endDate,
-          timeLabel: time || undefined,
-          priority,
-          assignees: [member],
-          recurrence,
-          description: description?.trim() || undefined,
-          seriesId, // Keep same series ID
-          daysOfWeek,
-          durationWeeks,
-          notificationTime,
-          color,
-          createdBy,
-          createdAt,
-        };
+      const base: Omit<Task, "id"> = {
+        title: title.trim(),
+        date,
+        endDate,
+        timeLabel: time || undefined,
+        priority,
+        assignees: [member],
+        recurrence,
+        description: description?.trim() || undefined,
+        seriesId: recurrence !== "NONE" ? randomUUID() : undefined,
+        daysOfWeek,
+        durationWeeks,
+        notificationTime,
+        color,
+        createdBy: req.body.createdBy,
+      };
 
-        const tasksToAdd: Task[] = [];
+      const tasksToAdd: Task[] = [];
 
-        if (
-          recurrence === "CUSTOM_WEEKLY" &&
-          Array.isArray(daysOfWeek) &&
-          daysOfWeek.length
-        ) {
-          const weeks = durationWeeks && durationWeeks > 0 ? durationWeeks : 4;
-          for (let week = 0; week < weeks; week++) {
-            for (const weekday of daysOfWeek) {
-              const jsTarget = weekday === 7 ? 0 : weekday;
-              const baseDate = new Date(date);
-              baseDate.setHours(12, 0, 0, 0);
-              baseDate.setDate(baseDate.getDate() + week * 7);
-              const diff = (jsTarget - baseDate.getDay() + 7) % 7;
-              baseDate.setDate(baseDate.getDate() + diff);
-              const taskDate = baseDate.toISOString().slice(0, 10);
-              tasksToAdd.push({ ...base, id: randomUUID(), date: taskDate });
-            }
+      if (
+        recurrence === "CUSTOM_WEEKLY" &&
+        Array.isArray(daysOfWeek) &&
+        daysOfWeek.length
+      ) {
+        const weeks = durationWeeks && durationWeeks > 0 ? durationWeeks : 4;
+
+        for (let week = 0; week < weeks; week++) {
+          for (const weekday of daysOfWeek) {
+            const jsTarget = weekday === 7 ? 0 : weekday;
+
+            const baseDate = new Date(date);
+            baseDate.setHours(12, 0, 0, 0);
+            baseDate.setDate(baseDate.getDate() + week * 7);
+
+            const diff = (jsTarget - baseDate.getDay() + 7) % 7;
+            baseDate.setDate(baseDate.getDate() + diff);
+
+            const taskDate = baseDate.toISOString().slice(0, 10);
+
+            tasksToAdd.push({
+              ...base,
+              id: randomUUID(),
+              date: taskDate,
+            });
           }
-        } else if (
-          (!recurrence || recurrence === "NONE") &&
-          endDate &&
-          endDate > date
-        ) {
-          // RANGO DE FECHAS -> Convertir a serie diaria
-          const start = new Date(date);
-          const end = new Date(endDate);
-          const diffTime = Math.abs(end.getTime() - start.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+      } else if (
+        (!recurrence || recurrence === "NONE") &&
+        endDate &&
+        endDate > date
+      ) {
+        // RANGO DE FECHAS -> Convertir a serie diaria
+        const start = new Date(date);
+        const end = new Date(endDate);
 
-          // Reuse existing seriesId if available
-          const rangeSeriesId = base.seriesId || randomUUID();
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-          for (let i = 0; i <= diffDays; i++) {
+        // Generate a new Series ID if not already present
+        const rangeSeriesId = base.seriesId || randomUUID();
+
+        for (let i = 0; i <= diffDays; i++) {
+          tasksToAdd.push({
+            ...base,
+            id: randomUUID(),
+            date: addDays(date, i),
+            endDate: undefined,
+            seriesId: rangeSeriesId,
+            recurrence: "NONE",
+          });
+        }
+      } else {
+        const baseTask: Task = {
+          ...base,
+          id: randomUUID(),
+        };
+        tasksToAdd.push(baseTask);
+
+        if (recurrence === "DAILY") {
+          for (let i = 1; i <= 6; i++) {
             tasksToAdd.push({
               ...base,
               id: randomUUID(),
               date: addDays(date, i),
-              endDate: undefined,
-              seriesId: rangeSeriesId,
-              recurrence: "NONE",
             });
           }
-        } else {
-          // Normal recurrence logic
-          const baseTask: Task = { ...base, id: randomUUID() };
-          tasksToAdd.push(baseTask);
-          if (recurrence === "DAILY") {
-            for (let i = 1; i <= 6; i++) {
-              tasksToAdd.push({
-                ...base,
-                id: randomUUID(),
-                date: addDays(date, i),
-              });
-            }
-          } else if (recurrence === "WEEKLY") {
-            for (let i = 1; i <= 3; i++) {
-              tasksToAdd.push({
-                ...base,
-                id: randomUUID(),
-                date: addDays(date, 7 * i),
-              });
-            }
-          } else if (recurrence === "MONTHLY") {
-            for (let i = 1; i <= 11; i++) {
-              tasksToAdd.push({
-                ...base,
-                id: randomUUID(),
-                date: addMonths(date, i),
-              });
-            }
+        } else if (recurrence === "WEEKLY") {
+          for (let i = 1; i <= 3; i++) {
+            tasksToAdd.push({
+              ...base,
+              id: randomUUID(),
+              date: addDays(date, i * 7),
+            });
+          }
+        } else if (recurrence === "MONTHLY") {
+          for (let i = 1; i <= 11; i++) {
+            tasksToAdd.push({
+              ...base,
+              id: randomUUID(),
+              date: addMonths(date, i),
+            });
           }
         }
+      }
 
-        // Insert all
+      try {
         const insertPromises = tasksToAdd.map((t) =>
           pool.query(
-            `INSERT INTO tasks (id, household_id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+            `
+        INSERT INTO tasks (id, household_id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      `,
             [
               t.id,
-              householdId, // Add householdId
+              householdId,
               t.title,
               t.date,
               t.endDate ?? null,
@@ -1597,204 +1404,414 @@ app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
               t.durationWeeks ?? null,
               t.notificationTime ?? null,
               t.color ?? null,
-              t.createdBy ?? null,
-              t.createdAt ?? new Date(), // Use provided createdAt or current time
+              req.user?.role + "/" + req.user?.householdId, // Simple createdBy tracking
             ]
           )
         );
+
         await Promise.all(insertPromises);
 
-        return res.json(tasksToAdd[0]);
+        res.status(201).json(tasksToAdd);
+      } catch (err) {
+        console.error("Error en POST /api/tasks", err);
+        res.status(500).json({ message: "Error interno" });
       }
-    }
+    });
 
-    // SINGLE UPDATE
-    const result = await pool.query(
-      `
+    // PUT actualizar tarea
+    app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
+      const { id } = req.params;
+      const { updateAll } = req.query;
+      const householdId = req.user?.householdId;
+      const {
+        title,
+        date,
+        endDate,
+        time,
+        assigneeId,
+        priority,
+        recurrence,
+        description,
+        daysOfWeek,
+        durationWeeks,
+        notificationTime,
+        color,
+        isCompleted,
+        createdBy,
+        createdAt,
+      } = req.body as {
+        title?: string;
+        date?: string;
+        endDate?: string;
+        time?: string;
+        assigneeId?: string;
+        priority?: Priority;
+        recurrence?: Recurrence;
+        description?: string;
+        daysOfWeek?: number[];
+        durationWeeks?: number;
+        notificationTime?: number;
+        color?: string;
+        isCompleted?: boolean;
+        createdBy?: string;
+        createdAt?: string;
+      };
+
+      if (!title || !date || !assigneeId || !priority) {
+        return res.status(400).json({ message: "Faltan campos obligatorios" });
+      }
+
+      // Validate Assignee against DB
+      const memberRes = await pool.query(
+        "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
+        [assigneeId, householdId]
+      );
+      if (memberRes.rowCount === 0) {
+        return res
+          .status(400)
+          .json({ message: "Miembro de familia no válido" });
+      }
+      const member = memberRes.rows[0];
+
+      try {
+        console.log("PUT /api/tasks/:id - Received isCompleted:", isCompleted);
+        console.log("PUT /api/tasks/:id - Full body:", req.body);
+
+        // SERIES UPDATE
+        if (updateAll === "true") {
+          const taskRes = await pool.query(
+            "SELECT series_id FROM tasks WHERE id = $1",
+            [id]
+          );
+          if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
+            const seriesId = taskRes.rows[0].series_id;
+
+            // 1. Delete old series
+            await pool.query("DELETE FROM tasks WHERE series_id = $1", [
+              seriesId,
+            ]);
+
+            // 2. Generate new tasks
+            const base: Omit<Task, "id"> = {
+              title: title.trim(),
+              date,
+              endDate,
+              timeLabel: time || undefined,
+              priority,
+              assignees: [member],
+              recurrence,
+              description: description?.trim() || undefined,
+              seriesId, // Keep same series ID
+              daysOfWeek,
+              durationWeeks,
+              notificationTime,
+              color,
+              createdBy,
+              createdAt,
+            };
+
+            const tasksToAdd: Task[] = [];
+
+            if (
+              recurrence === "CUSTOM_WEEKLY" &&
+              Array.isArray(daysOfWeek) &&
+              daysOfWeek.length
+            ) {
+              const weeks =
+                durationWeeks && durationWeeks > 0 ? durationWeeks : 4;
+              for (let week = 0; week < weeks; week++) {
+                for (const weekday of daysOfWeek) {
+                  const jsTarget = weekday === 7 ? 0 : weekday;
+                  const baseDate = new Date(date);
+                  baseDate.setHours(12, 0, 0, 0);
+                  baseDate.setDate(baseDate.getDate() + week * 7);
+                  const diff = (jsTarget - baseDate.getDay() + 7) % 7;
+                  baseDate.setDate(baseDate.getDate() + diff);
+                  const taskDate = baseDate.toISOString().slice(0, 10);
+                  tasksToAdd.push({
+                    ...base,
+                    id: randomUUID(),
+                    date: taskDate,
+                  });
+                }
+              }
+            } else if (
+              (!recurrence || recurrence === "NONE") &&
+              endDate &&
+              endDate > date
+            ) {
+              // RANGO DE FECHAS -> Convertir a serie diaria
+              const start = new Date(date);
+              const end = new Date(endDate);
+              const diffTime = Math.abs(end.getTime() - start.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+              // Reuse existing seriesId if available
+              const rangeSeriesId = base.seriesId || randomUUID();
+
+              for (let i = 0; i <= diffDays; i++) {
+                tasksToAdd.push({
+                  ...base,
+                  id: randomUUID(),
+                  date: addDays(date, i),
+                  endDate: undefined,
+                  seriesId: rangeSeriesId,
+                  recurrence: "NONE",
+                });
+              }
+            } else {
+              // Normal recurrence logic
+              const baseTask: Task = { ...base, id: randomUUID() };
+              tasksToAdd.push(baseTask);
+              if (recurrence === "DAILY") {
+                for (let i = 1; i <= 6; i++) {
+                  tasksToAdd.push({
+                    ...base,
+                    id: randomUUID(),
+                    date: addDays(date, i),
+                  });
+                }
+              } else if (recurrence === "WEEKLY") {
+                for (let i = 1; i <= 3; i++) {
+                  tasksToAdd.push({
+                    ...base,
+                    id: randomUUID(),
+                    date: addDays(date, 7 * i),
+                  });
+                }
+              } else if (recurrence === "MONTHLY") {
+                for (let i = 1; i <= 11; i++) {
+                  tasksToAdd.push({
+                    ...base,
+                    id: randomUUID(),
+                    date: addMonths(date, i),
+                  });
+                }
+              }
+            }
+
+            // Insert all
+            const insertPromises = tasksToAdd.map((t) =>
+              pool.query(
+                `INSERT INTO tasks (id, household_id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                [
+                  t.id,
+                  householdId, // Add householdId
+                  t.title,
+                  t.date,
+                  t.endDate ?? null,
+                  t.timeLabel ?? null,
+                  t.priority,
+                  t.recurrence ?? null,
+                  t.description ?? null,
+                  JSON.stringify(t.assignees),
+                  t.seriesId ?? null,
+                  t.daysOfWeek ?? null,
+                  t.durationWeeks ?? null,
+                  t.notificationTime ?? null,
+                  t.color ?? null,
+                  t.createdBy ?? null,
+                  t.createdAt ?? new Date(), // Use provided createdAt or current time
+                ]
+              )
+            );
+            await Promise.all(insertPromises);
+
+            return res.json(tasksToAdd[0]);
+          }
+        }
+
+        // SINGLE UPDATE
+        const result = await pool.query(
+          `
       UPDATE tasks
       SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13, created_by = COALESCE($14, created_by), created_at = COALESCE($15, created_at)
       WHERE id = $16 AND household_id = $17
       RETURNING *
     `,
-      [
-        title.trim(),
-        date,
-        endDate || null,
-        time || null,
-        priority,
-        recurrence || null,
-        description?.trim() || null,
-        JSON.stringify([member]),
-        daysOfWeek ?? null,
-        durationWeeks || null,
-        notificationTime || null,
-        color || null,
-        isCompleted ?? null,
-        createdBy ?? null,
-        createdAt ?? null,
-        id,
-        householdId,
-      ]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Tarea no encontrada" });
-    }
-
-    const row = result.rows[0];
-    const updatedTask: Task = {
-      id: row.id,
-      title: row.title,
-      date: row.date, // YYYY-MM-DD
-      endDate: row.end_date ?? undefined,
-      timeLabel: row.time_label ?? undefined,
-      priority: row.priority as Priority,
-      recurrence: row.recurrence ?? undefined,
-      description: row.description ?? undefined,
-      assignees: row.assignees as Assignee[],
-      seriesId: row.series_id ?? undefined,
-      daysOfWeek: row.days_of_week ?? undefined,
-      durationWeeks: row.duration_weeks ?? undefined,
-      notificationTime: row.notification_time ?? undefined,
-      color: row.color ?? undefined,
-      isCompleted: row.is_completed ?? undefined,
-      createdBy: row.created_by ?? undefined,
-      createdAt: row.created_at ?? undefined,
-    };
-
-    res.json(updatedTask);
-  } catch (err) {
-    console.error("Error en PUT /api/tasks/:id", err);
-    res.status(500).json({ message: "Error interno" });
-  }
-});
-
-// DELETE
-app.delete("/api/tasks/:id", authMiddleware, async (req, res) => {
-  const { id } = req.params;
-  const { deleteAll } = req.query;
-  const householdId = req.user?.householdId;
-
-  try {
-    if (deleteAll === "true") {
-      // Get series_id first
-      const taskRes = await pool.query(
-        "SELECT series_id FROM tasks WHERE id = $1 AND household_id = $2",
-        [id, householdId]
-      );
-      if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
-        const seriesId = taskRes.rows[0].series_id;
-        await pool.query(
-          "DELETE FROM tasks WHERE series_id = $1 AND household_id = $2",
-          [seriesId, householdId]
+          [
+            title.trim(),
+            date,
+            endDate || null,
+            time || null,
+            priority,
+            recurrence || null,
+            description?.trim() || null,
+            JSON.stringify([member]),
+            daysOfWeek ?? null,
+            durationWeeks || null,
+            notificationTime || null,
+            color || null,
+            isCompleted ?? null,
+            createdBy ?? null,
+            createdAt ?? null,
+            id,
+            householdId,
+          ]
         );
-        return res.status(200).json({ ok: true });
+
+        if (result.rowCount === 0) {
+          return res.status(404).json({ message: "Tarea no encontrada" });
+        }
+
+        const row = result.rows[0];
+        const updatedTask: Task = {
+          id: row.id,
+          title: row.title,
+          date: row.date, // YYYY-MM-DD
+          endDate: row.end_date ?? undefined,
+          timeLabel: row.time_label ?? undefined,
+          priority: row.priority as Priority,
+          recurrence: row.recurrence ?? undefined,
+          description: row.description ?? undefined,
+          assignees: row.assignees as Assignee[],
+          seriesId: row.series_id ?? undefined,
+          daysOfWeek: row.days_of_week ?? undefined,
+          durationWeeks: row.duration_weeks ?? undefined,
+          notificationTime: row.notification_time ?? undefined,
+          color: row.color ?? undefined,
+          isCompleted: row.is_completed ?? undefined,
+          createdBy: row.created_by ?? undefined,
+          createdAt: row.created_at ?? undefined,
+        };
+
+        res.json(updatedTask);
+      } catch (err) {
+        console.error("Error en PUT /api/tasks/:id", err);
+        res.status(500).json({ message: "Error interno" });
       }
-    }
+    });
 
-    const result = await pool.query(
-      "DELETE FROM tasks WHERE id = $1 AND household_id = $2",
-      [id, householdId]
-    );
+    // DELETE
+    app.delete("/api/tasks/:id", authMiddleware, async (req, res) => {
+      const { id } = req.params;
+      const { deleteAll } = req.query;
+      const householdId = req.user?.householdId;
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Tarea no encontrada" });
-    }
+      try {
+        if (deleteAll === "true") {
+          // Get series_id first
+          const taskRes = await pool.query(
+            "SELECT series_id FROM tasks WHERE id = $1 AND household_id = $2",
+            [id, householdId]
+          );
+          if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
+            const seriesId = taskRes.rows[0].series_id;
+            await pool.query(
+              "DELETE FROM tasks WHERE series_id = $1 AND household_id = $2",
+              [seriesId, householdId]
+            );
+            return res.status(200).json({ ok: true });
+          }
+        }
 
-    res.status(200).json({ ok: true });
-  } catch (err) {
-    console.error("Error en DELETE /api/tasks/:id", err);
-    res.status(500).json({ message: "Error interno" });
-  }
-});
+        const result = await pool.query(
+          "DELETE FROM tasks WHERE id = $1 AND household_id = $2",
+          [id, householdId]
+        );
 
-// MEMBERS CRUD
+        if (result.rowCount === 0) {
+          return res.status(404).json({ message: "Tarea no encontrada" });
+        }
 
-// GET Members
-app.get("/api/members", authMiddleware, async (req, res) => {
-  const householdId = req.user?.householdId;
-  if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+        res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("Error en DELETE /api/tasks/:id", err);
+        res.status(500).json({ message: "Error interno" });
+      }
+    });
 
-  try {
-    const result = await pool.query(
-      "SELECT * FROM family_members WHERE household_id = $1 ORDER BY created_at ASC",
-      [householdId]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error fetching members:", err);
-    res.status(500).json({ message: "Error fetching members" });
-  }
-});
+    // MEMBERS CRUD
 
-// POST Create Member
-app.post("/api/members", authMiddleware, async (req, res) => {
-  const { name, color } = req.body;
-  const householdId = req.user?.householdId;
-  if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+    // GET Members
+    app.get("/api/members", authMiddleware, async (req, res) => {
+      const householdId = req.user?.householdId;
+      if (!householdId)
+        return res.status(401).json({ message: "Unauthorized" });
 
-  try {
-    const id = randomUUID();
-    await pool.query(
-      "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
-      [id, householdId, name, color]
-    );
-    res.status(201).json({ id, household_id: householdId, name, color });
-  } catch (err) {
-    console.error("Error creating member:", err);
-    res.status(500).json({ message: "Error creating member" });
-  }
-});
+      try {
+        const result = await pool.query(
+          "SELECT * FROM family_members WHERE household_id = $1 ORDER BY created_at ASC",
+          [householdId]
+        );
+        res.json(result.rows);
+      } catch (err) {
+        console.error("Error fetching members:", err);
+        res.status(500).json({ message: "Error fetching members" });
+      }
+    });
 
-// PUT Update Member
-app.put("/api/members/:id", authMiddleware, async (req, res) => {
-  const { id } = req.params;
-  const { name, color } = req.body;
-  const householdId = req.user?.householdId;
-  if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+    // POST Create Member
+    app.post("/api/members", authMiddleware, async (req, res) => {
+      const { name, color } = req.body;
+      const householdId = req.user?.householdId;
+      if (!householdId)
+        return res.status(401).json({ message: "Unauthorized" });
 
-  try {
-    const result = await pool.query(
-      "UPDATE family_members SET name = $1, color = $2 WHERE id = $3 AND household_id = $4 RETURNING *",
-      [name, color, id, householdId]
-    );
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Member not found" });
-    }
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("Error updating member:", err);
-    res.status(500).json({ message: "Error updating member" });
-  }
-});
+      try {
+        const id = randomUUID();
+        await pool.query(
+          "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
+          [id, householdId, name, color]
+        );
+        res.status(201).json({ id, household_id: householdId, name, color });
+      } catch (err) {
+        console.error("Error creating member:", err);
+        res.status(500).json({ message: "Error creating member" });
+      }
+    });
 
-// DELETE Member
-app.delete("/api/members/:id", authMiddleware, async (req, res) => {
-  const { id } = req.params;
-  const householdId = req.user?.householdId;
-  if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+    // PUT Update Member
+    app.put("/api/members/:id", authMiddleware, async (req, res) => {
+      const { id } = req.params;
+      const { name, color } = req.body;
+      const householdId = req.user?.householdId;
+      if (!householdId)
+        return res.status(401).json({ message: "Unauthorized" });
 
-  try {
-    const result = await pool.query(
-      "DELETE FROM family_members WHERE id = $1 AND household_id = $2",
-      [id, householdId]
-    );
+      try {
+        const result = await pool.query(
+          "UPDATE family_members SET name = $1, color = $2 WHERE id = $3 AND household_id = $4 RETURNING *",
+          [name, color, id, householdId]
+        );
+        if (result.rowCount === 0) {
+          return res.status(404).json({ message: "Member not found" });
+        }
+        res.json(result.rows[0]);
+      } catch (err) {
+        console.error("Error updating member:", err);
+        res.status(500).json({ message: "Error updating member" });
+      }
+    });
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Member not found" });
-    }
-    res.json({ message: "Member deleted" });
-  } catch (err: any) {
-    console.error("Error deleting member:", err);
-    if (err.code === "23503") {
-      return res
-        .status(400)
-        .json({ message: "Cannot delete member with assigned tasks" });
-    }
-    res.status(500).json({ message: "Error deleting member" });
-  }
-});
+    // DELETE Member
+    app.delete("/api/members/:id", authMiddleware, async (req, res) => {
+      const { id } = req.params;
+      const householdId = req.user?.householdId;
+      if (!householdId)
+        return res.status(401).json({ message: "Unauthorized" });
 
+      try {
+        const result = await pool.query(
+          "DELETE FROM family_members WHERE id = $1 AND household_id = $2",
+          [id, householdId]
+        );
+
+        if (result.rowCount === 0) {
+          return res.status(404).json({ message: "Member not found" });
+        }
+        res.json({ message: "Member deleted" });
+      } catch (err: any) {
+        console.error("Error deleting member:", err);
+        if (err.code === "23503") {
+          return res
+            .status(400)
+            .json({ message: "Cannot delete member with assigned tasks" });
+        }
+        res.status(500).json({ message: "Error deleting member" });
+      }
+    });
   })
   .catch((err) => {
     console.error("Error inicializando la BBDD", err);
