@@ -23,20 +23,30 @@ export function FamilyWall() {
     const [attachedImage, setAttachedImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     // Logic to determine a "valid" current user could be added here, 
     // currently defaults to selection or first member.
 
-    const handleAdd = (e: React.FormEvent) => {
+    const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newNoteContent.trim() && !attachedImage) return;
 
-        addNote(newNoteContent, selectedAuthorId, NOTE_COLORS[selectedColorIdx].bg, attachedImage || undefined);
-        setNewNoteContent("");
-        setAttachedImage(null);
-        setIsAdding(false);
+        setIsSubmitting(true);
+        try {
+            await addNote(newNoteContent, selectedAuthorId, NOTE_COLORS[selectedColorIdx].bg, attachedImage || undefined);
+            setNewNoteContent("");
+            setAttachedImage(null);
+            setIsAdding(false);
 
-        // Reset file input
-        if (fileInputRef.current) fileInputRef.current.value = "";
+            // Reset file input
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        } catch (err) {
+            console.error("Error saving note:", err);
+            await alert("Hubo un problema al guardar la nota. Intenta reducir el tamaño de la imagen o prueba de nuevo.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleDelete = async (id: string) => {
@@ -112,7 +122,6 @@ export function FamilyWall() {
             {isAdding && (
                 <form onSubmit={handleAdd} className="bg-white p-3 rounded-xl border border-indigo-100 shadow-sm mb-4 animate-in slide-in-from-top-2">
                     <textarea
-                        autoFocus
                         rows={3}
                         placeholder="Escribe algo..."
                         className={`w-full p-3 rounded-lg text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none ${NOTE_COLORS[selectedColorIdx].bg}`}
@@ -196,10 +205,10 @@ export function FamilyWall() {
                             </button>
                             <button
                                 type="submit"
-                                disabled={!newNoteContent.trim() && !attachedImage}
-                                className="text-xs bg-indigo-600 text-white px-4 py-1.5 rounded-lg font-medium disabled:opacity-50"
+                                disabled={(!newNoteContent.trim() && !attachedImage) || isSubmitting}
+                                className="text-xs bg-indigo-600 text-white px-4 py-1.5 rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
                             >
-                                Pegar Nota
+                                {isSubmitting ? 'Guardando...' : 'Pegar Nota'}
                             </button>
                         </div>
                     </div>

@@ -42,7 +42,6 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Contraseña"
                             className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all text-lg"
-                            autoFocus
                         />
                     </div>
 
