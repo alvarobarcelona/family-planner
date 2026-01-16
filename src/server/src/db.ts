@@ -9,9 +9,10 @@ if (!connectionString) {
 
 // Detectamos si estamos en producción
 const isProduction = process.env.NODE_ENV === "production";
+const isRemote = connectionString?.includes("localhost") === false;
 
 export const pool = new Pool({
   connectionString,
-  // En producción (Render, etc.) usamos SSL, en local no
-  ssl: isProduction ? { rejectUnauthorized: false } : undefined,
+  // Force SSL if remote or production
+  ssl: isProduction || isRemote ? { rejectUnauthorized: false } : undefined,
 });

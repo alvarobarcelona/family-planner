@@ -30,11 +30,11 @@ function getAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function login(password: string): Promise<void> {
+export async function login(name: string, password: string): Promise<void> {
   const res = await fetch(buildUrl("/api/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ name, password }),
   });
 
   if (!res.ok) {
