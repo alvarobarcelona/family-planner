@@ -1,10 +1,50 @@
+const CACHE_NAME = "family-planner-cache-v1";
+
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          }),
+        );
+      }),
+    ]),
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        }),
+    );
+  }
+});
+
 self.addEventListener("push", function (event) {
   if (event.data) {
     try {
       const payload = event.data.json();
       const options = {
         body: payload.body,
-        icon: payload.icon || "/icons/icon-192.png", 
+        icon: payload.icon || "/icons/icon-192.png",
         vibrate: [100, 50, 100],
         data: {
           dateOfArrival: Date.now(),
@@ -14,7 +54,7 @@ self.addEventListener("push", function (event) {
       };
 
       event.waitUntil(
-        self.registration.showNotification(payload.title, options)
+        self.registration.showNotification(payload.title, options),
       );
     } catch (e) {
       console.error("Error parsing push payload", e);
@@ -39,6 +79,6 @@ self.addEventListener("notificationclick", function (event) {
         if (clients.openWindow) {
           return clients.openWindow(event.notification.data.url);
         }
-      })
+      }),
   );
 });
