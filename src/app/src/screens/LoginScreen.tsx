@@ -20,8 +20,9 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             await login(name, password);
 
             onLoginSuccess();
-        } catch (err) {
-            setError("Contraseña incorrecta");
+        } catch (err: any) {
+            console.error("Login error:", err);
+            setError(err.message || "Error al iniciar sesión");
         } finally {
             setLoading(false);
         }

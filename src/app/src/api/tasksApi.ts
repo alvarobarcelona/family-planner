@@ -21,6 +21,8 @@ export interface CreateTaskDto {
 const rawBaseUrl = import.meta.env.VITE_API_URL ?? "";
 const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
+console.log("Current API_BASE_URL:", API_BASE_URL);
+
 function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`;
 }
@@ -88,7 +90,7 @@ export async function createTasks(payload: CreateTaskDto): Promise<Task[]> {
 
 export async function deleteTask(
   id: string,
-  deleteAll?: boolean
+  deleteAll?: boolean,
 ): Promise<void> {
   const query = deleteAll ? "?deleteAll=true" : "";
   const res = await fetch(buildUrl(`/api/tasks/${id}${query}`), {
@@ -104,7 +106,7 @@ export async function deleteTask(
 export async function updateTask(
   id: string,
   payload: CreateTaskDto,
-  updateAll?: boolean
+  updateAll?: boolean,
 ): Promise<Task> {
   const query = updateAll ? "?updateAll=true" : "";
   const res = await fetch(buildUrl(`/api/tasks/${id}${query}`), {
