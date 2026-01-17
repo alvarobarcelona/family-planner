@@ -14,7 +14,9 @@ export function AdminScreen() {
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingMode, setEditingMode] = useState<"password" | "name" | null>(null);
     const [editingPassword, setEditingPassword] = useState("");
+    const [editingName, setEditingName] = useState("");
 
     const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
@@ -101,7 +103,12 @@ export function AdminScreen() {
 
     if (!isAuthenticated) {
         return (
+
+
+
             <div className="min-h-screen flex items-center justify-center bg-stone-50">
+
+
                 <form
                     onSubmit={handleLogin}
                     className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm"
@@ -115,12 +122,18 @@ export function AdminScreen() {
                         className="w-full border p-2 rounded mb-4"
                     />
                     {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-                    <button
-                        type="submit"
-                        className="w-full bg-stone-800 text-white p-2 rounded hover:bg-stone-700"
-                    >
-                        Enter
-                    </button>
+
+                    <div className="flex justify-between items-center mb-4 gap-4">
+                        <a className="w-full text-center bg-stone-800 text-white p-2 rounded hover:bg-stone-700" href="/login">Atras</a>
+                        <button
+                            type="submit"
+                            className="w-full text-center bg-stone-800 text-white p-2 rounded hover:bg-stone-700"
+                        >
+                            Enter
+                        </button>
+
+                    </div>
+
                 </form>
             </div>
         );
@@ -145,11 +158,45 @@ export function AdminScreen() {
 
             if (res.ok) {
                 setMessage("Password actualizado correctamente");
+                setMessage("Password actualizado correctamente");
                 setEditingId(null);
+                setEditingMode(null);
                 setEditingPassword("");
             } else {
                 const data = await res.json();
                 setError(data.message || "Error al actualizar password");
+            }
+        } catch (err) {
+            setError("Error de conexión");
+        }
+    };
+
+    const updateName = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingId) return;
+
+        try {
+            const res = await fetch(
+                `${API_URL}/api/admin/households/${editingId}/name`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-admin-password": password,
+                    },
+                    body: JSON.stringify({ name: editingName }),
+                }
+            );
+
+            if (res.ok) {
+                setMessage("Nombre actualizado correctamente");
+                setMessage("Nombre actualizado correctamente");
+                setEditingId(null);
+                setEditingMode(null);
+                setEditingName("");
+            } else {
+                const data = await res.json();
+                setError(data.message || "Error al actualizar nombre");
             }
         } catch (err) {
             setError("Error de conexión");
@@ -239,6 +286,7 @@ export function AdminScreen() {
                                         <button
                                             onClick={() => {
                                                 setEditingId(h.id);
+                                                setEditingMode("password");
                                                 setEditingPassword("");
                                                 setError("");
                                                 setMessage("");
@@ -246,6 +294,18 @@ export function AdminScreen() {
                                             className="text-blue-500 hover:text-blue-700 text-sm font-semibold"
                                         >
                                             Cambiar Pass
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setEditingId(h.id);
+                                                setEditingMode("name");
+                                                setEditingName("");
+                                                setError("");
+                                                setMessage("");
+                                            }}
+                                            className="text-blue-500 hover:text-blue-700 text-sm font-semibold"
+                                        >
+                                            Cambiar nombre
                                         </button>
                                         <button
                                             onClick={() => deleteHousehold(h.id)}
@@ -269,7 +329,7 @@ export function AdminScreen() {
             </div>
 
             {/* Edit Password Modal */}
-            {editingId && (
+            {editingId && editingMode === "password" && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
                         <h3 className="text-lg font-bold mb-4">Cambiar Contraseña</h3>
@@ -289,7 +349,51 @@ export function AdminScreen() {
                             <div className="flex justify-end gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => setEditingId(null)}
+                                    onClick={() => {
+                                        setEditingId(null);
+                                        setEditingMode(null);
+                                    }}
+                                    className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Name Modal */}
+            {editingId && editingMode === "name" && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+                        <h3 className="text-lg font-bold mb-4">Cambiar Nombre</h3>
+                        <p className="text-sm text-stone-500 mb-4">
+                            Introduce el nuevo nombre para esta familia.
+                        </p>
+                        <form onSubmit={updateName}>
+                            <input
+                                type="text"
+                                value={editingName}
+                                onChange={(e) => setEditingName(e.target.value)}
+                                className="w-full border p-2 rounded mb-4"
+                                placeholder="Nuevo nombre"
+                                required
+
+                            />
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setEditingId(null);
+                                        setEditingMode(null);
+                                    }}
                                     className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded"
                                 >
                                     Cancelar

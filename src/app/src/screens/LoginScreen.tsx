@@ -28,10 +28,10 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#fdfbf7] px-4">
+        <div className="min-h-screen flex items-center justify-center bg-blue-100 px-4">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-stone-100">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-stone-800 mb-2">Bienvenido/a</h1>
+                    <h1 className="text-3xl font-bold text-stone-800 mb-2">Bienvenidos a vuestro Family Planner</h1>
                     <p className="text-stone-500">Introduce la contraseña familiar</p>
                 </div>
 

@@ -299,6 +299,38 @@ app.put(
   }
 );
 
+// PUT Update Household Name
+app.put("/api/admin/households/:id/name", adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ message: "Name required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "UPDATE households SET name = $1 WHERE id = $2",
+      [name, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Household not found" });
+    }
+
+    res.json({ message: "Name updated" });
+  } catch (err: any) {
+    console.error("Error updating name:", err);
+    if (err.code === "23505") {
+      return res.status(409).json({ message: "Name already taken" });
+    }
+    res.status(500).json({
+      message: "Error updating name",
+      error: err.message,
+    });
+  }
+});
+
 // --- APP ENDPOINTS ---
 
 // Login Endpoint
