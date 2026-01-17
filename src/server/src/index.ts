@@ -221,7 +221,6 @@ app.post("/api/admin/households", adminMiddleware, async (req, res) => {
 
     // Seed Members with UUIDs
     const members = [
-      { name: "Mamá/Trabajo", color: "#c5e03aff" },
       { name: "Mamá", color: "#f97316" },
       { name: "Papá", color: "#22c55e" },
       { name: "Todos", color: "#6366f1" },
