@@ -61,8 +61,21 @@ export async function getTasks(): Promise<Task[]> {
     headers: { ...getAuthHeaders() },
   });
   if (!res.ok) {
-    throw new Error("Error al cargar tareas");
+    const text = await res.text();
+    throw new Error(
+      `Error loading tasks: ${res.status} ${text.substring(0, 100)}`,
+    );
   }
+
+  const contentType = res.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    const text = await res.text();
+    // This is often the Vercel 404 HTML page if proxy fails
+    throw new Error(
+      `Invalid API response (not JSON). Received: ${text.substring(0, 150)}...`,
+    );
+  }
+
   return res.json();
 }
 
