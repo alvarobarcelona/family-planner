@@ -58,7 +58,7 @@ app.use(
         "The CORS policy for this site does not allow access from the specified Origin.";
       return callback(new Error(msg), false);
     },
-    credentials: false,
+    credentials: true,
   }),
 );
 

@@ -18,12 +18,16 @@ export interface CreateTaskDto {
   createdAt?: string;
 }
 
+// If VITE_API_URL is set (e.g. for specific dev), use it.
+// Otherwise, default to relative path "" which goes to the same domain (Vercel proxy or Vite proxy)
 const rawBaseUrl = import.meta.env.VITE_API_URL ?? "";
 const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
-console.log("Current API_BASE_URL:", API_BASE_URL);
+console.log("Current API_BASE_URL (empty means relative):", API_BASE_URL);
 
 function buildUrl(path: string) {
+  // If API_BASE_URL is empty, this returns "/api/foo", which is relative to current domain
+  // This triggers the Proxy in both Dev (vite) and Prod (vercel)
   return `${API_BASE_URL}${path}`;
 }
 
