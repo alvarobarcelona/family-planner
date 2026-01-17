@@ -16,7 +16,6 @@ function urlBase64ToUint8Array(base64String: string) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
-  return outputArray;
 }
 
 import { useModal } from "../context/ModalContext";
@@ -24,7 +23,9 @@ import { useModal } from "../context/ModalContext";
 export function usePushNotifications() {
   const { alert } = useModal();
   const [permission, setPermission] = useState<NotificationPermission>(
-    Notification.permission
+    typeof window !== "undefined" && "Notification" in window
+      ? window.Notification.permission
+      : "denied",
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -54,7 +55,7 @@ export function usePushNotifications() {
 
       await navigator.serviceWorker.ready;
 
-      const perm = await Notification.requestPermission();
+      const perm = await window.Notification.requestPermission();
       setPermission(perm);
 
       if (perm !== "granted") {
@@ -95,7 +96,7 @@ export function usePushNotifications() {
 
       if (!subscribeResponse.ok) {
         throw new Error(
-          `Failed to save subscription: ${subscribeResponse.status}`
+          `Failed to save subscription: ${subscribeResponse.status}`,
         );
       }
 
