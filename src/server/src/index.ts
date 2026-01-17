@@ -39,9 +39,27 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
+      }
+
+      // Allow mostly any local network IP for development (192.168.x.x)
+      // This is crucial for testing on mobile via LAN
+      const localNetworkRegex = /^http:\/\/192\.168\.\d+\.\d+:\d+$/;
+      if (localNetworkRegex.test(origin)) {
+        return callback(null, true);
+      }
+
+      const msg =
+        "The CORS policy for this site does not allow access from the specified Origin.";
+      return callback(new Error(msg), false);
+    },
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json({ limit: "10mb" }));
@@ -123,14 +141,14 @@ const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-change-me";
 
 if (!APP_SECRET_PASSWORD) {
   console.warn(
-    "WARNING: APP_SECRET_PASSWORD is not set in environment variables."
+    "WARNING: APP_SECRET_PASSWORD is not set in environment variables.",
   );
 }
 
 function authMiddleware(
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -161,7 +179,7 @@ const ADMIN_PASSWORD =
 function adminMiddleware(
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) {
   const adminAuth = req.headers["x-admin-password"];
   if (adminAuth !== ADMIN_PASSWORD) {
@@ -176,7 +194,7 @@ function adminMiddleware(
 app.get("/api/admin/households", adminMiddleware, async (_req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, name FROM households ORDER BY name"
+      "SELECT id, name FROM households ORDER BY name",
     );
     res.json(result.rows);
   } catch (err) {
@@ -198,7 +216,7 @@ app.post("/api/admin/households", adminMiddleware, async (req, res) => {
 
     await pool.query(
       "INSERT INTO households (id, name, password_hash) VALUES ($1, $2, $3)",
-      [id, name, hash]
+      [id, name, hash],
     );
 
     // Seed Members with UUIDs
@@ -212,7 +230,7 @@ app.post("/api/admin/households", adminMiddleware, async (req, res) => {
     for (const m of members) {
       await pool.query(
         "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
-        [randomUUID(), id, m.name, m.color]
+        [randomUUID(), id, m.name, m.color],
       );
     }
 
@@ -281,7 +299,7 @@ app.put(
 
       const result = await pool.query(
         "UPDATE households SET password_hash = $1 WHERE id = $2",
-        [hash, id]
+        [hash, id],
       );
 
       if (result.rowCount === 0) {
@@ -296,7 +314,7 @@ app.put(
         error: err.message,
       });
     }
-  }
+  },
 );
 
 // PUT Update Household Name
@@ -311,7 +329,7 @@ app.put("/api/admin/households/:id/name", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       "UPDATE households SET name = $1 WHERE id = $2",
-      [name, id]
+      [name, id],
     );
 
     if (result.rowCount === 0) {
@@ -346,7 +364,7 @@ app.post("/api/login", async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT * FROM households WHERE lower(name) = lower($1)",
-      [name]
+      [name],
     );
 
     if (result.rowCount === 0) {
@@ -365,7 +383,7 @@ app.post("/api/login", async (req, res) => {
       JWT_SECRET,
       {
         expiresIn: "365d",
-      }
+      },
     );
     return res.json({ token, householdId: household.id, name: household.name });
   } catch (err) {
@@ -455,7 +473,7 @@ app.post("/api/subscribe", authMiddleware, async (req, res) => {
         subscription.endpoint,
         JSON.stringify(subscription.keys),
         req.headers["user-agent"],
-      ]
+      ],
     );
 
     res.status(201).json({ message: "Subscribed successfully" });
@@ -476,7 +494,7 @@ app.post("/api/unsubscribe", async (req, res) => {
   try {
     const result = await pool.query(
       "DELETE FROM push_subscriptions WHERE endpoint = $1",
-      [endpoint]
+      [endpoint],
     );
 
     if (result.rowCount === 0) {
@@ -518,7 +536,7 @@ async function initDb() {
   } catch (err) {
     console.log(
       "Column notification_time might already exist or error adding it:",
-      err
+      err,
     );
   }
 
@@ -541,7 +559,7 @@ async function initDb() {
   } catch (err) {
     console.log(
       "Column notification_sent might already exist or error adding it:",
-      err
+      err,
     );
   }
 
@@ -564,7 +582,7 @@ async function initDb() {
   } catch (err) {
     console.log(
       "Column is_completed might already exist or error adding it:",
-      err
+      err,
     );
   }
 
@@ -577,7 +595,7 @@ async function initDb() {
   } catch (err) {
     console.log(
       "Column created_by might already exist or error adding it:",
-      err
+      err,
     );
   }
 
@@ -590,7 +608,7 @@ async function initDb() {
   } catch (err) {
     console.log(
       "Column created_at might already exist or error adding it:",
-      err
+      err,
     );
   }
   // 1. Households
@@ -604,10 +622,10 @@ async function initDb() {
 
   try {
     await pool.query(
-      `ALTER TABLE households ADD COLUMN IF NOT EXISTS password_hash text;`
+      `ALTER TABLE households ADD COLUMN IF NOT EXISTS password_hash text;`,
     );
     await pool.query(
-      `ALTER TABLE households ADD CONSTRAINT unique_household_name UNIQUE (name);`
+      `ALTER TABLE households ADD CONSTRAINT unique_household_name UNIQUE (name);`,
     );
   } catch (err) {
     // Ignore constraint already exists error
@@ -663,7 +681,7 @@ async function initDb() {
   // Check if household exists
   const householdRes = await pool.query(
     "SELECT id FROM households WHERE id = $1",
-    [householdId]
+    [householdId],
   );
   if (householdRes.rowCount === 0) {
     try {
@@ -674,7 +692,7 @@ async function initDb() {
     } catch (err: any) {
       if (err.code === "23505") {
         console.log(
-          "Seed household 'Familia Barcelona' name already exists (probably used by real household). Skipping seed."
+          "Seed household 'Familia Barcelona' name already exists (probably used by real household). Skipping seed.",
         );
       } else {
         throw err;
@@ -693,12 +711,12 @@ async function initDb() {
   for (const m of members) {
     const memberRes = await pool.query(
       "SELECT id FROM family_members WHERE id = $1",
-      [m.id]
+      [m.id],
     );
     if (memberRes.rowCount === 0) {
       await pool.query(
         "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
-        [m.id, householdId, m.name, m.color]
+        [m.id, householdId, m.name, m.color],
       );
     }
   }
@@ -712,15 +730,15 @@ async function initDb() {
     const defaultHouseholdId = "00000000-0000-0000-0000-000000000000";
     await pool.query(
       `UPDATE tasks SET household_id = $1 WHERE household_id IS NULL`,
-      [defaultHouseholdId]
+      [defaultHouseholdId],
     );
     await pool.query(
-      `ALTER TABLE tasks ALTER COLUMN household_id SET NOT NULL`
+      `ALTER TABLE tasks ALTER COLUMN household_id SET NOT NULL`,
     );
   } catch (err) {
     console.log(
       "Column household_id might already exist or error adding it:",
-      err
+      err,
     );
   }
 
@@ -740,15 +758,15 @@ async function initDb() {
   // Add household_id to shopping_items if existing
   try {
     await pool.query(
-      `ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS household_id uuid REFERENCES households(id);`
+      `ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS household_id uuid REFERENCES households(id);`,
     );
     const defaultHouseholdId = "00000000-0000-0000-0000-000000000000";
     await pool.query(
       `UPDATE shopping_items SET household_id = $1 WHERE household_id IS NULL`,
-      [defaultHouseholdId]
+      [defaultHouseholdId],
     );
     await pool.query(
-      `ALTER TABLE shopping_items ALTER COLUMN household_id SET NOT NULL`
+      `ALTER TABLE shopping_items ALTER COLUMN household_id SET NOT NULL`,
     );
   } catch (e) {
     console.log(e);
@@ -769,15 +787,15 @@ async function initDb() {
   // Add household_id to shopping_favorites if existing
   try {
     await pool.query(
-      `ALTER TABLE shopping_favorites ADD COLUMN IF NOT EXISTS household_id uuid REFERENCES households(id);`
+      `ALTER TABLE shopping_favorites ADD COLUMN IF NOT EXISTS household_id uuid REFERENCES households(id);`,
     );
     const defaultHouseholdId = "00000000-0000-0000-0000-000000000000";
     await pool.query(
       `UPDATE shopping_favorites SET household_id = $1 WHERE household_id IS NULL`,
-      [defaultHouseholdId]
+      [defaultHouseholdId],
     );
     await pool.query(
-      `ALTER TABLE shopping_favorites ALTER COLUMN household_id SET NOT NULL`
+      `ALTER TABLE shopping_favorites ALTER COLUMN household_id SET NOT NULL`,
     );
   } catch (e) {
     console.log(e);
@@ -808,7 +826,7 @@ app.get("/api/shopping", authMiddleware, async (req, res) => {
     const householdId = req.user?.householdId;
     const result = await pool.query(
       "SELECT * FROM shopping_items WHERE household_id = $1 ORDER BY created_at DESC",
-      [householdId]
+      [householdId],
     );
     res.json(result.rows);
   } catch (err) {
@@ -831,27 +849,27 @@ app.post("/api/shopping", authMiddleware, async (req, res) => {
     // 1. Insert item
     const newItem = await pool.query(
       "INSERT INTO shopping_items (name, category, quantity, household_id) VALUES ($1, $2, $3, $4) RETURNING *",
-      [name, category, quantity || 1, householdId]
+      [name, category, quantity || 1, householdId],
     );
 
     // 2. Update/Insert favorite
     // Check if exists (case insensitive for name)
     const favRes = await pool.query(
       "SELECT * FROM shopping_favorites WHERE lower(name) = lower($1) AND household_id = $2",
-      [name, householdId]
+      [name, householdId],
     );
 
     if (favRes.rowCount && favRes.rowCount > 0) {
       // Update
       await pool.query(
         "UPDATE shopping_favorites SET usage_count = usage_count + 1, last_quantity = $1 WHERE id = $2",
-        [quantity || 1, favRes.rows[0].id]
+        [quantity || 1, favRes.rows[0].id],
       );
     } else {
       // Insert
       await pool.query(
         "INSERT INTO shopping_favorites (name, category, last_quantity, household_id) VALUES ($1, $2, $3, $4)",
-        [name, category, quantity || 1, householdId]
+        [name, category, quantity || 1, householdId],
       );
     }
 
@@ -917,7 +935,7 @@ app.delete("/api/shopping/:id", authMiddleware, async (req, res) => {
   try {
     await pool.query(
       "DELETE FROM shopping_items WHERE id = $1 AND household_id = $2",
-      [id, householdId]
+      [id, householdId],
     );
     res.json({ message: "Deleted" });
   } catch (err) {
@@ -932,7 +950,7 @@ app.get("/api/shopping/favorites", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT * FROM shopping_favorites WHERE household_id = $1 ORDER BY usage_count DESC",
-      [householdId]
+      [householdId],
     );
     res.json(result.rows);
   } catch (err) {
@@ -948,7 +966,7 @@ app.delete("/api/shopping/favorites/:id", authMiddleware, async (req, res) => {
   try {
     await pool.query(
       "DELETE FROM shopping_favorites WHERE id = $1 AND household_id = $2",
-      [id, householdId]
+      [id, householdId],
     );
     res.json({ message: "Deleted" });
   } catch (err) {
@@ -967,7 +985,7 @@ app.get("/api/family-wall", authMiddleware, async (req, res) => {
     const householdId = req.user?.householdId;
     const result = await pool.query(
       "SELECT * FROM family_wall_notes WHERE household_id = $1 ORDER BY created_at DESC",
-      [householdId]
+      [householdId],
     );
 
     // Convert snake_case to camelCase for frontend
@@ -1004,7 +1022,7 @@ app.post("/api/family-wall", authMiddleware, async (req, res) => {
       `INSERT INTO family_wall_notes (id, household_id, content, author_id, color, rotation, image_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [id, householdId, content || "", authorId, color, rotation, imageUrl]
+      [id, householdId, content || "", authorId, color, rotation, imageUrl],
     );
 
     const row = result.rows[0];
@@ -1030,7 +1048,7 @@ app.delete("/api/family-wall/:id", authMiddleware, async (req, res) => {
   try {
     await pool.query(
       "DELETE FROM family_wall_notes WHERE id = $1 AND household_id = $2",
-      [id, householdId]
+      [id, householdId],
     );
     res.json({ message: "Deleted" });
   } catch (err) {
@@ -1047,7 +1065,7 @@ app.put("/api/family-wall/:id", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       "UPDATE family_wall_notes SET content = $1 WHERE id = $2 AND household_id = $3 RETURNING *",
-      [content, id, householdId]
+      [content, id, householdId],
     );
     if (result.rowCount === 0)
       return res.status(404).json({ message: "Not found" });
@@ -1078,7 +1096,7 @@ async function checkAndSendNotifications(): Promise<{
       AND time_label IS NOT NULL
       AND (notification_sent IS NULL OR notification_sent = false)
     `,
-      [todayStr]
+      [todayStr],
     );
 
     for (const task of result.rows) {
@@ -1101,7 +1119,7 @@ async function checkAndSendNotifications(): Promise<{
 
       // Create a date in UTC, then adjust for CET timezone
       const utcDate = new Date(
-        Date.UTC(year, month - 1, day, hours, minutes, 0)
+        Date.UTC(year, month - 1, day, hours, minutes, 0),
       );
 
       // Get the correct timezone offset (60 or 120 minutes) based on DST
@@ -1110,7 +1128,7 @@ async function checkAndSendNotifications(): Promise<{
 
       // Subtract notification time
       const notifyTime = new Date(
-        targetDate.getTime() - task.notification_time * 60000
+        targetDate.getTime() - task.notification_time * 60000,
       );
 
       const diff = now.getTime() - notifyTime.getTime();
@@ -1145,7 +1163,7 @@ async function checkAndSendNotifications(): Promise<{
             family_member_id = ANY($2::text[])
           );
         `,
-          [householdId, assigneeIds]
+          [householdId, assigneeIds],
         );
 
         for (const sub of subsRes.rows) {
@@ -1173,7 +1191,7 @@ async function checkAndSendNotifications(): Promise<{
             // Update last_used_at to track when subscription was last used
             await pool.query(
               "UPDATE push_subscriptions SET last_used_at = now() WHERE endpoint = $1",
-              [sub.endpoint]
+              [sub.endpoint],
             );
           } else {
             errorCount++;
@@ -1182,7 +1200,7 @@ async function checkAndSendNotifications(): Promise<{
 
         await pool.query(
           "UPDATE tasks SET notification_sent = true WHERE id = $1",
-          [task.id]
+          [task.id],
         );
       }
     }
@@ -1219,7 +1237,7 @@ initDb()
       WHERE household_id = $1
       ORDER BY date, time_label NULLS FIRST, title;
     `,
-          [householdId]
+          [householdId],
         );
 
         const rows = result.rows as any[];
@@ -1299,7 +1317,7 @@ initDb()
       // Validate Assignee against DB
       const memberRes = await pool.query(
         "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
-        [assigneeId, householdId]
+        [assigneeId, householdId],
       );
 
       // Handle legacy "familia" or "todos" if needed, but for now strict check:
@@ -1439,8 +1457,8 @@ initDb()
               t.notificationTime ?? null,
               t.color ?? null,
               req.user?.role + "/" + req.user?.name, // Simple createdBy tracking
-            ]
-          )
+            ],
+          ),
         );
 
         await Promise.all(insertPromises);
@@ -1498,7 +1516,7 @@ initDb()
       // Validate Assignee against DB
       const memberRes = await pool.query(
         "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
-        [assigneeId, householdId]
+        [assigneeId, householdId],
       );
       if (memberRes.rowCount === 0) {
         return res
@@ -1515,7 +1533,7 @@ initDb()
         if (updateAll === "true") {
           const taskRes = await pool.query(
             "SELECT series_id FROM tasks WHERE id = $1",
-            [id]
+            [id],
           );
           if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
             const seriesId = taskRes.rows[0].series_id;
@@ -1647,8 +1665,8 @@ initDb()
                   t.color ?? null,
                   t.createdBy ?? null,
                   t.createdAt ?? new Date(), // Use provided createdAt or current time
-                ]
-              )
+                ],
+              ),
             );
             await Promise.all(insertPromises);
 
@@ -1682,7 +1700,7 @@ initDb()
             createdAt ?? null,
             id,
             householdId,
-          ]
+          ],
         );
 
         if (result.rowCount === 0) {
@@ -1728,13 +1746,13 @@ initDb()
           // Get series_id first
           const taskRes = await pool.query(
             "SELECT series_id FROM tasks WHERE id = $1 AND household_id = $2",
-            [id, householdId]
+            [id, householdId],
           );
           if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
             const seriesId = taskRes.rows[0].series_id;
             await pool.query(
               "DELETE FROM tasks WHERE series_id = $1 AND household_id = $2",
-              [seriesId, householdId]
+              [seriesId, householdId],
             );
             return res.status(200).json({ ok: true });
           }
@@ -1742,7 +1760,7 @@ initDb()
 
         const result = await pool.query(
           "DELETE FROM tasks WHERE id = $1 AND household_id = $2",
-          [id, householdId]
+          [id, householdId],
         );
 
         if (result.rowCount === 0) {
@@ -1767,7 +1785,7 @@ initDb()
       try {
         const result = await pool.query(
           "SELECT * FROM family_members WHERE household_id = $1 ORDER BY created_at ASC",
-          [householdId]
+          [householdId],
         );
         res.json(result.rows);
       } catch (err) {
@@ -1787,7 +1805,7 @@ initDb()
         const id = randomUUID();
         await pool.query(
           "INSERT INTO family_members (id, household_id, name, color) VALUES ($1, $2, $3, $4)",
-          [id, householdId, name, color]
+          [id, householdId, name, color],
         );
         res.status(201).json({ id, household_id: householdId, name, color });
       } catch (err) {
@@ -1807,7 +1825,7 @@ initDb()
       try {
         const result = await pool.query(
           "UPDATE family_members SET name = $1, color = $2 WHERE id = $3 AND household_id = $4 RETURNING *",
-          [name, color, id, householdId]
+          [name, color, id, householdId],
         );
         if (result.rowCount === 0) {
           return res.status(404).json({ message: "Member not found" });
@@ -1829,7 +1847,7 @@ initDb()
       try {
         const result = await pool.query(
           "DELETE FROM family_members WHERE id = $1 AND household_id = $2",
-          [id, householdId]
+          [id, householdId],
         );
 
         if (result.rowCount === 0) {
