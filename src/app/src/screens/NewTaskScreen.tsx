@@ -7,8 +7,9 @@ import {
   type Recurrence,
 } from "../store/useTaskStore";
 
+//canada date format, but respect de rule for local dates and hours
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("en-CA");
 }
 
 const weekdays = [
