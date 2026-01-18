@@ -1,8 +1,6 @@
 {
   "version": "0.2.0",
   "configurations": [
-    
-
     {
       "type": "chrome",
       "request": "launch",
@@ -11,7 +9,14 @@
       "webRoot": "${workspaceFolder}/src/app"
     },
     {
-      "type": "pwa-node",
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug Client (Chrome)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/src/app"
+    },
+    {
+      "type": "node",
       "request": "launch",
       "name": "Debug Server",
       "skipFiles": ["<node_internals>/**"],

@@ -1287,6 +1287,7 @@ initDb()
         durationWeeks,
         notificationTime,
         color,
+        createdBy,
       } = req.body as {
         title?: string;
         date?: string;
@@ -1455,7 +1456,7 @@ initDb()
               t.durationWeeks ?? null,
               t.notificationTime ?? null,
               t.color ?? null,
-              req.user?.role + "/" + req.user?.name, // Simple createdBy tracking
+              t.createdBy || req.user?.name, // Use simple createdBy with fallback to household name
             ],
           ),
         );
