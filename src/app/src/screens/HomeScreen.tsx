@@ -291,11 +291,12 @@ export function HomeScreen() {
                   <div className="flex justify-between items-start gap-2">
                     {/* Completion Checkbox */}
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleTaskCompletion(task.id);
                       }}
-                      className="flex-shrink-0 mt-0.5"
+                      className="flex-shrink-0 relative z-10 p-2 -m-2"
                     >
                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.isCompleted
                         ? "bg-green-500 border-green-500"
