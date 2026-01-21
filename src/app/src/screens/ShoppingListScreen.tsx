@@ -5,6 +5,7 @@ import { useModal } from "../context/ModalContext";
 const CATEGORIES = [
     { id: "all", label: "Todos", icon: "🛒" },
     { id: "fruitsVegetables", label: "Frutas y Verduras", icon: "🍎" },
+    { id: "snacks", label: "Snacks", icon: "🍪" },
     { id: "bread", label: "Pan", icon: "🍞" },
     { id: "pasta/rice", label: "Pasta/Arroz", icon: "🍝" },
     { id: "meat", label: "Carnes", icon: "🥩" },
@@ -57,6 +58,7 @@ export function ShoppingListScreen() {
 
     const activeItems = filteredItems.filter((i) => !i.completed);
     const completedItems = filteredItems.filter((i) => i.completed);
+    const CountItems = activeItems.length;
 
     // Frequent suggestion logic: Sort favorites by usage, take top 10, exclude items already in list
     const activeItemNames = new Set(items.filter(i => !i.completed).map(i => i.name.toLowerCase()));
@@ -245,7 +247,7 @@ export function ShoppingListScreen() {
                 {/* Active Items */}
                 {activeItems.length > 0 ? (
                     <div className="space-y-3">
-                        <div className="text-slate-900 font-semibold text-lg uppercase">Comprar:</div>
+                        <div className="text-slate-900 font-semibold text-lg uppercase">Comprar: {CountItems} articulos</div>
                         {activeItems.map((item) => (
                             <div
                                 key={item.id}

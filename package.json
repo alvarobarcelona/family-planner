@@ -4,7 +4,10 @@
   "scripts": {
     "dev": "concurrently \"npm:app\" \"npm:server\"",
     "app": "cd src/app && npm run dev",
-    "server": "cd src/server && npm run dev"
+    "server": "cd src/server && npm run dev",
+    "build": "concurrently \"npm:build:app\" \"npm:build:server\"",
+    "build:app": "cd src/app && npm run build",
+    "build:server": "cd src/server && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

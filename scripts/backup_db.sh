@@ -4,10 +4,13 @@ set -o pipefail
 # Configuration
 CONTAINER_NAME="family-planner-db"
 DB_NAME="family_planner"
-BACKUP_DIR="/root/backups/family-planner"
+# Changed to relative path for Windows/Local compatibility
+BACKUP_DIR="./backups"
 RETENTION_DAYS=7
 
+# Ensure backup directory exists
 mkdir -p "$BACKUP_DIR"
+
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 FILENAME="$BACKUP_DIR/backup_$TIMESTAMP.sql.gz"
 
@@ -16,9 +19,10 @@ echo "➡️  Starting backup process for '$DB_NAME'..."
 # STRATEGY 1: TRY DOCKER
 if command -v docker &> /dev/null && docker ps -q -f name="$CONTAINER_NAME" &> /dev/null; then
   echo "🐳 Docker detected."
-  # Assumes 'admin' user inside docker, or whatever is default. 
+  # Assumes 'admin' user inside docker, or whatever is default.
   # Using 'admin' as per your original docker-compose.
-  docker exec -t "$CONTAINER_NAME" pg_dump -U admin "$DB_NAME" | gzip > "$FILENAME"
+  # Removed -t to avoid TTY issues in some scripts/crons, though usually fine.
+  docker exec "$CONTAINER_NAME" pg_dump -U admin "$DB_NAME" | gzip > "$FILENAME"
 
 # STRATEGY 2: NATIVE POSTGRES (PEER AUTH) -> RECOMMENDED FOR ROOT
 elif command -v pg_dump &> /dev/null; then
@@ -46,12 +50,17 @@ fi
 
 # Cleanup
 if [ -s "$FILENAME" ]; then
-  echo "   Size: $(du -h "$FILENAME" | cut -f1)"
+  FILE_SIZE=$(du -h "$FILENAME" | cut -f1)
+  echo "✅ Backup created successfully."
+  echo "   Path: $FILENAME"
+  echo "   Size: $FILE_SIZE"
+  
   echo "🧹 Cleaning up backups older than $RETENTION_DAYS days..."
   find "$BACKUP_DIR" -name "backup_*.sql.gz" -mtime +$RETENTION_DAYS -delete
   echo "✨ Done."
 else
   # If file is empty or missing despite success code
-  echo "warn: File is empty."
+  echo "warn: File is empty or creation failed."
   rm -f "$FILENAME"
+  exit 1
 fi

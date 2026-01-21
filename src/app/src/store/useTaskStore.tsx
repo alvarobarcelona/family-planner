@@ -90,14 +90,6 @@ function normalizeDate(dateStr: string): string {
   return dateStr.slice(0, 10);
 }
 
-// -----------------------------------------
-//  MOCK DE FAMILIA
-// -----------------------------------------
-
-// -----------------------------------------
-//  MOCK DE FAMILIA ELIMINADO
-// -----------------------------------------
-
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 

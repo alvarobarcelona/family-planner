@@ -20,7 +20,7 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-slate-900 flex flex-col relative">
       <main className="flex-1 w-full mx-auto px-4 py-4 pb-36 pb-[calc(9rem+env(safe-area-inset-bottom))] max-w-md md:max-w-4xl lg:max-w-6xl transition-all duration-300">
-        <nav className="fixed bottom-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[95%] md:w-[60%] max-w-[350px] bg-white/90 backdrop-blur-xl border border-black/50 shadow-2xl shadow-slate-200/50 rounded-2xl z-50 transition-all duration-300">
+        <nav className="fixed bottom-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[95%] md:w-[60%] md:max-w-lg bg-white/90 backdrop-blur-xl border border-black/50 shadow-2xl shadow-slate-200/50 rounded-2xl z-50 transition-all duration-300">
           <div className="grid grid-cols-5 items-end justify-items-center py-2 px-1 h-[4.5rem]">
 
             {/* 1. Hoy */}
