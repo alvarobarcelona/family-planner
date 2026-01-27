@@ -105,8 +105,9 @@ export function FamilyWall() {
         <div className="mb-6">
             <div className="flex justify-between items-center mb-3 px-1">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    📌 Tablón Familiar: {familyMembers.map(m => m.name).join(', ')}
+                    📌 Tablón Familiar:
                 </h2>
+
 
                 {!isAdding && (
                     <button
@@ -116,6 +117,9 @@ export function FamilyWall() {
                         + Nueva Nota
                     </button>
                 )}
+            </div>
+            <div className="flex justify-between items-center mb-3 px-1">
+                <p>{familyMembers.map(m => m.name).join(', ')}</p>
             </div>
 
             {/* Add Note Form */}
@@ -194,23 +198,23 @@ export function FamilyWall() {
                                 ))}
                             </select>
                         </div>
+                    </div>
 
-                        <div className="flex gap-2">
-                            <button
-                                type="button"
-                                onClick={() => { setIsAdding(false); setAttachedImage(null); }}
-                                className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={(!newNoteContent.trim() && !attachedImage) || isSubmitting}
-                                className="text-xs bg-indigo-600 text-white px-4 py-1.5 rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {isSubmitting ? 'Guardando...' : 'Pegar Nota'}
-                            </button>
-                        </div>
+                    <div className="flex justify-end gap-2 mt-2">
+                        <button
+                            type="button"
+                            onClick={() => { setIsAdding(false); setAttachedImage(null); }}
+                            className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={(!newNoteContent.trim() && !attachedImage) || isSubmitting}
+                            className="text-xs bg-indigo-600 text-white px-4 py-1.5 rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isSubmitting ? 'Guardando...' : 'Pegar Nota'}
+                        </button>
                     </div>
                 </form>
             )}
