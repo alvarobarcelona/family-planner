@@ -14,6 +14,7 @@ import { useNotifications } from "./hooks/useNotifications";
 import { ShoppingProvider } from "./store/useShoppingStore";
 import { FamilyWallProvider } from "./store/useFamilyWallStore";
 
+
 function AppContent() {
   useNotifications();
 
@@ -89,6 +90,7 @@ function AppContent() {
 
         <Routes>
           <Route path="/" element={<HomeScreen />} />
+          <Route path="/login" element={<LoginScreen />} />
           <Route path="/calendar" element={<CalendarScreen />} />
           <Route path="/visual-calendar" element={<VisualCalendarScreen />} />
           <Route path="/shopping-list" element={<ShoppingListScreen />} />
@@ -107,8 +109,14 @@ import { ModalProvider } from "./context/ModalContext";
 
 // ... AppContent component remains the same
 
+// ... imports remain the same
+import { useLocation } from "react-router-dom";
+
+// ... AppContent component remains the same
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -117,8 +125,7 @@ export default function App() {
     }
   }, []);
 
-  const path = window.location.pathname;
-  if (path === "/admin") {
+  if (location.pathname === "/admin") {
     return <AdminScreen />;
   }
 

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { login } from "../api/tasksApi";
+import { useNavigate } from "react-router-dom";
 
 interface LoginScreenProps {
-    onLoginSuccess: () => void;
+    onLoginSuccess?: () => void;
+
 }
 
 export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
@@ -10,6 +12,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,7 +22,8 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         try {
             await login(name, password);
 
-            onLoginSuccess();
+            onLoginSuccess?.();
+            navigate("/");
         } catch (err: any) {
             console.error("Login error:", err);
             setError(err.message || "Error al iniciar sesión");
@@ -32,8 +36,8 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         <div className="min-h-screen flex items-center justify-center bg-blue-100 px-4">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-stone-100">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-stone-800 mb-2">Bienvenidos a vuestro Family Planner</h1>
-                    <p className="text-stone-500">Introduce la contraseña familiar</p>
+                    <h1 className="text-3xl font-bold text-stone-800 mb-2">Bienvenidos a <br /><span className="text-indigo-600">Family Planner</span></h1>
+                    <p className="text-stone-500">Introduce tus credenciales para iniciar sesión</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -69,7 +73,8 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     </button>
 
                     <div className="text-center mt-4">
-                        <p className="text-sm text-stone-500">
+                        <p className="text-sm text-stone-500">Maneja tus tareas, notas y lista de la compra en un solo lugar para toda la familia</p>
+                        <p className="text-sm text-green-500">
                             By Alvaro Barcelona Peralta • <a href="/admin" className="hover:text-stone-800 transition-colors">Admin</a>
                         </p>
                     </div>

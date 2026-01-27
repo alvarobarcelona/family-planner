@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface Household {
     id: string;
@@ -6,6 +7,7 @@ interface Household {
 }
 
 export function AdminScreen() {
+    const navigate = useNavigate();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState("");
     const [households, setHouseholds] = useState<Household[]>([]);
@@ -211,7 +213,7 @@ export function AdminScreen() {
                         Admin Dashboard
                     </h1>
                     <button
-                        onClick={() => setIsAuthenticated(false)}
+                        onClick={() => navigate("/login")}
                         className="text-stone-500 hover:text-stone-800"
                     >
                         Logout
@@ -282,7 +284,7 @@ export function AdminScreen() {
                                     <td className="p-4 text-stone-400 font-mono text-xs">
                                         {h.id}
                                     </td>
-                                    <td className="p-4 text-right space-x-2">
+                                    <td className=" flex flex-col p-4 space-y-2 ">
                                         <button
                                             onClick={() => {
                                                 setEditingId(h.id);

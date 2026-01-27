@@ -34,9 +34,67 @@ export function usePushNotifications() {
     // Check if SW is supported
     if ("serviceWorker" in navigator && "PushManager" in window) {
       navigator.serviceWorker.ready.then((registration) => {
-        registration.pushManager.getSubscription().then((subscription) => {
-          setIsSubscribed(!!subscription);
-        });
+        registration.pushManager
+          .getSubscription()
+          .then(async (subscription) => {
+            if (!subscription) {
+              setIsSubscribed(false);
+              return;
+            }
+
+            // If we have a subscription, verify if it belongs to THIS household
+            const token = localStorage.getItem("auth_token");
+            console.log("🔔 [usePushNotifications] Checking subscription...", {
+              hasToken: !!token,
+              endpoint: subscription.endpoint,
+            });
+
+            if (!token) {
+              console.log(
+                "🔔 [usePushNotifications] No token found during check.",
+              );
+              setIsSubscribed(false);
+              return;
+            }
+
+            try {
+              const url = `${API_URL}/subscription-status?endpoint=${encodeURIComponent(subscription.endpoint)}`;
+              console.log(
+                "🔔 [usePushNotifications] Fetching status from:",
+                url,
+              );
+
+              const res = await fetch(url, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              console.log(
+                "🔔 [usePushNotifications] Response status:",
+                res.status,
+              );
+
+              if (res.ok) {
+                const data = await res.json();
+                console.log(
+                  "🔔 [usePushNotifications] Server response data:",
+                  data,
+                );
+                setIsSubscribed(data.isSubscribed);
+              } else {
+                console.warn(
+                  "🔔 [usePushNotifications] Status check failed:",
+                  res.status,
+                );
+                // Fallback if API fails or auth invalid
+                setIsSubscribed(false);
+              }
+            } catch (err) {
+              console.error("Error checking subscription status", err);
+              setIsSubscribed(false);
+            }
+          });
       });
     }
   }, []);
@@ -113,7 +171,7 @@ export function usePushNotifications() {
     }
   };
 
-  const unsubscribeFromPush = async () => {
+  const unsubscribeFromPush = async (silent: boolean = false) => {
     setLoading(true);
     try {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -144,10 +202,14 @@ export function usePushNotifications() {
       });
 
       setIsSubscribed(false);
-      alert("Has desactivado las notificaciones.");
+      if (!silent) {
+        alert("Has desactivado las notificaciones.");
+      }
     } catch (error) {
       console.error("Error unsubscribing", error);
-      alert("Error al desactivar notificaciones");
+      if (!silent) {
+        alert("Error al desactivar notificaciones");
+      }
     } finally {
       setLoading(false);
     }

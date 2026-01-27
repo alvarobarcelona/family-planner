@@ -105,7 +105,7 @@ export function FamilyWall() {
         <div className="mb-6">
             <div className="flex justify-between items-center mb-3 px-1">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    📌 Tablón Familiar
+                    📌 Tablón Familiar: {familyMembers.map(m => m.name).join(', ')}
                 </h2>
 
                 {!isAdding && (

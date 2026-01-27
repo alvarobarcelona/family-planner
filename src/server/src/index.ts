@@ -508,6 +508,28 @@ app.post("/api/unsubscribe", async (req, res) => {
   }
 });
 
+// GET Check Subscription Status
+app.get("/api/subscription-status", authMiddleware, async (req, res) => {
+  const { endpoint } = req.query;
+  const householdId = req.user?.householdId;
+
+  if (!endpoint || typeof endpoint !== "string") {
+    return res.status(400).json({ message: "Endpoint required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT id FROM push_subscriptions WHERE endpoint = $1 AND household_id = $2",
+      [endpoint, householdId],
+    );
+
+    res.json({ isSubscribed: result.rowCount! > 0 });
+  } catch (err) {
+    console.error("Error checking subscription:", err);
+    res.status(500).json({ message: "Error checking subscription" });
+  }
+});
+
 // Init DB
 async function initDb() {
   await pool.query(`
