@@ -64,7 +64,7 @@ export function ShoppingListScreen() {
     const activeItemNames = new Set(items.filter(i => !i.completed).map(i => i.name.toLowerCase()));
     const suggestedFavorites = favorites
         .filter(f => !activeItemNames.has(f.name.toLowerCase()))
-        .sort((a, b) => b.usage_count - a.usage_count);
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     // Share functionality
     const handleShare = async () => {
