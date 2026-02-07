@@ -9,7 +9,7 @@ interface ModalOptions {
 
 interface ModalContextValue {
     alert: (message: string, options?: ModalOptions) => Promise<void>;
-    confirm: (message: string, options?: ModalOptions) => Promise<boolean>;
+    confirm: (message: string, options?: ModalOptions) => Promise<boolean | null>;
 }
 
 const ModalContext = createContext<ModalContextValue | undefined>(undefined);
@@ -32,9 +32,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         setTimeout(() => {
             setContent(null); // Clear content after animation would finish
             if (resolveRef.current) {
-                // If it was just closed without button click (e.g. background click), assume cancel/false? 
-                // Better policy: background click = cancel for confirm, ok for alert.
-                resolveRef.current(false);
+                // If it was just closed without button click (e.g. background click), assume dismiss/null
+                resolveRef.current(null);
                 resolveRef.current = null;
             }
         }, 200);
@@ -56,6 +55,14 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         close();
     };
 
+    const handleDismiss = () => {
+        if (resolveRef.current) {
+            resolveRef.current(null);
+            resolveRef.current = null;
+        }
+        close();
+    };
+
     const alert = useCallback((message: string, options?: ModalOptions) => {
         return new Promise<void>((resolve) => {
             setContent({
@@ -70,7 +77,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const confirm = useCallback((message: string, options?: ModalOptions) => {
-        return new Promise<boolean>((resolve) => {
+        return new Promise<boolean | null>((resolve) => {
             setContent({
                 message,
                 title: options?.title || "Confirmar",
@@ -93,7 +100,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
                     onClose={() => {
                         // Background click behavior
                         if (content.type === 'alert') handleConfirm(); // Same as OK
-                        else handleCancel(); // Same as Cancel
+                        else handleDismiss(); // Dismiss (null)
                     }}
                     title={content.title}
                     footer={

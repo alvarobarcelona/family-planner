@@ -17,6 +17,7 @@ interface ShoppingContextValue {
     updateItem: (id: number, payload: api.UpdateItemDto) => Promise<void>;
     deleteItem: (id: number) => Promise<void>;
     deleteFavorite: (id: number) => Promise<void>;
+    deleteCompletedItems: () => Promise<void>;
     refresh: () => Promise<void>;
 }
 
@@ -93,6 +94,17 @@ export function ShoppingProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const deleteCompletedItems = async () => {
+        try {
+            const completedItems = items.filter((item) => item.completed);
+            await Promise.all(completedItems.map((item) => api.deleteShoppingItem(item.id)));
+            setItems((prev) => prev.filter((item) => !item.completed));
+        } catch (err) {
+            console.error(err);
+            throw err;
+        }
+    };
+
     return (
         <ShoppingContext.Provider
             value={{
@@ -104,6 +116,7 @@ export function ShoppingProvider({ children }: { children: ReactNode }) {
                 updateItem,
                 deleteItem,
                 deleteFavorite,
+                deleteCompletedItems,
                 refresh: loadData,
             }}
         >

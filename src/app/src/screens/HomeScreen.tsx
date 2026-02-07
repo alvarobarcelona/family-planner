@@ -393,29 +393,34 @@ export function HomeScreen() {
                         }
                       );
 
-                      if (deleteAll) {
-                        removeTask(task.id, true);
-                      } else {
-                        // In our custom modal, "Cancel" returns false.
-                        // So if they clicked "Borrar solo este evento" (mapped to Cancel button for this specific logic flow... wait, button labels are confusing).
-                        // Better approach:
-                        // Confirm Dialog 1: Delete Series? Yes/No
-                        // If No, Confirm Dialog 2: Delete single event? Yes/No
-                        // Implementing strictly as requested:
+                      if (deleteAll === true) {
+                        // Wait for the first modal to fully close (200ms animation)
+                        await new Promise(resolve => setTimeout(resolve, 300));
 
-                        // Let's refine the UX with two sequential modals as previously coded in the raw window.confirm logic
-                        // But wait, the previous logic was:
-                        // "Aceptar = Toda la serie, Cancelar = Solo este evento" -> Wait, actually window.confirm returns false on Cancel.
-                        // So logic was: if (deleteAll) -> remove series. else -> ask delete single.
+                        const deleteSeries = await confirm(
+                          "¿Estás SEGURO de que quieres borrar TODA la serie?\n\nEsta acción borrará todos los eventos futuros y pasados de esta serie y no se puede deshacer.",
+                          { title: "⚠️ Borrar Serie Completa", confirmText: "Sí, borrar TODO", cancelText: "Cancelar" }
+                        );
+
+                        if (deleteSeries === true) {
+                          removeTask(task.id, true);
+                        }
+                      } else if (deleteAll === false) {
+                        // User explicitly clicked "Delete only this event" (Cancel button)
+                        // Wait for the first modal to fully close (200ms animation)
+                        await new Promise(resolve => setTimeout(resolve, 300));
 
                         const deleteSingle = await confirm(
-                          "¿Borrar solo este evento de la serie?",
-                          { title: "Evento único", confirmText: "Borrar evento" }
+                          "¿Estás seguro de que quieres borrar solo este evento?",
+                          { title: "Evento único", confirmText: "Sí, borrar" }
                         );
-                        if (deleteSingle) {
+
+                        // If deleteSingle is null (dismissed) or false (cancel), we do nothing.
+                        if (deleteSingle === true) {
                           removeTask(task.id, false);
                         }
                       }
+                      // If deleteAll is null (backdrop click), we do nothing (cancel operation).
                     } else {
                       const ok = await confirm("¿Borrar tarea?", { confirmText: "Borrar", title: "Confirmar" });
                       if (ok) removeTask(task.id);
