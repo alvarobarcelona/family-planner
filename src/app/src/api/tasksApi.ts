@@ -16,6 +16,9 @@ export interface CreateTaskDto {
   color?: string;
   createdBy?: string;
   createdAt?: string;
+  recurrenceInterval?: number;
+  recurrenceEndDate?: string;
+  recurrenceCount?: number;
 }
 
 // If VITE_API_URL is set (e.g. for specific dev), use it.
@@ -140,4 +143,17 @@ export async function updateTask(
   }
 
   return res.json();
+}
+
+export async function getSeriesCount(seriesId: string): Promise<number> {
+  const res = await fetch(buildUrl(`/api/tasks/series/${seriesId}/count`), {
+    headers: { ...getAuthHeaders() },
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al obtener conteo de serie");
+  }
+
+  const data = await res.json();
+  return data.count;
 }

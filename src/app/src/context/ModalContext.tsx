@@ -5,6 +5,7 @@ interface ModalOptions {
     title?: string;
     confirmText?: string;
     cancelText?: string;
+    confirmVariant?: 'primary' | 'danger';
 }
 
 interface ModalContextValue {
@@ -22,6 +23,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         type: "alert" | "confirm";
         confirmText?: string;
         cancelText?: string;
+        confirmVariant?: 'primary' | 'danger';
     } | null>(null);
 
     // We store the resolve function of the current promise
@@ -69,7 +71,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
                 message,
                 title: options?.title || "Aviso",
                 type: "alert",
-                confirmText: options?.confirmText || "Entendido"
+                confirmText: options?.confirmText || "Entendido",
+                confirmVariant: options?.confirmVariant
             });
             setIsOpen(true);
             resolveRef.current = () => resolve();
@@ -83,7 +86,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
                 title: options?.title || "Confirmar",
                 type: "confirm",
                 confirmText: options?.confirmText || "Aceptar",
-                cancelText: options?.cancelText || "Cancelar"
+                cancelText: options?.cancelText || "Cancelar",
+                confirmVariant: options?.confirmVariant
             });
             setIsOpen(true);
             resolveRef.current = resolve;
@@ -115,7 +119,10 @@ export function ModalProvider({ children }: { children: ReactNode }) {
                             )}
                             <button
                                 onClick={handleConfirm}
-                                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200"
+                                className={`px-4 py-2 font-medium rounded-xl transition-colors shadow-sm ${content.confirmVariant === 'danger'
+                                        ? "bg-red-600 text-white hover:bg-red-700 shadow-red-200"
+                                        : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200"
+                                    }`}
                             >
                                 {content.confirmText}
                             </button>

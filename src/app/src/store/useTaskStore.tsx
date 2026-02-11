@@ -14,7 +14,7 @@ import { getMembers } from "../api/membersApi";
 
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
-export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM_WEEKLY";
+export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM_WEEKLY" | "YEARLY";
 
 export interface Assignee {
   id: string;
@@ -44,6 +44,9 @@ export interface Task {
   isCompleted?: boolean; // whether task is marked as done
   createdBy?: string;
   createdAt?: string;
+  recurrenceInterval?: number;
+  recurrenceEndDate?: string;
+  recurrenceCount?: number;
 }
 
 export interface CreateTaskInput {
@@ -61,12 +64,15 @@ export interface CreateTaskInput {
   color?: string;
   createdBy: string;
   createdAt?: string;
+  recurrenceInterval?: number;
+  recurrenceEndDate?: string;
+  recurrenceCount?: number;
 }
 
 interface TaskContextValue {
   tasks: Task[];
   tasksToday: Task[];
-  addTask: (input: CreateTaskInput) => Promise<void>;
+  addTask: (input: CreateTaskInput) => Promise<Task[]>;
   familyMembers: Assignee[];
   removeTask: (id: string, deleteAll?: boolean) => Promise<void>;
   updateTask: (id: string, input: CreateTaskInput, updateAll?: boolean) => Promise<void>;
@@ -126,9 +132,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     load();
   }, [load]);
 
-  const addTask = async (input: CreateTaskInput) => {
+  const addTask = async (input: CreateTaskInput): Promise<Task[]> => {
     const member = members.find(m => m.id === input.assigneeId);
-    if (!member) return;
+    if (!member) return [];
     // createdByMap removed, assuming input.createdBy is just a string name now, or we find member
     const createdByMember = members.find(m => m.id === input.createdBy || m.name === input.createdBy);
 
@@ -140,6 +146,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       });
       const normalized = created.map(t => ({ ...t, date: normalizeDate(t.date) }));
       setTasks((prev) => [...prev, ...normalized]);
+      return normalized;
     } catch (err) {
       console.error("Error creando tarea(s)", err);
       throw err;
