@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useShoppingStore } from "../store/useShoppingStore";
 import { useModal } from "../context/ModalContext";
+import { PullToRefresh } from "../components/PullToRefresh";
 
 const CATEGORIES = [
     { id: "all", label: "Todos", icon: "🛒" },
@@ -18,7 +19,7 @@ const CATEGORIES = [
 ];
 
 export function ShoppingListScreen() {
-    const { items, favorites, addItem: storeAddItem, updateItem, deleteItem, deleteFavorite: storeDeleteFavorite, deleteCompletedItems, isLoading } = useShoppingStore();
+    const { items, favorites, addItem: storeAddItem, updateItem, deleteItem, deleteFavorite: storeDeleteFavorite, deleteCompletedItems, isLoading, refresh } = useShoppingStore();
     const { confirm, alert } = useModal();
 
     const [inputValue, setInputValue] = useState("");
@@ -248,8 +249,10 @@ export function ShoppingListScreen() {
             </div>
 
             {/* Lists */}
-            <div className="flex-1 overflow-y-auto space-y-6 pb-24">
-
+            <PullToRefresh
+                onRefresh={refresh}
+                className="flex-1 overflow-y-auto space-y-6 pb-24"
+            >
                 {/* Active Items */}
                 {activeItems.length > 0 ? (
                     <div className="space-y-3">
@@ -340,7 +343,7 @@ export function ShoppingListScreen() {
                         </div>
                     </div>
                 )}
-            </div>
+            </PullToRefresh>
 
         </div>
     );
