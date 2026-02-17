@@ -8,7 +8,6 @@ A comprehensive family organization tool designed to help families manage their 
 - **Calendar & Agenda**: Manage family events with shared views (Monthly, Weekly, Agenda).
 - **Task Management**: Assign tasks to family members with recurrent options.
 - **Shopping List**: Shared shopping list with favorites and categories.
-- **Weekly Meal Plan**: Plan meals for the week.
 - **Family Wall**: Digital sticky notes for family messages.
 - **Notifications**: Push notifications for events and tasks.
 - **Multi-user Support**: distinct profiles for each family member (e.g., Mom, Dad, Kids).
