@@ -1,6 +1,9 @@
 # Family Planner
 
 A comprehensive family organization tool designed to help families manage their daily lives, from calendars and events to shopping lists and meal planning.
+I have developed a personalized family planning app that can be used in everyday life and makes it easier to manage shared tasks within families.
+We use it every day!!  :)
+
 
 ## Features
 
