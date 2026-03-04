@@ -35,3 +35,7 @@ yarn-error.log*
 # Backups
 backups/*.gz
 backups/*.sql
+
+
+scripts
+backups
