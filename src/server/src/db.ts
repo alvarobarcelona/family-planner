@@ -1,5 +1,11 @@
 import "dotenv/config";
-import { Pool } from "pg";
+import { Pool, types } from "pg";
+
+// Prevent pg from converting DATE columns (OID 1082) to JS Date objects.
+// By default, pg parses DATE → new Date(...) at UTC midnight, which causes
+// a -1 day shift for users in UTC+1 (Spain/CET). Returning it as a plain
+// string "YYYY-MM-DD" is the safest approach for a date-only field.
+types.setTypeParser(1082, (val: string) => val);
 
 const connectionString = process.env.DATABASE_URL;
 

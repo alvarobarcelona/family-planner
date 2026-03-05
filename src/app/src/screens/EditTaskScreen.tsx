@@ -434,7 +434,7 @@ export function EditTaskScreen() {
               }
             }}
             disabled={isSubmitting}
-            className="text-[11px] text-red-500 font-medium hover:text-red-700 hover:underline transition-all py-1"
+            className="text-sm text-red-500 font-medium hover:text-red-700 hover:underline transition-all py-1"
           >
             Eliminar solo este evento individual
           </button>

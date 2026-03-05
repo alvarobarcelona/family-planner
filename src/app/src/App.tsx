@@ -24,7 +24,7 @@ function AppContent() {
         <nav className="fixed bottom-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[95%] md:w-[60%] md:max-w-lg bg-white/90 backdrop-blur-xl border border-black/50 shadow-2xl shadow-slate-200/50 rounded-2xl z-50 transition-all duration-300">
           <div className="grid grid-cols-5 items-end justify-items-center py-2 px-1 h-[4.5rem]">
 
-            {/* 1. Hoy */}
+            {/* 1. Home */}
             <NavLink
               to="/"
               className={({ isActive }) => `flex flex-col items-center gap-1 pb-2 transition-all duration-300 w-full
@@ -34,7 +34,7 @@ function AppContent() {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
               </svg>
-              <span className="text-[10px] font-medium">Hoy</span>
+              <span className="text-[10px] font-medium">Home</span>
             </NavLink>
 
             {/* 2. Agenda */}

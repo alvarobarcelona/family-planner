@@ -72,6 +72,7 @@ export interface CreateTaskInput {
 interface TaskContextValue {
   tasks: Task[];
   tasksToday: Task[];
+  tasksTomorrow: Task[];
   addTask: (input: CreateTaskInput) => Promise<Task[]>;
   familyMembers: Assignee[];
   removeTask: (id: string, deleteAll?: boolean) => Promise<void>;
@@ -84,6 +85,15 @@ interface TaskContextValue {
 
 function todayStr(): string {
   const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function tomorrowStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -255,11 +265,17 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     [tasks]
   );
 
+  const tasksTomorrow = useMemo(
+    () => tasks.filter((t) => t.date === tomorrowStr()),
+    [tasks]
+  );
+
   return (
     <TaskContext.Provider
       value={{
         tasks,
         tasksToday,
+        tasksTomorrow,
         addTask,
         familyMembers: members,
         removeTask,

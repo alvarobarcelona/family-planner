@@ -165,7 +165,7 @@ export function NewTaskScreen() {
           <input
             id="title"
             type="text"
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
             placeholder="Ej: Pediatra Leo, Reunión Kita..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -180,7 +180,7 @@ export function NewTaskScreen() {
           <input
             id="date"
             type="date"
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
@@ -193,7 +193,7 @@ export function NewTaskScreen() {
           <input
             id="time"
             type="time"
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
             value={time}
             onChange={(e) => setTime(e.target.value)}
           />
@@ -209,7 +209,7 @@ export function NewTaskScreen() {
             <input
               id="endDate"
               type="date"
-              className="flex-1 rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+              className="flex-1 rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               min={date}
@@ -247,7 +247,7 @@ export function NewTaskScreen() {
           <div className="relative">
             <select
               id="notification"
-              className="w-full appearance-none rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50"
+              className="w-full appearance-none rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50"
               value={notificationTime}
               onChange={(e) => setNotificationTime(Number(e.target.value))}
               disabled={!time}
@@ -283,7 +283,7 @@ export function NewTaskScreen() {
         <div className="col-span-2 sm:col-span-1 space-y-1.5">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Asignado a</label>
           <select
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
             required
@@ -300,7 +300,7 @@ export function NewTaskScreen() {
         <div className="col-span-2 sm:col-span-1 space-y-1.5">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Creado por</label>
           <select
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
             value={selectedCreatedBy}
             onChange={(e) => setSelectedCreatedBy(e.target.value)}
             required
@@ -315,7 +315,7 @@ export function NewTaskScreen() {
         </div>
 
         {/* Recurrence (Advanced) */}
-        <div className="col-span-2 space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <div className="col-span-2 space-y-3 bg-slate-200 p-4 rounded-xl border border-slate-100">
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700" htmlFor="recurrence">
               Repetición
@@ -511,7 +511,7 @@ export function NewTaskScreen() {
           </label>
           <textarea
             id="description"
-            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
+            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-200 px-3 py-3 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
             placeholder="Detalles adicionales..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -533,7 +533,7 @@ export function NewTaskScreen() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-700 py-3.5 text-sm font-semibold hover:bg-slate-50 active:scale-95 transition-all"
+            className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-700 py-3.5 text-sm font-semibold hover:bg-slate-200 active:scale-95 transition-all"
           >
             Cancelar
           </button>

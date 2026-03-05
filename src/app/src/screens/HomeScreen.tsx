@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
-import { usePushNotifications } from "../hooks/usePushNotifications";
 import { logout } from "../api/tasksApi";
 import { useModal } from "../context/ModalContext";
 import { FamilyWall } from "../components/FamilyWall";
@@ -14,31 +13,9 @@ export function HomeScreen() {
   const DayString = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
   const { confirm } = useModal();
   // Destructure refreshTasks
-  const { tasksToday, familyMembers, removeTask, toggleTaskCompletion, isLoading, refreshTasks } = useTaskStore();
+  const { tasksToday, tasksTomorrow, familyMembers, removeTask, toggleTaskCompletion, isLoading, refreshTasks } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
-
-  const { permission, isSubscribed, subscribeToPush, unsubscribeFromPush, loading } = usePushNotifications();
-  const [selectedNotificationMembers, setSelectedNotificationMembers] = useState<string[]>([]);
-
-  // Initialize with all members selected by default or just one, up to preference. Let's start with empty so they choose.
-  // Actually, let's default to "Mama" if available, or just empty.
-  useEffect(() => {
-    if (familyMembers.length > 0 && selectedNotificationMembers.length === 0) {
-      // Optional: Default to selecting the first member? Or wait for user.
-      // Let's not auto-select to force them to choose.
-    }
-  }, [familyMembers]);
-
-  const toggleNotificationMember = (id: string) => {
-    setSelectedNotificationMembers(prev =>
-      prev.includes(id)
-        ? prev.filter(m => m !== id)
-        : [...prev, id]
-    );
-  };
-
-  // ... (rest of code)
 
   // Auto-refresh on visibility change
   useEffect(() => {
@@ -140,86 +117,13 @@ export function HomeScreen() {
           </div>
         </div>
 
-
-
-
-
-        <div className="text-[10px] text-gray-400 font-mono">
-          Notificaciones: Subscribed={String(isSubscribed)}, Permission={permission}
-        </div>
-
       </header>
 
       {/* Family Wall Section */}
       <FamilyWall />
 
-
-      {!isSubscribed && permission !== 'denied' && (
-        <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-2">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">🔔</span>
-            <p className="text-xs text-indigo-800">
-              Activa notificaciones para uno o varios miembros:
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-3">
-            {familyMembers.map((m) => {
-              const isSelected = selectedNotificationMembers.includes(m.id);
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => toggleNotificationMember(m.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors flex items-center gap-1.5 ${isSelected
-                    ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
-                    : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}
-                >
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: m.color }}
-                  />
-                  {m.name}
-                  {isSelected && <span>✓</span>}
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => subscribeToPush(selectedNotificationMembers)}
-              disabled={loading || selectedNotificationMembers.length === 0}
-              className="text-xs bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium shadow-sm active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Activando...' : 'Activar Notificaciones'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isSubscribed && (
-        <div className="mb-3 bg-green-50 border border-green-100 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">✅</span>
-            <p className="text-xs text-green-800">
-              Notificaciones activadas.
-            </p>
-          </div>
-          <button
-            onClick={() => unsubscribeFromPush()}
-            disabled={loading}
-            className="text-xs bg-white border border-green-200 text-green-700 px-3 py-1.5 rounded-full font-medium shadow-sm active:scale-95 transition-transform disabled:opacity-50 hover:bg-green-50"
-          >
-            {loading ? 'Desactivando...' : 'Desactivar'}
-          </button>
-        </div>
-      )}
-
-
-
       <div className="flex flex-col items-center justify-center gap-1 mt-4 mb-2">
-        <div className="text-gray-500 text-lg font-medium text-center"> # Esto es lo que teneis hoy #</div>
+        <div className="text-gray-500 text-lg font-medium text-center"> 📅 Para hoy 📅</div>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-gray-400 animate-bounce">
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
         </svg>
@@ -261,8 +165,6 @@ export function HomeScreen() {
           </button>
         ))}
       </div>
-
-
 
       {
         isLoading && (
@@ -437,13 +339,116 @@ export function HomeScreen() {
             ))}
 
             {filteredTasks.length === 0 && (
-              <p className="text-xs text-gray-400">
+              <p className="text-md text-gray-400">
                 No hay tareas para este filtro. 😊
               </p>
             )}
           </ul>
         )
       }
-    </div >
+      <div className="border-t border-b border-slate-200 my-8"></div>
+      {/* Sección: Tareas de mañana */}
+      <div className="mt-8 mb-4">
+        <div className="flex flex-col items-center justify-center gap-1 mb-3">
+          <div className="text-gray-500 text-lg font-medium text-center">📅 Mañana teneis 📅</div>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-gray-400 animate-bounce">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
+
+        {isLoading && (
+          <div className="flex justify-center items-center py-6">
+            <p className="text-gray-400 text-sm animate-pulse">Cargando...</p>
+          </div>
+        )}
+
+        {!isLoading && (
+          <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {tasksTomorrow.map((task) => (
+              <li
+                key={task.id}
+                onClick={() => navigate(`/edit/${task.id}`)}
+                className={`bg-slate-50 rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer transition-all duration-200 relative overflow-hidden ${task.isCompleted ? "opacity-60" : "hover:shadow-md hover:-translate-y-0.5"}`}
+              >
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-1.5"
+                  style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
+                />
+
+                <div className="flex-1">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1">
+                      <p
+                        className={
+                          `text-sm font-medium leading-snug ${task.isCompleted ? "line-through text-gray-400" : ""} ` +
+                          (task.title.length > 30 ? "whitespace-normal wrap-break-word" : "whitespace-nowrap")
+                        }
+                      >
+                        {task.title}
+                      </p>
+                    </div>
+                    <div>
+                      {task.notificationTime != null && <span>🔔</span>}
+                    </div>
+                    {task.timeLabel && (
+                      <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {task.assignees.map((a) => (
+                      <span
+                        key={a.id}
+                        className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
+                        style={{ backgroundColor: a.color }}
+                      >
+                        {a.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {task.description && (
+                  <p className="mt-1 text-[10px] text-gray-600 whitespace-pre-line">
+                    {task.description}
+                  </p>
+                )}
+
+                <div className="mt-auto">
+                  <span className="mr-1">Prioridad:
+                    {task.priority === "HIGH" && (
+                      <span className="ml-1 text[10px] text-red-500 font-semibold">Alta</span>
+                    )}
+                    {task.priority === "MEDIUM" && (
+                      <span className="ml-1 text[10px] text-amber-500">Media</span>
+                    )}
+                    {task.priority === "LOW" && (
+                      <span className="ml-1 text[10px] text-gray-400">Baja</span>
+                    )}
+                  </span>
+                  {task.createdBy && (
+                    <div className="flex justify-end">
+                      <span className="mr-1 text-[10px] text-gray-500">Creado por:</span>
+                      <span className="mr-2 text-[10px] text-gray-400">{task.createdBy}</span>
+                      {task.createdAt && (
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(task.createdAt).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </li>
+            ))}
+
+            {tasksTomorrow.length === 0 && (
+              <p className="text-md text-gray-400">Nada planeado para mañana. 🎉</p>
+            )}
+          </ul>
+        )}
+      </div>
+    </div>
+
+
   );
 }
