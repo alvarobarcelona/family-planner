@@ -215,9 +215,9 @@ export function CalendarScreen() {
         </div>
       )}
 
-      <div className="space-y-6 pl-2 relative pb-8 mt-4">
+      <div className="space-y-6 pl-1 relative pb-8 mt-4">
         {/* Timeline Line */}
-        <div className="absolute left-[34px] md:left-[38px] top-6 bottom-4 w-px bg-slate-200"></div>
+        <div className="absolute left-[18px] md:left-[20px] top-6 bottom-4 w-px rounded-full bg-gradient-to-b from-indigo-300 via-slate-300 to-transparent"></div>
 
         {grouped.map(({ date, tasks }) => {
           const isToday = new Date().toISOString().slice(0, 10) === date;
@@ -226,10 +226,10 @@ export function CalendarScreen() {
             <section
               key={date}
               ref={isToday ? todayRef : null}
-              className="relative flex gap-4 md:gap-6 items-start"
+              className="relative flex gap-2 md:gap-3 items-start"
             >
               {/* Date Column (Sticky-like feel) */}
-              <div className="flex flex-col items-center mt-3 z-10 w-[60px] md:w-[68px] shrink-0">
+              <div className="flex flex-col items-center mt-3 z-10 w-[28px] md:w-[44px] shrink-0">
                 <span className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider leading-none">
                   {new Date(date).toLocaleDateString("es-ES", { weekday: "short" })}
                 </span>
