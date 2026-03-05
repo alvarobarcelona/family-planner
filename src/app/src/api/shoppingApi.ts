@@ -4,6 +4,7 @@ export interface ShoppingItem {
   category: string;
   quantity: number;
   completed: boolean;
+  notes?: string;
   created_at?: string;
 }
 
@@ -19,6 +20,7 @@ export interface CreateItemDto {
   name: string;
   category: string;
   quantity?: number;
+  notes?: string;
 }
 
 export interface UpdateItemDto {
@@ -26,6 +28,7 @@ export interface UpdateItemDto {
   category?: string;
   quantity?: number;
   completed?: boolean;
+  notes?: string;
 }
 
 const rawBaseUrl = import.meta.env.VITE_API_URL ?? "";
@@ -49,7 +52,7 @@ export async function getShoppingItems(): Promise<ShoppingItem[]> {
 }
 
 export async function addShoppingItem(
-  payload: CreateItemDto
+  payload: CreateItemDto,
 ): Promise<ShoppingItem> {
   const res = await fetch(buildUrl("/api/shopping"), {
     method: "POST",
@@ -65,7 +68,7 @@ export async function addShoppingItem(
 
 export async function updateShoppingItem(
   id: number,
-  payload: UpdateItemDto
+  payload: UpdateItemDto,
 ): Promise<ShoppingItem> {
   const res = await fetch(buildUrl(`/api/shopping/${id}`), {
     method: "PUT",

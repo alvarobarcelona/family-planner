@@ -24,12 +24,13 @@ const isTaskOnDate = (task: any, dateStr: string) => {
 
 export function VisualCalendarScreen() {
     const navigate = useNavigate();
-    const { tasks, familyMembers } = useTaskStore();
+    const { tasks, familyMembers, toggleTaskCompletion } = useTaskStore();
 
     // State
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<ViewMode>("month");
     const [selectedAssigneeId, setSelectedAssigneeId] = useState<FilterAssigneeId>("all");
+    const [animatingTaskId, setAnimatingTaskId] = useState<string | null>(null);
 
     // Filter Tasks
     const filteredTasks = useMemo(() => {
@@ -60,13 +61,22 @@ export function VisualCalendarScreen() {
         setCurrentDate(new Date());
     };
 
+    const handleTaskClick = (taskId: string) => {
+        const target = `/edit/${taskId}`;
+        if ('startViewTransition' in document) {
+            (document as any).startViewTransition(() => navigate(target));
+        } else {
+            navigate(target);
+        }
+    };
+
     // Title Helper
     const getTitle = () => {
         const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long' };
         if (viewMode === "year") return currentDate.getFullYear().toString();
         if (viewMode === "week") {
             // Simple week range logic could go here, for now just Month Year of start date
-            return `Semana de ${currentDate.toLocaleDateString("es-ES", { month: 'short', day: 'numeric' })}`;
+            return `Semana del ${currentDate.toLocaleDateString("es-ES", { month: 'short', day: 'numeric' })}`;
         }
         return currentDate.toLocaleDateString("es-ES", options);
     };
@@ -102,26 +112,49 @@ export function VisualCalendarScreen() {
     return (
         <div className="space-y-3 h-full flex flex-col">
             {/* Header */}
-            <header className="mt-1 mb-2 flex flex-col gap-2">
+            <header className="mt-1 mb-2 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-semibold capitalize">{getTitle()}</h1>
-                    <div className="flex gap-1">
-                        <button onClick={handlePrev} className="p-1 rounded hover:bg-gray-100">◀️</button>
-                        <button onClick={handleToday} className="px-2 py-1 text-xs border rounded hover:bg-gray-50">Hoy</button>
-                        <button onClick={handleNext} className="p-1 rounded hover:bg-gray-100">▶️</button>
+                    <h1 className="text-xl font-semibold capitalize text-slate-800">{getTitle()}</h1>
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 shadow-sm rounded-xl p-1">
+                        <button
+                            onClick={handlePrev}
+                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            aria-label="Anterior"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={handleToday}
+                            className="px-3 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        >
+                            HOY
+                        </button>
+                        <button
+                            onClick={handleNext}
+                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            aria-label="Siguiente"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
-                {/* View Switcher */}
-                <div className="flex bg-gray-100 p-1 rounded-lg self-start">
+                {/* View Switcher (Segmented Control) */}
+                <div className="flex bg-slate-100/80 backdrop-blur p-1 rounded-xl self-start shadow-inner border border-slate-200/60">
                     {(["week", "month", "year"] as ViewMode[]).map((mode) => (
                         <button
                             key={mode}
                             onClick={() => setViewMode(mode)}
-                            className={`px-3 py-1 text-xs rounded-md capitalize transition-all ${viewMode === mode ? "bg-white shadow-sm font-medium text-slate-900" : "text-gray-500 hover:text-gray-700"
+                            className={`px-4 py-1.5 text-xs rounded-lg capitalize transition-all duration-200 ${viewMode === mode
+                                ? "bg-white shadow-sm font-semibold text-indigo-600"
+                                : "text-slate-500 hover:text-slate-700 font-medium"
                                 }`}
                         >
-                            {mode === "week" ? "Semana" : mode === "month" ? "Mes" : "Año"}
+                            {mode === "week" ? "Semana" : mode === "month" ? "Mes" : "Agenda del año"}
                         </button>
                     ))}
                 </div>
@@ -174,7 +207,10 @@ export function VisualCalendarScreen() {
                     <WeekView
                         currentDate={currentDate}
                         tasks={filteredTasks}
-                        onTaskClick={(id) => navigate(`/edit/${id}`)}
+                        onTaskClick={handleTaskClick}
+                        toggleTaskCompletion={toggleTaskCompletion}
+                        animatingTaskId={animatingTaskId}
+                        setAnimatingTaskId={setAnimatingTaskId}
                     />
                 )}
 
@@ -190,13 +226,10 @@ export function VisualCalendarScreen() {
                 )}
 
                 {viewMode === "year" && (
-                    <YearView
+                    <AgendaView
                         currentDate={currentDate}
                         tasks={filteredTasks}
-                        onMonthClick={(date) => {
-                            setCurrentDate(date);
-                            setViewMode("month");
-                        }}
+                        onTaskClick={handleTaskClick}
                     />
                 )}
             </div>
@@ -204,7 +237,14 @@ export function VisualCalendarScreen() {
     );
 }
 
-function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, tasks: any[], onTaskClick: (id: string) => void }) {
+function WeekView({ currentDate, tasks, onTaskClick, toggleTaskCompletion, animatingTaskId, setAnimatingTaskId }: {
+    currentDate: Date,
+    tasks: any[],
+    onTaskClick: (id: string) => void,
+    toggleTaskCompletion: (id: string) => void,
+    animatingTaskId: string | null,
+    setAnimatingTaskId: (id: string | null) => void
+}) {
     const startOfWeek = new Date(currentDate);
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
@@ -266,62 +306,101 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
                     if (dayTasks.length === 0) return null;
 
                     return (
-                        <div key={dateStr} className="space-y-2">
+                        <div key={dateStr} className="flex flex-col gap-3">
                             <h4 className=" rounded-lg text-sm font-semibold text-slate-600 sticky top-0 bg-gray-200 backdrop-blur-sm py-1 z-10 flex items-center gap-2">
                                 <span className="capitalize ml-2">{d.toLocaleDateString("es-ES", { weekday: 'long' })}</span>
                                 <span className="text-slate-400 font-normal">{d.getDate()}</span>
                             </h4>
-                            <div className="space-y-2 pl-2">
-                                {dayTasks.map(task => (
-                                    <div
-                                        key={task.id}
-                                        onClick={() => onTaskClick(task.id)}
-                                        className="bg-white rounded-xl shadow-sm border border-slate-200 px-3 py-2 flex flex-col gap-1 cursor-pointer hover:shadow-md transition-all relative overflow-hidden group"
-                                    >
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pl-2">
+                                {dayTasks.map(task => {
+                                    const isAnimating = animatingTaskId === task.id;
+
+                                    return (
                                         <div
-                                            className="absolute left-0 top-0 bottom-0 w-1.5 transition-all group-hover:w-2"
-                                            style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
-                                        />
-                                        <div className="flex justify-between items-start pl-1">
-                                            <span className="font-medium text-slate-700 text-sm">{task.title}</span>
+                                            key={task.id}
+                                            className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-3 flex flex-col gap-1.5 transition-all duration-300 relative overflow-hidden group
+                                                ${isAnimating ? "animate-pop ring-2 ring-emerald-400 border-emerald-400" : "hover:shadow-md hover:border-slate-300"}
+                                                ${task.isCompleted ? "opacity-60" : ""}
+                                            `}
+                                        >
+                                            <div
+                                                className="absolute left-0 top-0 bottom-0 w-2 transition-all group-hover:w-3"
+                                                style={{ backgroundColor: task.color || task.assignees[0]?.color || '#cbd5e1' }}
+                                            />
 
-                                            <div className="flex items-center gap-1">
-                                                {task.notificationTime != null && (
-                                                    <span>🔔</span>
-                                                )}
+                                            <div className="flex gap-3 items-start pl-2">
+                                                {/* Checkbox */}
+                                                <div className="pt-0.5 relative shrink-0">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (!task.isCompleted) {
+                                                                setAnimatingTaskId(task.id);
+                                                                setTimeout(() => setAnimatingTaskId(null), 1000);
+                                                            }
+                                                            toggleTaskCompletion(task.id);
+                                                        }}
+                                                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all bg-white z-10 relative
+                                                            ${task.isCompleted
+                                                                ? "border-emerald-500 bg-emerald-50"
+                                                                : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50"
+                                                            } 
+                                                            ${isAnimating ? "scale-110 border-emerald-500 bg-emerald-50" : ""}
+                                                        `}
+                                                    >
+                                                        {(task.isCompleted || isAnimating) && (
+                                                            <svg className={`w-4 h-4 text-emerald-500 ${isAnimating ? "scale-125 transition-transform duration-300" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                            </svg>
+                                                        )}
+                                                    </button>
+                                                    {isAnimating && (
+                                                        <div className="absolute inset-0 rounded-full animate-burst bg-emerald-400"></div>
+                                                    )}
+                                                </div>
 
-                                                {task.timeLabel && (
-                                                    <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                                                        {task.timeLabel}
-                                                    </span>
-                                                )}
+                                                {/* Task Info */}
+                                                <div
+                                                    className="flex-1 min-w-0 cursor-pointer"
+                                                    onClick={() => onTaskClick(task.id)}
+                                                >
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <p className={`text-sm font-semibold leading-snug truncate ${task.isCompleted ? "line-through text-slate-500" : "text-slate-800"}`}>
+                                                            {task.title}
+                                                        </p>
+
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            {task.notificationTime != null && (
+                                                                <span className="animate-bell-shake text-sm">🔔</span>
+                                                            )}
+                                                            {task.timeLabel && (
+                                                                <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                                                                    {task.timeLabel} h
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {task.description && (
+                                                        <p className={`text-xs mt-0.5 line-clamp-1 ${task.isCompleted ? "text-slate-400" : "text-slate-500"}`}>
+                                                            {task.description}
+                                                        </p>
+                                                    )}
+
+                                                    <div className="flex items-center justify-between mt-2">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {task.assignees.map((a: any) => (
+                                                                <span key={a.id} className="text-[10px] px-2 py-0.5 bg-slate-100/80 text-slate-600 font-medium rounded-full border border-slate-200/60">
+                                                                    {a.name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-
                                         </div>
-                                        {task.description && (
-                                            <p className="text-xs text-slate-400 line-clamp-1 pl-1">{task.description}</p>
-                                        )}
-                                        <div className="flex gap-1 pl-1 mt-1">
-                                            {task.assignees.map((a: any) => (
-                                                <span key={a.id} className="text-[10px] px-1.5 py-0.5 bg-slate-50 text-slate-500 rounded-full border border-slate-100">
-                                                    {a.name}
-                                                </span>
-                                            ))}
-                                        </div>
-
-                                        {task.createdBy && (
-                                            <div className="flex justify-end">
-                                                <span className="mr-1 text-[10px] text-gray-500">Creado por:</span>
-                                                <span className="mr-2 text-[10px] text-gray-400">{task.createdBy}</span>
-                                                {task.createdAt && (
-                                                    <span className="text-[10px] text-gray-400">
-                                                        {new Date(task.createdAt).toLocaleString()}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     );
@@ -339,67 +418,147 @@ function WeekView({ currentDate, tasks, onTaskClick }: { currentDate: Date, task
     );
 }
 
-function YearView({ currentDate, tasks, onMonthClick }: { currentDate: Date, tasks: any[], onMonthClick: (d: Date) => void }) {
-    const year = currentDate.getFullYear();
-    const months = Array.from({ length: 12 }, (_, i) => i);
+function AgendaView({ currentDate, tasks, onTaskClick }: { currentDate: Date, tasks: any[], onTaskClick: (id: string) => void }) {
+    // Collect all unique months starting from the current displayed month that have events, plus the next 12 months minimum limit.
+    // Instead of fixed 12 months from January, let's start from 'currentDate' and show upcoming months that contain events.
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+
+    // Group tasks by "YYYY-MM"
+    const tasksByMonth = useMemo(() => {
+        const grouped: Record<string, any[]> = {};
+
+        tasks.forEach(t => {
+            // Include starting time month, but note that tasks can span multiple days
+            if (!t.date) return;
+            const tDate = new Date(t.date);
+
+            // Only consider tasks from the requested year onwards for simplicity in timeline
+            if (tDate.getFullYear() < currentYear || (tDate.getFullYear() === currentYear && tDate.getMonth() < currentMonth)) {
+                return; // Exclude past events relative to currentDate
+            }
+
+            const monthKey = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}`;
+            if (!grouped[monthKey]) grouped[monthKey] = [];
+            grouped[monthKey].push(t);
+        });
+
+        // Sort tasks within each month
+        Object.keys(grouped).forEach(key => {
+            grouped[key].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        });
+
+        return grouped;
+    }, [tasks, currentYear, currentMonth]);
+
+    const sortedMonthKeys = Object.keys(tasksByMonth).sort();
+
+    if (sortedMonthKeys.length === 0) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400">
+                <div className="bg-slate-100 p-4 rounded-full mb-3">
+                    <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                </div>
+                <p className="text-sm font-medium">No hay eventos planificados próximamente.</p>
+                <p className="text-xs mt-1 opacity-70">Añade eventos para verlos aquí.</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="h-full overflow-y-auto grid grid-cols-3 gap-2 p-1">
-            {months.map(month => {
-                const date = new Date(year, month, 1);
-                const monthName = date.toLocaleDateString("es-ES", { month: 'short' });
-
-                // Simple check for tasks in this month
-                // Ideally we render a mini grid, but for space we can just show a heat dot or count?
-                // Let's try a mini grid (7x6) very small
+        <div className="h-full overflow-y-auto px-1 pb-6 space-y-6">
+            {sortedMonthKeys.map(monthKey => {
+                const [yStr, mStr] = monthKey.split('-');
+                const monthDate = new Date(parseInt(yStr), parseInt(mStr) - 1, 1);
+                const monthTasks = tasksByMonth[monthKey];
+                const isCurrentMonth = parseInt(yStr) === new Date().getFullYear() && parseInt(mStr) - 1 === new Date().getMonth();
 
                 return (
-                    <div
-                        key={month}
-                        onClick={() => onMonthClick(date)}
-                        className="border rounded p-1 hover:border-slate-400 cursor-pointer flex flex-col gap-1"
-                    >
-                        <h3 className="text-xs font-bold capitalize text-center">{monthName}</h3>
-                        <MiniMonthGrid year={year} month={month} tasks={tasks} />
-                    </div>
-                );
-            })}
-        </div>
-    );
-}
+                    <div key={monthKey} className="relative">
+                        <div className="sticky m-2 top-0 py-2 mb-3 border-b border-slate-100 flex items-baseline gap-2">
+                            <h3 className={`text-lg font-bold capitalize ${isCurrentMonth ? "text-indigo-600" : "text-slate-800"}`}>
+                                {monthDate.toLocaleDateString("es-ES", { month: 'long' })}
+                            </h3>
+                            {parseInt(yStr) !== currentYear && (
+                                <span className="text-sm font-medium text-slate-400">{yStr}</span>
+                            )}
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 rounded-full text-slate-500 ml-auto">
+                                {monthTasks.length} {monthTasks.length === 1 ? 'evento' : 'eventos'}
+                            </span>
+                        </div>
 
-function MiniMonthGrid({ year, month, tasks }: { year: number, month: number, tasks: any[] }) {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDay = (firstDay.getDay() + 6) % 7;
-    const daysInMonth = lastDay.getDate();
+                        <div className="space-y-3 pl-2 pr-1">
+                            {monthTasks.map((task) => {
+                                const tDate = new Date(task.date);
+                                const isPast = tDate < new Date() && !isTaskOnDate(task, toLocalDateString(new Date()));
 
-    // We need 42 cells for consistent grid
-    const cells = [];
-    for (let i = 0; i < startDay; i++) cells.push(null);
-    for (let i = 1; i <= daysInMonth; i++) cells.push(i);
-    while (cells.length < 42) cells.push(null);
+                                return (
+                                    <div
+                                        key={task.id}
+                                        onClick={() => onTaskClick(task.id)}
+                                        className={`group bg-white rounded-xl p-3 shadow-sm border border-slate-100/80 cursor-pointer transition-all hover:shadow-md hover:border-indigo-100 flex gap-3
+                                            ${isPast ? "opacity-60 grayscale-[0.5]" : ""}
+                                        `}
+                                    >
+                                        <div className="shrink-0 flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 text-center relative overflow-hidden">
+                                            <div
+                                                className="absolute top-0 w-full h-1"
+                                                style={{ backgroundColor: task.color || task.assignees[0]?.color || '#94a3b8' }}
+                                            />
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase leading-none mt-1">
+                                                {tDate.toLocaleDateString("es-ES", { weekday: 'short' }).slice(0, 3)}
+                                            </span>
+                                            <span className="text-lg font-black text-slate-700 leading-none mt-0.5">
+                                                {tDate.getDate()}
+                                            </span>
+                                        </div>
 
-    return (
-        <div className="grid grid-cols-7 gap-[1px]">
-            {cells.map((day, idx) => {
-                if (!day) return <div key={idx} className="w-full pt-[100%]" />;
+                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h4 className="text-sm font-bold text-slate-800 truncate leading-tight group-hover:text-indigo-700 transition-colors">
+                                                    {task.title}
+                                                </h4>
+                                                {task.timeLabel && (
+                                                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                                                        {task.timeLabel} h
+                                                    </span>
+                                                )}
+                                            </div>
 
-                const dateStr = toLocalDateString(new Date(year, month, day));
-                const hasTask = tasks.some(t => isTaskOnDate(t, dateStr));
-
-                return (
-                    <div key={idx} className="w-full pt-[100%] relative">
-                        <div className={`absolute inset-0 flex items-center justify-center text-[6px] rounded-full
-                            ${hasTask ? 'bg-slate-200 font-bold text-slate-900' : 'text-gray-300'}
-                        `}>
-                            {day}
+                                            <div className="flex items-center gap-2 mt-1.5">
+                                                <div className="flex -space-x-1.5">
+                                                    {task.assignees.slice(0, 3).map((a: any) => (
+                                                        <div
+                                                            key={a.id}
+                                                            className="w-4 h-4 rounded-full ring-2 ring-white"
+                                                            style={{ backgroundColor: a.color }}
+                                                            title={a.name}
+                                                        />
+                                                    ))}
+                                                    {task.assignees.length > 3 && (
+                                                        <div className="w-4 h-4 rounded-full bg-slate-200 ring-2 ring-white flex items-center justify-center text-[7px] font-bold text-slate-600">
+                                                            +{task.assignees.length - 3}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {task.description && (
+                                                    <span className="text-xs text-slate-500 truncate flex-1">
+                                                        {task.description}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 );
             })}
         </div>
-    )
+    );
 }
 
 function MonthView({ currentDate, tasks, onDayClick }: { currentDate: Date, tasks: any[], onDayClick: (d: Date) => void }) {
@@ -448,26 +607,35 @@ function MonthView({ currentDate, tasks, onDayClick }: { currentDate: Date, task
                         <div
                             key={idx}
                             onClick={() => onDayClick(d.date)}
-                            className={`rounded-2xl p-1 flex flex-col items-center cursor-pointer transition-all relative min-h-[60px]
-                                ${d.type === 'current' ? 'hover:bg-white hover:shadow-sm' : 'opacity-30'}
-                                ${isToday ? 'bg-indigo-50 text-indigo-700 font-bold' : ''}
+                            className={`rounded-xl p-1 md:p-1.5 flex flex-col items-center cursor-pointer transition-all duration-200 relative min-h-[70px] border border-transparent
+                                ${d.type === 'current' ? 'hover:bg-white hover:shadow-md hover:border-slate-100 hover:-translate-y-0.5 z-10' : 'opacity-40 hover:opacity-70'}
+                                ${isToday ? 'bg-indigo-50/50' : ''}
                             `}
                         >
-                            <span className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'text-slate-600'}`}>{d.day}</span>
+                            <span className={`text-xs w-7 h-7 flex items-center justify-center rounded-full font-medium transition-all ${isToday
+                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-300 ring-2 ring-indigo-50'
+                                : 'text-slate-600'
+                                }`}>
+                                {d.day}
+                            </span>
 
                             {/* Task Indicators */}
-                            <div className="flex flex-col gap-0.5 mt-1 w-full overflow-hidden">
-                                {dayTasks.slice(0, 5).map((t: any) => (
+                            <div className="flex flex-col gap-1 mt-1.5 w-full overflow-hidden px-0.5">
+                                {dayTasks.slice(0, 4).map((t: any) => (
                                     <div
                                         key={t.id}
-                                        className="text-[8px] px-1 py-0.5 rounded truncate text-white leading-tight font-medium"
+                                        className="text-[9px] px-1.5 py-0.5 rounded-md truncate text-white leading-tight font-medium shadow-sm transition-transform hover:scale-[1.02]"
                                         style={{ backgroundColor: t.color || t.assignees[0]?.color || '#94a3b8' }}
                                         title={t.title}
                                     >
                                         {t.title}
                                     </div>
                                 ))}
-                                {dayTasks.length > 5 && <span className="text-[6px] text-slate-400 text-center leading-none">+{dayTasks.length - 5}</span>}
+                                {dayTasks.length > 4 && (
+                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100/80 rounded-md py-0.5 text-center mt-0.5 shadow-sm border border-slate-200/50">
+                                        +{dayTasks.length - 4}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     );

@@ -811,6 +811,7 @@ async function initDb() {
       category text NOT NULL,
       quantity integer NOT NULL DEFAULT 1,
       completed boolean NOT NULL DEFAULT false,
+      notes text,
       created_at timestamptz DEFAULT now()
     );
   `);
@@ -897,7 +898,7 @@ app.get("/api/shopping", authMiddleware, async (req, res) => {
 
 // POST /api/shopping (Add item)
 app.post("/api/shopping", authMiddleware, async (req, res) => {
-  const { name, category, quantity } = req.body;
+  const { name, category, quantity, notes } = req.body;
   if (!name || !category) {
     return res.status(400).json({ message: "Faltan datos" });
   }
@@ -908,8 +909,8 @@ app.post("/api/shopping", authMiddleware, async (req, res) => {
   try {
     // 1. Insert item
     const newItem = await pool.query(
-      "INSERT INTO shopping_items (name, category, quantity, household_id) VALUES ($1, $2, $3, $4) RETURNING *",
-      [name, category, quantity || 1, householdId],
+      "INSERT INTO shopping_items (name, category, quantity, notes, household_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [name, category, quantity || 1, notes || null, householdId],
     );
 
     // 2. Update/Insert favorite
@@ -943,7 +944,7 @@ app.post("/api/shopping", authMiddleware, async (req, res) => {
 // PUT /api/shopping/:id (Update item)
 app.put("/api/shopping/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
-  const { completed, quantity, name, category } = req.body;
+  const { completed, quantity, name, category, notes } = req.body;
   const householdId = req.user?.householdId;
 
   try {
@@ -969,6 +970,10 @@ app.put("/api/shopping/:id", authMiddleware, async (req, res) => {
     if (category !== undefined) {
       query += `category = $${idx++}, `;
       params.push(category);
+    }
+    if (notes !== undefined) {
+      query += `notes = $${idx++}, `;
+      params.push(notes);
     }
 
     // Remove last comma

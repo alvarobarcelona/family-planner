@@ -16,6 +16,7 @@ export function HomeScreen() {
   const { tasksToday, tasksTomorrow, familyMembers, removeTask, toggleTaskCompletion, isLoading, refreshTasks } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
+  const [animatingTaskId, setAnimatingTaskId] = useState<string | null>(null);
 
   // Auto-refresh on visibility change
   useEffect(() => {
@@ -68,6 +69,16 @@ export function HomeScreen() {
       task.assignees.some((a) => a.id === selectedAssigneeId)
     );
   }, [tasksToday, selectedAssigneeId]);
+
+  // Navigate with View Transition animation if supported
+  const handleTaskClick = (taskId: string) => {
+    const target = `/edit/${taskId}`;
+    if ('startViewTransition' in document) {
+      (document as any).startViewTransition(() => navigate(target));
+    } else {
+      navigate(target);
+    }
+  };
 
   return (
     <div
@@ -180,9 +191,8 @@ export function HomeScreen() {
             {filteredTasks.map((task) => (
               <li
                 key={task.id}
-                onClick={() => navigate(`/edit/${task.id}`)}
-                className={`bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer transition-all duration-200 relative overflow-hidden ${task.isCompleted ? "opacity-60" : "hover:shadow-md hover:-translate-y-0.5"
-                  }`}
+                onClick={() => handleTaskClick(task.id)}
+                className={`bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer transition-all duration-200 relative overflow-hidden ${task.isCompleted ? "opacity-60" : ""} ${animatingTaskId === task.id ? "animate-pop" : "hover:shadow-md hover:-translate-y-0.5"}`}
               >
                 <div
                   className="absolute left-0 top-0 bottom-0 w-1.5"
@@ -196,11 +206,16 @@ export function HomeScreen() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        // Solo animar si la estamos completando, no des-completando
+                        if (!task.isCompleted) {
+                          setAnimatingTaskId(task.id);
+                          setTimeout(() => setAnimatingTaskId(null), 1000);
+                        }
                         toggleTaskCompletion(task.id);
                       }}
                       className="flex-shrink-0 relative z-10 p-2 -m-2"
                     >
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.isCompleted
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors relative ${task.isCompleted
                         ? "bg-green-500 border-green-500"
                         : "border-gray-300 hover:border-green-400"
                         }`}>
@@ -208,6 +223,10 @@ export function HomeScreen() {
                           <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
+                        )}
+                        {/* Burst Animation Overlay */}
+                        {animatingTaskId === task.id && (
+                          <div className="absolute -inset-2 rounded-full border-green-400 animate-burst pointer-events-none" />
                         )}
                       </div>
                     </button>
@@ -227,7 +246,7 @@ export function HomeScreen() {
 
                     <div>
                       {task.notificationTime != null && (
-                        <span>🔔</span>
+                        <span className="animate-bell-shake">🔔</span>
                       )}
                     </div>
 
@@ -328,9 +347,9 @@ export function HomeScreen() {
                       if (ok) removeTask(task.id);
                     }
                   }}
-                  className="mt-auto items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"
+                  className="mt-4 self-end flex items-center gap-1.5 rounded-full border border-red-200 px-4 py-1 text-xs font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"
                 >
-                  <span className="text-[12px]" aria-hidden="true">
+                  <span className="text-[14px]" aria-hidden="true">
                     🗑️
                   </span>
                   <span>Borrar</span>
@@ -367,7 +386,7 @@ export function HomeScreen() {
             {tasksTomorrow.map((task) => (
               <li
                 key={task.id}
-                onClick={() => navigate(`/edit/${task.id}`)}
+                onClick={() => handleTaskClick(task.id)}
                 className={`bg-slate-50 rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex flex-col gap-2 cursor-pointer transition-all duration-200 relative overflow-hidden ${task.isCompleted ? "opacity-60" : "hover:shadow-md hover:-translate-y-0.5"}`}
               >
                 <div
@@ -388,7 +407,7 @@ export function HomeScreen() {
                       </p>
                     </div>
                     <div>
-                      {task.notificationTime != null && <span>🔔</span>}
+                      {task.notificationTime != null && <span className="animate-bell-shake">🔔</span>}
                     </div>
                     {task.timeLabel && (
                       <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>

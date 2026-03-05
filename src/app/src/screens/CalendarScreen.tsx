@@ -1,18 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { useModal } from "../context/ModalContext";
 
 type FilterAssigneeId = "all" | string;
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("es-ES", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-  });
-}
 
 function isTodayOrFuture(dateStr: string): boolean {
   const taskDate = new Date(dateStr);
@@ -30,20 +21,49 @@ function isTodayOrFuture(dateStr: string): boolean {
 export function CalendarScreen() {
   const navigate = useNavigate();
   const { confirm } = useModal();
-  const { tasks, familyMembers, removeTask } = useTaskStore();
+  const { tasks, familyMembers, removeTask, toggleTaskCompletion } = useTaskStore();
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
+  const [animatingTaskId, setAnimatingTaskId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showScrollToToday, setShowScrollToToday] = useState(false);
+  const todayRef = useRef<HTMLElement | null>(null);
 
-  // 1) Filtramos por miembro
+  // 1) Filtramos por miembro y por búsqueda
   const filteredTasks = useMemo(() => {
+    let result = tasks;
 
-    const byAssignee = selectedAssigneeId === "all"
-      ? tasks
-      : tasks.filter((task) =>
+    // Filtro por assignee
+    if (selectedAssigneeId !== "all") {
+      result = result.filter((task) =>
         task.assignees.some((a) => a.id === selectedAssigneeId)
       );
-    return byAssignee.filter((task) => isTodayOrFuture(task.date));
-  }, [tasks, selectedAssigneeId]);
+    }
+
+    // Filtro por fecha (solo futuras/hoy)
+    result = result.filter((task) => isTodayOrFuture(task.date));
+
+    // Filtro por búsqueda (título o descripción)
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          (t.description?.toLowerCase() ?? "").includes(q)
+      );
+    }
+
+    return result;
+  }, [tasks, selectedAssigneeId, searchQuery]);
+
+  const handleTaskClick = (taskId: string) => {
+    const target = `/edit/${taskId}`;
+    if ('startViewTransition' in document) {
+      (document as any).startViewTransition(() => navigate(target));
+    } else {
+      navigate(target);
+    }
+  };
 
   // 2) Agrupamos por fecha las tareas ya filtradas
   const grouped = useMemo(() => {
@@ -85,16 +105,67 @@ export function CalendarScreen() {
     }));
   }, [filteredTasks]);
 
+  // Observer to hide/show "Scroll to Today" button
+  useEffect(() => {
+    // Si no hay nodo de hoy, siempre mostramos el botón (para que puedan volver arriba u orientarse)
+    // a menos que estén escribiendo en el buscador.
+    if (!todayRef.current) {
+      setShowScrollToToday(searchQuery.length === 0 && grouped.length > 0);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Show button if Today is NOT visible
+        setShowScrollToToday(!entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(todayRef.current);
+    return () => observer.disconnect();
+  }, [grouped.length, searchQuery.length]);
+
+  const scrollToToday = () => {
+    if (todayRef.current) {
+      todayRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      // If today isn't rendered (e.g., no tasks today), just scroll to top
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="space-y-3">
-      <header className="mt-1 mb-2">
+      <header className="mt-1 mb-2 space-y-3">
         <h1 className="text-xl font-semibold">Lista de eventos</h1>
-        <p className="text-xs text-gray-500">
-          Vista de tareas por día con filtro por miembro
-        </p>
-      </header>
 
-      <div>Filtros</div>
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar eventos, notas, familia..."
+            className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out shadow-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </header>
 
       {/* Filtros por miembro (igual que en Hoy) */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -133,149 +204,195 @@ export function CalendarScreen() {
       </div>
 
       {grouped.length === 0 && (
-        <p className="text-xs text-gray-400">
-          No hay tareas para este filtro. 😊
-        </p>
+        <div className="py-12 flex flex-col items-center justify-center text-center opacity-80">
+          <div className="text-4xl mb-3">📭</div>
+          <p className="text-slate-500 font-medium">
+            No encontramos tareas que coincidan.
+          </p>
+          <p className="text-sm text-slate-400 mt-1">
+            Intenta cambiar los filtros o añadir un evento nuevo.
+          </p>
+        </div>
       )}
 
-      <div className="space-y-3">
-        {grouped.map(({ date, tasks }, index) => (
-          <section
-            key={date}
-            className={`rounded-xl shadow-sm px-3 py-2 space-y-1 ${index % 2 === 0 ? " bg-white" : "bg-gray-200"}`}
-          >
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-sm font-semibold">{formatDate(date)}</span>
-              <span className="text-[11px] text-gray-400">
-                {tasks.length} {tasks.length === 1 ? "tarea" : "tareas"}
-              </span>
-            </div>
+      <div className="space-y-6 pl-2 relative pb-8 mt-4">
+        {/* Timeline Line */}
+        <div className="absolute left-[34px] md:left-[38px] top-6 bottom-4 w-px bg-slate-200"></div>
 
-            <ul className="space-y-2">
-              {tasks.map((task) => (
-                <li
-                  key={task.id}
-                  onClick={() => navigate(`/edit/${task.id}`)}
-                  className="bg-white rounded-xl shadow-sm border border-slate-200 px-3 py-2 flex flex-col gap-2 cursor-pointer hover:shadow-md transition-all relative overflow-hidden"
-                >
+        {grouped.map(({ date, tasks }) => {
+          const isToday = new Date().toISOString().slice(0, 10) === date;
+
+          return (
+            <section
+              key={date}
+              ref={isToday ? todayRef : null}
+              className="relative flex gap-4 md:gap-6 items-start"
+            >
+              {/* Date Column (Sticky-like feel) */}
+              <div className="flex flex-col items-center mt-3 z-10 w-[60px] md:w-[68px] shrink-0">
+                <span className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider leading-none">
+                  {new Date(date).toLocaleDateString("es-ES", { weekday: "short" })}
+                </span>
+                <div className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold shadow-sm border-4 border-[#fdfbf7] ${isToday ? "bg-indigo-600 text-white" : "bg-white text-slate-700 shadow-slate-200/50"}`}>
+                  {new Date(date).getDate()}
+                </div>
+              </div>
+
+              {/* Tasks Column */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 pt-1">
+                {tasks.map((task) => (
                   <div
-                    className="absolute left-0 top-0 bottom-0 w-1.5"
-                    style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
-                  />
-                  <div className="">
-                    <div className="flex justify-between items-start">
-                      <p
-                        className={
-                          "text-sm font-medium leading-snug " +
-                          (task.title.length > 30
-                            ? "whitespace-normal wrap-break-word"
-                            : "whitespace-nowrap")
-                        }
-                      >
-                        {task.title}
-                      </p>
-                      <div className="flex gap-1">
+                    key={task.id}
+                    onClick={() => handleTaskClick(task.id)}
+                    className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-white px-4 py-3 flex flex-col gap-2 cursor-pointer transition-all duration-300 relative overflow-hidden group 
+                      ${task.isCompleted ? "opacity-60" : ""} 
+                      ${animatingTaskId === task.id ? "animate-pop" : "hover:shadow-md hover:bg-white hover:-translate-y-0.5"}`}
+                  >
+                    {/* Color indicator bar */}
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1.5 transition-all group-hover:w-2"
+                      style={{ backgroundColor: task.color || task.assignees[0]?.color || '#ccc' }}
+                    />
 
-                        {task.notificationTime != null && (
-                          <span>🔔</span>
-                        )}
+                    <div className="flex-1 pl-1">
+                      <div className="flex justify-between items-start gap-2">
+                        {/* Completion Checkbox */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!task.isCompleted) {
+                              setAnimatingTaskId(task.id);
+                              setTimeout(() => setAnimatingTaskId(null), 1000);
+                            }
+                            toggleTaskCompletion(task.id);
+                          }}
+                          className="flex-shrink-0 relative z-10 p-2 -m-2 mt-0.5"
+                        >
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors relative ${task.isCompleted
+                            ? "bg-green-500 border-green-500"
+                            : "border-gray-300 group-hover:border-green-400"
+                            }`}>
+                            {task.isCompleted && (
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                            {animatingTaskId === task.id && (
+                              <div className="absolute -inset-2 rounded-full border-green-400 animate-burst pointer-events-none" />
+                            )}
+                          </div>
+                        </button>
+
+                        <div className="flex-1">
+                          <p
+                            className={
+                              `text-sm font-semibold text-slate-700 leading-snug ${task.isCompleted ? "line-through text-slate-400" : ""} ` +
+                              (task.title.length > 30 ? "whitespace-normal break-words" : "whitespace-nowrap")
+                            }
+                          >
+                            {task.title}
+                          </p>
+                        </div>
+
+                        <div>
+                          {task.notificationTime != null && <span className="animate-bell-shake">🔔</span>}
+                        </div>
 
                         {task.timeLabel && (
-                          <p className="text[5px] text-gray-500">
+                          <p className="text-[11px] font-mono font-medium text-slate-500 bg-slate-100/80 px-1.5 py-0.5 rounded-md flex-shrink-0">
                             {task.timeLabel} h
                           </p>
                         )}
                       </div>
+
+                      <div className="flex gap-1 mt-1.5 flex-wrap ml-7">
+                        {task.assignees.map((a) => (
+                          <span
+                            key={a.id}
+                            className="text-[10px] px-2 py-0.5 rounded-full text-white shadow-sm"
+                            style={{ backgroundColor: a.color }}
+                          >
+                            {a.name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="flex gap-1 mt-1 flex-wrap">
-                      {task.assignees.map((a) => (
-                        <span
-                          key={a.id}
-                          className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
-                          style={{ backgroundColor: a.color }}
-                        >
-                          {a.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                    {task.description && (
+                      <p className="mt-1 text-[11px] text-slate-500 whitespace-pre-line ml-8">
+                        {task.description}
+                      </p>
+                    )}
 
-                  {task.description && (
-                    <p className="mt-1 text-[10px] text-gray-600 whitespace-pre-line">
-                      {task.description}
-                    </p>
-                  )}
-
-                  <div className="mt-auto  ">
-                    <span className="mr-1">Prioridad:
-                      {task.priority === "HIGH" && (
-                        <span className=" ml-1 text[10px] text-red-500 font-semibold">
-                          Alta
+                    <div className="mt-2 ml-8 flex justify-between items-end">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-slate-400 font-medium">Prioridad:
+                          {task.priority === "HIGH" && (
+                            <span className="ml-1 text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">Alta</span>
+                          )}
+                          {task.priority === "MEDIUM" && (
+                            <span className="ml-1 text-amber-500 font-bold bg-amber-50 px-1.5 py-0.5 rounded">Media</span>
+                          )}
+                          {task.priority === "LOW" && (
+                            <span className="ml-1 text-slate-400 font-bold">Baja</span>
+                          )}
                         </span>
-                      )}
-                      {task.priority === "MEDIUM" && (
-                        <span className=" ml-1 text[10px] text-amber-500">Media</span>
-                      )}
-                      {task.priority === "LOW" && (
-                        <span className=" ml-1 text[10px] text-gray-400">Baja</span>
-                      )}
-                    </span>
-                    {task.createdBy && (
-                      <div className="flex justify-end">
-                        <span className="mr-1 text-[10px] text-gray-500">Creado por:</span>
-                        <span className="mr-2 text-[10px] text-gray-400">{task.createdBy}</span>
-                        {task.createdAt && (
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(task.createdAt).toLocaleString()}
+                        {task.createdBy && (
+                          <span className="text-[9px] text-slate-400 mt-1">
+                            Creado por {task.createdBy}
                           </span>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (task.seriesId) {
-                        const deleteAll = await confirm(
-                          "Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?",
-                          {
-                            title: "Serie Recurrente",
-                            confirmText: "Borrar Serie Completa",
-                            cancelText: "No borrar serie"
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (task.seriesId) {
+                            const deleteAll = await confirm("Este evento es parte de una serie.\n\n¿Quieres borrar TODA la serie?", {
+                              title: "Serie Recurrente", confirmText: "Borrar Serie Completa", cancelText: "Borrar solo este"
+                            });
+                            if (deleteAll === true) {
+                              const deleteSeries = await confirm("¿Estás SEGURO de que quieres borrar TODA la serie?", { title: "⚠️ Borrar Serie", confirmText: "Sí, borrar TODO" });
+                              if (deleteSeries) removeTask(task.id, true);
+                            } else if (deleteAll === false) {
+                              const deleteSingle = await confirm("¿Borrar solo este evento?", { title: "Evento único", confirmText: "Borrar evento" });
+                              if (deleteSingle) removeTask(task.id, false);
+                            }
+                          } else {
+                            const ok = await confirm("¿Borrar tarea?", { confirmText: "Borrar" });
+                            if (ok) removeTask(task.id);
                           }
-                        );
-                        if (deleteAll) {
-                          removeTask(task.id, true);
-                        } else {
-                          const deleteSingle = await confirm(
-                            "¿Borrar solo este evento de la serie?",
-                            { title: "Evento único", confirmText: "Borrar evento" }
-                          );
-                          if (deleteSingle) {
-                            removeTask(task.id, false);
-                          }
-                        }
-                      } else {
-                        const ok = await confirm("¿Borrar tarea?", { confirmText: "Borrar" });
-                        if (ok) removeTask(task.id);
-                      }
-                    }}
-                    className=" items-center gap-1 rounded-full border border-red-200 px-2.5 py-0.5 text[11px] font-medium text-red-500 hover:bg-red-50 hover:border-red-400 active:bg-red-100 transition-colors"
-                  >
-                    <span className="text-[12px]" aria-hidden="true">
-                      🗑️
-                    </span>
-                    <span>Borrar</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+                        }}
+                        className="flex items-center gap-1 rounded-full border border-red-200/60 px-3 py-1 text-[10px] font-medium text-red-400 hover:text-red-600 hover:bg-red-50 hover:border-red-300 active:bg-red-100 transition-colors"
+                      >
+                        🗑️ Borrar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
+
+      {/* Floating Scroll to Today Button */}
+      {showScrollToToday && (
+        <button
+          onClick={scrollToToday}
+          className="fixed bottom-24 right-4 md:right-8 bg-indigo-600 text-white p-3 rounded-full shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:-translate-y-1 transition-all z-50 flex items-center justify-center group"
+          aria-label="Volver a hoy"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <div className="absolute right-full mr-3 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+            Ir a hoy
+          </div>
+        </button>
+      )}
     </div>
   );
 }

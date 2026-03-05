@@ -13,7 +13,7 @@ interface ShoppingContextValue {
     favorites: api.FavoriteItem[];
     isLoading: boolean;
     error: string | null;
-    addItem: (name: string, category: string, quantity?: number) => Promise<void>;
+    addItem: (name: string, category: string, quantity?: number, notes?: string) => Promise<void>;
     updateItem: (id: number, payload: api.UpdateItemDto) => Promise<void>;
     deleteItem: (id: number) => Promise<void>;
     deleteFavorite: (id: number) => Promise<void>;
@@ -51,9 +51,9 @@ export function ShoppingProvider({ children }: { children: ReactNode }) {
         loadData();
     }, [loadData]);
 
-    const addItem = async (name: string, category: string, quantity = 1) => {
+    const addItem = async (name: string, category: string, quantity = 1, notes?: string) => {
         try {
-            const newItem = await api.addShoppingItem({ name, category, quantity });
+            const newItem = await api.addShoppingItem({ name, category, quantity, notes });
             setItems((prev) => [newItem, ...prev]);
             // Refresh favorites as usage count might have changed or new favorite added
             const updatedFavorites = await api.getFavorites();

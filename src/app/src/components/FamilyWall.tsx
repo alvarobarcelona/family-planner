@@ -112,15 +112,37 @@ export function FamilyWall() {
                 {!isAdding && (
                     <button
                         onClick={() => setIsAdding(true)}
-                        className="text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors"
+                        className="group relative overflow-hidden flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-white active:scale-95 transition-transform duration-150"
+                        style={{
+                            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.45)',
+                            animation: 'buttonPulse 2.5s ease-in-out infinite',
+                        }}
                     >
-                        + Nueva Nota
+                        {/* Shimmer always running */}
+                        <span
+                            className="absolute inset-0 pointer-events-none"
+                            style={{
+                                background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.22) 50%, transparent 65%)',
+                                backgroundSize: '250% 100%',
+                                animation: 'shimmer 2s linear infinite',
+                            }}
+                        />
+                        {/* Plus icon with bounce */}
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-3.5 h-3.5 animate-bounce"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <span className="relative">Nueva Nota</span>
                     </button>
                 )}
             </div>
-            <div className="flex justify-between items-center mb-3 px-1">
+           {/*  <div className="flex justify-between items-center mb-3 px-1">
                 <p>{familyMembers.map(m => m.name).join(', ')}</p>
-            </div>
+            </div> */}
 
             {/* Add Note Form */}
             {isAdding && (
@@ -240,7 +262,30 @@ export function FamilyWall() {
                             style={{ transform: `rotate(${note.rotation}deg)` }}
                         >
                             {/* Pin Effect */}
-                            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-red-400 shadow-sm border border-red-500 z-10 opacity-80"></div>
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10" style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.35))' }}>
+                                <svg width="20" height="28" viewBox="0 0 20 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        {/* Sphere gradient - gives 3D ball effect */}
+                                        <radialGradient id="pinHead" cx="38%" cy="35%" r="60%">
+                                            <stop offset="0%" stopColor="#ff8a80" />
+                                            <stop offset="40%" stopColor="#e53935" />
+                                            <stop offset="100%" stopColor="#7f0000" />
+                                        </radialGradient>
+                                        {/* Needle gradient */}
+                                        <linearGradient id="pinNeedle" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stopColor="#9e9e9e" />
+                                            <stop offset="50%" stopColor="#eeeeee" />
+                                            <stop offset="100%" stopColor="#757575" />
+                                        </linearGradient>
+                                    </defs>
+                                    {/* Needle / tallo */}
+                                    <rect x="9.2" y="13" width="1.6" height="13" rx="0.8" fill="url(#pinNeedle)" opacity="0.9" />
+                                    {/* Pin head sphere */}
+                                    <circle cx="10" cy="10" r="8.5" fill="url(#pinHead)" />
+                                    {/* Shine highlight */}
+                                    <ellipse cx="7.5" cy="7" rx="2.8" ry="1.8" fill="white" opacity="0.35" transform="rotate(-20 7.5 7)" />
+                                </svg>
+                            </div>
 
                             {note.imageUrl && (
                                 <div className="mb-2 -mx-1 mt-1 rounded-md overflow-hidden bg-black/5 shadow-inner">

@@ -17,7 +17,8 @@ export function PullToRefresh({ onRefresh, children, className = "" }: PullToRef
     const MAX_PULL = 120;
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        const scrollTop = containerRef.current?.scrollTop || 0;
+        // Fallback to window scroll if container has no scroll logic
+        const scrollTop = containerRef.current?.scrollTop || window.scrollY || 0;
         if (scrollTop === 0 && !isRefreshing) {
             startY.current = e.touches[0].clientY;
             isPulling.current = true;
@@ -68,7 +69,7 @@ export function PullToRefresh({ onRefresh, children, className = "" }: PullToRef
     return (
         <div
             ref={containerRef}
-            className={`relative overflow-y-auto overscroll-contain ${className}`}
+            className={`relative ${className}`}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
