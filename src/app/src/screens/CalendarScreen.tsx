@@ -215,12 +215,12 @@ export function CalendarScreen() {
         </div>
       )}
 
-      <div className="space-y-6 pl-1 relative pb-8 mt-4">
-        {/* Timeline Line */}
-        <div className="absolute left-[18px] md:left-[20px] top-6 bottom-4 w-px rounded-full bg-gradient-to-b from-indigo-300 via-slate-300 to-transparent"></div>
+      <div className="space-y-6 pl-1 pb-8 mt-4">
 
         {grouped.map(({ date, tasks }) => {
           const isToday = new Date().toISOString().slice(0, 10) === date;
+
+          const isLast = grouped[grouped.length - 1].date === date;
 
           return (
             <section
@@ -228,14 +228,18 @@ export function CalendarScreen() {
               ref={isToday ? todayRef : null}
               className="relative flex gap-2 md:gap-3 items-start"
             >
-              {/* Date Column (Sticky-like feel) */}
-              <div className="flex flex-col items-center mt-3 z-10 w-[28px] md:w-[44px] shrink-0">
+              {/* Date Column with inline connector */}
+              <div className="flex flex-col items-center mt-3 w-[28px] md:w-[44px] shrink-0 self-stretch">
                 <span className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider leading-none">
                   {new Date(date).toLocaleDateString("es-ES", { weekday: "short" })}
                 </span>
-                <div className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold shadow-sm border-4 border-[#fdfbf7] ${isToday ? "bg-indigo-600 text-white" : "bg-white text-slate-700 shadow-slate-200/50"}`}>
+                <div className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold shadow-sm border-4 border-[#fdfbf7] z-10 relative ${isToday ? "bg-indigo-600 text-white" : "bg-white text-slate-700 shadow-slate-200/50"}`}>
                   {new Date(date).getDate()}
                 </div>
+                {/* Vertical connector to next item */}
+                {!isLast && (
+                  <div className="flex-1 w-px mt-2 rounded-full bg-gradient-to-b from-indigo-200 via-slate-300 to-transparent" />
+                )}
               </div>
 
               {/* Tasks Column */}
@@ -386,7 +390,7 @@ export function CalendarScreen() {
           aria-label="Volver a hoy"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
           </svg>
           <div className="absolute right-full mr-3 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
             Ir a hoy

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 
@@ -31,6 +31,9 @@ export function VisualCalendarScreen() {
     const [viewMode, setViewMode] = useState<ViewMode>("month");
     const [selectedAssigneeId, setSelectedAssigneeId] = useState<FilterAssigneeId>("all");
     const [animatingTaskId, setAnimatingTaskId] = useState<string | null>(null);
+    const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+    const [todayFlash, setTodayFlash] = useState(false);
+    const agendaScrollRef = useRef<HTMLDivElement | null>(null);
 
     // Filter Tasks
     const filteredTasks = useMemo(() => {
@@ -40,8 +43,8 @@ export function VisualCalendarScreen() {
         );
     }, [tasks, selectedAssigneeId]);
 
-    // Navigation Handlers
     const handlePrev = () => {
+        setSlideDirection("right");
         const newDate = new Date(currentDate);
         if (viewMode === "week") newDate.setDate(newDate.getDate() - 7);
         if (viewMode === "month") newDate.setMonth(newDate.getMonth() - 1);
@@ -50,6 +53,7 @@ export function VisualCalendarScreen() {
     };
 
     const handleNext = () => {
+        setSlideDirection("left");
         const newDate = new Date(currentDate);
         if (viewMode === "week") newDate.setDate(newDate.getDate() + 7);
         if (viewMode === "month") newDate.setMonth(newDate.getMonth() + 1);
@@ -58,7 +62,15 @@ export function VisualCalendarScreen() {
     };
 
     const handleToday = () => {
+        setSlideDirection("left");
         setCurrentDate(new Date());
+        // Flash feedback
+        setTodayFlash(true);
+        setTimeout(() => setTodayFlash(false), 600);
+    };
+
+    const scrollAgendaToTop = () => {
+        document.getElementById("agenda-top")?.scrollIntoView({ behavior: "smooth" });
     };
 
     const handleTaskClick = (taskId: string) => {
@@ -103,8 +115,7 @@ export function VisualCalendarScreen() {
 
         if (isLeftSwipe) {
             handleNext();
-        }
-        if (isRightSwipe) {
+        } else if (isRightSwipe) {
             handlePrev();
         }
     };
@@ -127,8 +138,15 @@ export function VisualCalendarScreen() {
                         </button>
                         <button
                             onClick={handleToday}
-                            className="px-3 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            className={`relative px-3 py-1 text-xs font-bold rounded-lg transition-all duration-200 overflow-hidden
+                                ${todayFlash
+                                    ? "text-white bg-indigo-500 shadow-md shadow-indigo-300 scale-95"
+                                    : "text-slate-600 hover:text-indigo-600 hover:bg-indigo-50"
+                                }`}
                         >
+                            {todayFlash && (
+                                <span className="absolute inset-0 rounded-lg animate-ping bg-indigo-400 opacity-40 pointer-events-none" />
+                            )}
                             HOY
                         </button>
                         <button
@@ -148,7 +166,9 @@ export function VisualCalendarScreen() {
                     {(["week", "month", "year"] as ViewMode[]).map((mode) => (
                         <button
                             key={mode}
-                            onClick={() => setViewMode(mode)}
+                            onClick={() => {
+                                setViewMode(mode);
+                            }}
                             className={`px-4 py-1.5 text-xs rounded-lg capitalize transition-all duration-200 ${viewMode === mode
                                 ? "bg-white shadow-sm font-semibold text-indigo-600"
                                 : "text-slate-500 hover:text-slate-700 font-medium"
@@ -198,39 +218,62 @@ export function VisualCalendarScreen() {
 
             {/* Content Area */}
             <div
-                className="flex-1 bg-white/50 backdrop-blur-sm rounded-3xl shadow-sm border border-white/60 p-2 min-h-[300px] flex flex-col overflow-hidden touch-pan-y"
+                className="relative flex-1 bg-white/50 backdrop-blur-sm rounded-3xl shadow-sm border border-white/60 p-2 min-h-[300px] flex flex-col overflow-hidden touch-pan-y"
                 onTouchStart={onTouchStart}
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
             >
-                {viewMode === "week" && (
-                    <WeekView
-                        currentDate={currentDate}
-                        tasks={filteredTasks}
-                        onTaskClick={handleTaskClick}
-                        toggleTaskCompletion={toggleTaskCompletion}
-                        animatingTaskId={animatingTaskId}
-                        setAnimatingTaskId={setAnimatingTaskId}
-                    />
-                )}
+                <div
+                    key={`${viewMode}-${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`}
+                    className={`flex-1 min-h-0 flex flex-col overflow-hidden ${slideDirection === "left"
+                        ? "animate-slide-in-right"
+                        : "animate-slide-in-left"
+                        }`}
+                >
+                    {viewMode === "week" && (
+                        <WeekView
+                            currentDate={currentDate}
+                            tasks={filteredTasks}
+                            onTaskClick={handleTaskClick}
+                            toggleTaskCompletion={toggleTaskCompletion}
+                            animatingTaskId={animatingTaskId}
+                            setAnimatingTaskId={setAnimatingTaskId}
+                        />
+                    )}
 
-                {viewMode === "month" && (
-                    <MonthView
-                        currentDate={currentDate}
-                        tasks={filteredTasks}
-                        onDayClick={(date) => {
-                            setCurrentDate(date);
-                            setViewMode("week");
-                        }}
-                    />
-                )}
+                    {viewMode === "month" && (
+                        <MonthView
+                            currentDate={currentDate}
+                            tasks={filteredTasks}
+                            onDayClick={(date) => {
+                                setSlideDirection("left");
+                                setCurrentDate(date);
+                                setViewMode("week");
+                            }}
+                        />
+                    )}
 
+                    {viewMode === "year" && (
+                        <AgendaView
+                            currentDate={currentDate}
+                            tasks={filteredTasks}
+                            onTaskClick={handleTaskClick}
+                            ref={agendaScrollRef}
+                        />
+                    )}
+                </div>
+
+                {/* Scroll to top — only shown inside AgendaView */}
                 {viewMode === "year" && (
-                    <AgendaView
-                        currentDate={currentDate}
-                        tasks={filteredTasks}
-                        onTaskClick={handleTaskClick}
-                    />
+                    <button
+                        onClick={scrollAgendaToTop}
+                        className="absolute bottom-4 right-4 bg-indigo-600 text-white p-2.5 rounded-full shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all z-20 flex items-center justify-center"
+                        aria-label="Volver arriba"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+                        </svg>
+                    </button>
                 )}
             </div>
         </div>
@@ -418,7 +461,14 @@ function WeekView({ currentDate, tasks, onTaskClick, toggleTaskCompletion, anima
     );
 }
 
-function AgendaView({ currentDate, tasks, onTaskClick }: { currentDate: Date, tasks: any[], onTaskClick: (id: string) => void }) {
+interface AgendaViewProps {
+    currentDate: Date;
+    tasks: any[];
+    onTaskClick: (id: string) => void;
+    onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+}
+
+const AgendaView = React.forwardRef<HTMLDivElement, AgendaViewProps>(({ currentDate, tasks, onTaskClick, onScroll }, ref) => {
     // Collect all unique months starting from the current displayed month that have events, plus the next 12 months minimum limit.
     // Instead of fixed 12 months from January, let's start from 'currentDate' and show upcoming months that contain events.
     const currentYear = currentDate.getFullYear();
@@ -468,7 +518,8 @@ function AgendaView({ currentDate, tasks, onTaskClick }: { currentDate: Date, ta
     }
 
     return (
-        <div className="h-full overflow-y-auto px-1 pb-6 space-y-6">
+        <div className="h-full overflow-y-auto px-1 pb-12 space-y-6" ref={ref} onScroll={onScroll}>
+            <div id="agenda-top" />
             {sortedMonthKeys.map(monthKey => {
                 const [yStr, mStr] = monthKey.split('-');
                 const monthDate = new Date(parseInt(yStr), parseInt(mStr) - 1, 1);
@@ -559,7 +610,7 @@ function AgendaView({ currentDate, tasks, onTaskClick }: { currentDate: Date, ta
             })}
         </div>
     );
-}
+});
 
 function MonthView({ currentDate, tasks, onDayClick }: { currentDate: Date, tasks: any[], onDayClick: (d: Date) => void }) {
     const year = currentDate.getFullYear();
