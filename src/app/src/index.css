@@ -273,3 +273,84 @@ body {
 .animate-slide-in-left {
   animation: slideInFromLeft 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
+@keyframes cheerful-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1) rotate(0);
+  }
+  20% {
+    transform: translateY(-8px) scale(1.05) rotate(-2deg);
+  }
+  40% {
+    transform: translateY(0) scale(0.95) rotate(2deg);
+  }
+  60% {
+    transform: translateY(-4px) scale(1.02) rotate(-1deg);
+  }
+  80% {
+    transform: translateY(0) scale(0.98) rotate(1deg);
+  }
+}
+
+.animate-cheerful {
+  animation: cheerful-bounce 1.5s ease-in-out infinite;
+  display: inline-block;
+  transform-origin: bottom center;
+}
+@keyframes rainbow-text {
+  0% {
+    color: #f87171;
+  }
+  25% {
+    color: #fbbf24;
+  }
+  50% {
+    color: #4ade80;
+  }
+  75% {
+    color: #60a5fa;
+  }
+  100% {
+    color: #f87171;
+  }
+}
+
+@keyframes float-and-sparkle {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+  }
+  50% {
+    transform: translateY(-12px) scale(1.1);
+    filter: drop-shadow(0 0 15px rgba(255, 223, 0, 0.8));
+  }
+}
+
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-rainbow {
+  animation: rainbow-text 4s linear infinite;
+}
+
+.animate-float-sparkle {
+  animation: float-and-sparkle 3s ease-in-out infinite;
+}
+
+.animate-rotate-slow {
+  animation: rotate-slow 10s linear infinite;
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}

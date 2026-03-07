@@ -271,7 +271,7 @@ export function CalendarScreen() {
                             }
                             toggleTaskCompletion(task.id);
                           }}
-                          className="flex-shrink-0 relative z-10 p-2 -m-2 mt-0.5"
+                          className="flex-shrink-0 relative z-10 p-2 -m-2"
                         >
                           <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors relative ${task.isCompleted
                             ? "bg-green-500 border-green-500"
@@ -302,24 +302,28 @@ export function CalendarScreen() {
                         <div>
                           {task.notificationTime != null && <span className="animate-bell-shake">🔔</span>}
                         </div>
+                      </div>
 
+                      <div className="flex justify-between gap-2 mt-1.5  ml-7 items-center">
+
+                        <div className="flex gap-1 flex-wrap">
+                          {task.assignees.map((a) => (
+                            <span
+                              key={a.id}
+                              className="text-[10px] px-2 py-0.5 rounded-full text-white shadow-sm"
+                              style={{ backgroundColor: a.color }}
+                            >
+                              {a.name}
+                            </span>
+                          ))}
+                        </div>
                         {task.timeLabel && (
-                          <p className="text-[11px] font-mono font-medium text-slate-500 bg-slate-100/80 px-1.5 py-0.5 rounded-md flex-shrink-0">
+                          <p className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0">
                             {task.timeLabel} h
                           </p>
                         )}
-                      </div>
 
-                      <div className="flex gap-1 mt-1.5 flex-wrap ml-7">
-                        {task.assignees.map((a) => (
-                          <span
-                            key={a.id}
-                            className="text-[10px] px-2 py-0.5 rounded-full text-white shadow-sm"
-                            style={{ backgroundColor: a.color }}
-                          >
-                            {a.name}
-                          </span>
-                        ))}
+
                       </div>
                     </div>
 

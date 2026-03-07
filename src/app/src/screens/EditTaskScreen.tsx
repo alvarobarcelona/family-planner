@@ -181,6 +181,20 @@ export function EditTaskScreen() {
           />
         </div>
 
+        {/* Description */}
+        <div className="col-span-2 space-y-1.5">
+          <label className="block text-sm font-medium text-slate-700" htmlFor="description">
+            Notas
+          </label>
+          <textarea
+            id="description"
+            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
+            placeholder="Detalles adicionales..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
         {/* Date and Time Row */}
         <div className="col-span-1 space-y-1.5">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide" htmlFor="date">
@@ -374,19 +388,6 @@ export function EditTaskScreen() {
           </div>
         </div>
 
-        {/* Description */}
-        <div className="col-span-2 space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700" htmlFor="description">
-            Notas
-          </label>
-          <textarea
-            id="description"
-            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
-            placeholder="Detalles adicionales..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
 
         {error && (
           <div className="col-span-2 p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm flex items-center gap-2">

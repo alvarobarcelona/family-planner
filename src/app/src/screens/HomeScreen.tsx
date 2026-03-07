@@ -249,22 +249,24 @@ export function HomeScreen() {
                         <span className="animate-bell-shake">🔔</span>
                       )}
                     </div>
-
-                    {task.timeLabel && (
-                      <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>
-                    )}
                   </div>
 
-                  <div className="flex gap-1 mt-1 flex-wrap">
-                    {task.assignees.map((a) => (
-                      <span
-                        key={a.id}
-                        className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
-                        style={{ backgroundColor: a.color }}
-                      >
-                        {a.name}
-                      </span>
-                    ))}
+                  <div className="flex justify-between gap-2 mt-1  items-center">
+                    <div className="flex gap-1 flex-wrap">
+                      {task.assignees.map((a) => (
+                        <span
+                          key={a.id}
+                          className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
+                          style={{ backgroundColor: a.color }}
+                        >
+                          {a.name}
+                        </span>
+                      ))}
+                    </div>
+                    {task.timeLabel && (
+                      <p className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0">{task.timeLabel} h</p>
+                    )}
+
                   </div>
                 </div>
 
@@ -409,21 +411,23 @@ export function HomeScreen() {
                     <div>
                       {task.notificationTime != null && <span className="animate-bell-shake">🔔</span>}
                     </div>
-                    {task.timeLabel && (
-                      <p className="text[5px] text-gray-500 flex-shrink-0">{task.timeLabel} h</p>
-                    )}
                   </div>
 
-                  <div className="flex gap-1 mt-1 flex-wrap">
-                    {task.assignees.map((a) => (
-                      <span
-                        key={a.id}
-                        className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
-                        style={{ backgroundColor: a.color }}
-                      >
-                        {a.name}
-                      </span>
-                    ))}
+                  <div className="flex gap-2 mt-1 flex-wrap items-center">
+                    {task.timeLabel && (
+                      <p className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0">{task.timeLabel} h</p>
+                    )}
+                    <div className="flex gap-1 flex-wrap">
+                      {task.assignees.map((a) => (
+                        <span
+                          key={a.id}
+                          className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
+                          style={{ backgroundColor: a.color }}
+                        >
+                          {a.name}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -461,7 +465,34 @@ export function HomeScreen() {
             ))}
 
             {tasksTomorrow.length === 0 && (
-              <p className="text-md text-gray-400">Nada planeado para mañana. 🎉</p>
+              <div className="col-span-full py-12 flex flex-col items-center justify-center animate-fadeIn relative overflow-hidden px-4">
+                {/* Decorative background glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-indigo-200/40 rounded-full blur-3xl animate-pulse" />
+
+                <div className="glass-pill px-8 py-10 rounded-3xl text-center space-y-4 relative z-10 border border-white/50 shadow-xl shadow-indigo-100/20">
+                  <div className="relative inline-block mb-2">
+                    <span className="text-6xl block animate-float-sparkle">🎉</span>
+                    <span className="absolute -top-1 -right-2 text-2xl animate-pulse opacity-75">✨</span>
+                    <span className="absolute -bottom-1 -left-2 text-2xl animate-rotate-slow opacity-60">🌈</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-bold animate-rainbow">
+                      ¡Tiempo Libre Detectado!
+                    </h3>
+                    <p className="text-sm text-slate-500 max-w-[200px] mx-auto leading-relaxed">
+                      Nada planeado para mañana. ¡Disfrutad del descanso en familia!
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-600 text-[10px] font-bold uppercase tracking-widest animate-bounce">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
+                      Día libre activo
+                    </span>
+                  </div>
+                </div>
+              </div>
             )}
           </ul>
         )}
