@@ -32,6 +32,7 @@ export interface Task {
   date: string; // YYYY-MM-DD (start date)
   endDate?: string; // YYYY-MM-DD (end date for multi-day events)
   timeLabel?: string;
+  endTime?: string;
   assignees: Assignee[];
   priority: Priority;
   recurrence?: Recurrence;
@@ -54,6 +55,7 @@ export interface CreateTaskInput {
   date: string;
   endDate?: string;
   time?: string;
+  endTime?: string;
   assigneeId: string;
   priority: Priority;
   recurrence: Recurrence;
@@ -228,6 +230,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           date: task.date,
           endDate: task.endDate,
           time: task.timeLabel,
+          endTime: task.endTime,
           assigneeId: task.assignees[0]?.id || "familia",
           priority: task.priority,
           recurrence: task.recurrence || "NONE",

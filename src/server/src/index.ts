@@ -86,6 +86,7 @@ interface Task {
   date: string; // YYYY-MM-DD (start date)
   endDate?: string; // YYYY-MM-DD (end date, optional for multi-day events)
   timeLabel?: string;
+  endTime?: string;
   assignees: Assignee[];
   priority: Priority;
   recurrence?: Recurrence;
@@ -601,6 +602,16 @@ async function initDb() {
     `);
   } catch (err) {
     console.log("Column end_date might already exist or error adding it:", err);
+  }
+
+  // Add end_time column if it doesn't exist
+  try {
+    await pool.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS end_time text;
+    `);
+  } catch (err) {
+    console.log("Column end_time might already exist or error adding it:", err);
   }
 
   // Add is_completed column if it doesn't exist
@@ -1297,7 +1308,7 @@ initDb()
         const householdId = req.user?.householdId;
         const result = await pool.query(
           `
-      SELECT id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at
+      SELECT id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at
       FROM tasks
       WHERE household_id = $1
       ORDER BY date, time_label NULLS FIRST, title;
@@ -1313,6 +1324,7 @@ initDb()
           date: row.date as string, // "YYYY-MM-DD"
           endDate: (row.end_date ?? undefined) as string | undefined,
           timeLabel: (row.time_label ?? undefined) as string | undefined,
+          endTime: (row.end_time ?? undefined) as string | undefined,
           priority: row.priority as Priority,
           recurrence: (row.recurrence ?? undefined) as Recurrence | undefined,
           description: (row.description ?? undefined) as string | undefined,
@@ -1370,6 +1382,7 @@ initDb()
         date,
         endDate,
         time,
+        endTime,
         assigneeId,
         priority,
         recurrence,
@@ -1384,6 +1397,7 @@ initDb()
         date?: string;
         endDate?: string;
         time?: string;
+        endTime?: string;
         assigneeId?: string;
         priority?: Priority;
         recurrence?: Recurrence;
@@ -1424,6 +1438,7 @@ initDb()
         date,
         endDate,
         timeLabel: time || undefined,
+        endTime: endTime || undefined,
         priority,
         assignees: [member],
         recurrence,
@@ -1679,8 +1694,8 @@ initDb()
         const insertPromises = tasksToAdd.map((t: any) =>
           pool.query(
             `
-        INSERT INTO tasks (id, household_id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, recurrence_interval, recurrence_end_date, recurrence_count)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        INSERT INTO tasks (id, household_id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, recurrence_interval, recurrence_end_date, recurrence_count)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       `,
             [
               t.id,
@@ -1689,6 +1704,7 @@ initDb()
               t.date,
               t.endDate ?? null,
               t.timeLabel ?? null,
+              t.endTime ?? null,
               t.priority,
               t.recurrence ?? null,
               t.description ?? null,
@@ -1725,6 +1741,7 @@ initDb()
         date,
         endDate,
         time,
+        endTime,
         assigneeId,
         priority,
         recurrence,
@@ -1741,6 +1758,7 @@ initDb()
         date?: string;
         endDate?: string;
         time?: string;
+        endTime?: string;
         assigneeId?: string;
         priority?: Priority;
         recurrence?: Recurrence;
@@ -1794,6 +1812,7 @@ initDb()
               date,
               endDate,
               timeLabel: time || undefined,
+              endTime: endTime || undefined,
               priority,
               assignees: [member],
               recurrence,
@@ -1890,8 +1909,8 @@ initDb()
             // Insert all
             const insertPromises = tasksToAdd.map((t) =>
               pool.query(
-                `INSERT INTO tasks (id, household_id, title, date, end_date, time_label, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                `INSERT INTO tasks (id, household_id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
                 [
                   t.id,
                   householdId, // Add householdId
@@ -1899,6 +1918,7 @@ initDb()
                   t.date,
                   t.endDate ?? null,
                   t.timeLabel ?? null,
+                  t.endTime ?? null,
                   t.priority,
                   t.recurrence ?? null,
                   t.description ?? null,
@@ -1923,8 +1943,8 @@ initDb()
         const result = await pool.query(
           `
       UPDATE tasks
-      SET title = $1, date = $2, end_date = $3, time_label = $4, priority = $5, recurrence = $6, description = $7, assignees = $8, days_of_week = $9, duration_weeks = $10, notification_time = $11, color = $12, is_completed = $13, created_by = COALESCE($14, created_by), created_at = COALESCE($15, created_at)
-      WHERE id = $16 AND household_id = $17
+      SET title = $1, date = $2, end_date = $3, time_label = $4, end_time = $5, priority = $6, recurrence = $7, description = $8, assignees = $9, days_of_week = $10, duration_weeks = $11, notification_time = $12, color = $13, is_completed = $14, created_by = COALESCE($15, created_by), created_at = COALESCE($16, created_at)
+      WHERE id = $17 AND household_id = $18
       RETURNING *
     `,
           [
@@ -1932,6 +1952,7 @@ initDb()
             date,
             endDate || null,
             time || null,
+            endTime || null,
             priority,
             recurrence || null,
             description?.trim() || null,
@@ -1959,6 +1980,7 @@ initDb()
           date: row.date, // YYYY-MM-DD
           endDate: row.end_date ?? undefined,
           timeLabel: row.time_label ?? undefined,
+          endTime: row.end_time ?? undefined,
           priority: row.priority as Priority,
           recurrence: row.recurrence ?? undefined,
           description: row.description ?? undefined,

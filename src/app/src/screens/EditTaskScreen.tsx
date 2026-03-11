@@ -52,6 +52,7 @@ export function EditTaskScreen() {
   const [date, setDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [time, setTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
@@ -80,6 +81,7 @@ export function EditTaskScreen() {
         setDate(task.date);
         setEndDate(task.endDate || "");
         setTime(task.timeLabel || "");
+        setEndTime(task.endTime || "");
         setAssigneeId(task.assignees[0]?.id || "familia");
         setPriority(task.priority);
         setRecurrence(task.recurrence || "NONE");
@@ -128,6 +130,7 @@ export function EditTaskScreen() {
         date,
         endDate: endDate || undefined,
         time: time || undefined,
+        endTime: endTime || undefined,
         assigneeId,
         priority,
         recurrence,
@@ -188,7 +191,7 @@ export function EditTaskScreen() {
           </label>
           <textarea
             id="description"
-            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
+            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-50 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
             placeholder="Detalles adicionales..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -196,7 +199,7 @@ export function EditTaskScreen() {
         </div>
 
         {/* Date and Time Row */}
-        <div className="col-span-1 space-y-1.5">
+        <div className="col-span-2 sm:col-span-1 space-y-1.5">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide" htmlFor="date">
             Fecha
           </label>
@@ -209,17 +212,28 @@ export function EditTaskScreen() {
           />
         </div>
 
-        <div className="col-span-1 space-y-1.5">
+        <div className="col-span-2 sm:col-span-1 space-y-1.5">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide" htmlFor="time">
             Hora <span className="text-slate-300 font-normal">(opcional)</span>
           </label>
-          <input
-            id="time"
-            type="time"
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          />
+          <div className="flex gap-2 items-center">
+            <input
+              id="time"
+              type="time"
+              className="w-full rounded-xl border-slate-200 bg-slate-50 px-2 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all cursor-text text-left"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+            <span className="text-slate-400 font-bold">-</span>
+            <input
+              id="endTime"
+              type="time"
+              className="w-full rounded-xl border-slate-200 bg-slate-50 px-2 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50 cursor-text text-left"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              disabled={!time}
+            />
+          </div>
         </div>
 
         {/* End Date */}
@@ -500,6 +514,7 @@ export function EditTaskScreen() {
                           title,
                           date,
                           time: time || undefined,
+                          endTime: endTime || undefined,
                           assigneeId,
                           priority,
                           recurrence: recurrence,
