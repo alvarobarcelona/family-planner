@@ -696,6 +696,9 @@ async function initDb() {
       `ALTER TABLE households ADD COLUMN IF NOT EXISTS password_hash text;`,
     );
     await pool.query(
+      `ALTER TABLE households ADD COLUMN IF NOT EXISTS last_donation_prompt timestamptz;`,
+    );
+    await pool.query(
       `ALTER TABLE households ADD CONSTRAINT unique_household_name UNIQUE (name);`,
     );
   } catch (err) {
@@ -2129,6 +2132,59 @@ initDb()
             .json({ message: "Cannot delete member with assigned tasks" });
         }
         res.status(500).json({ message: "Error deleting member" });
+      }
+    });
+
+    // DONATION PROMPT CRUD
+    // GET Donation Status
+    app.get("/api/household/donation-status", authMiddleware, async (req, res) => {
+      const householdId = req.user?.householdId;
+      if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+
+      try {
+        const result = await pool.query(
+          "SELECT last_donation_prompt FROM households WHERE id = $1",
+          [householdId]
+        );
+
+        if (result.rowCount === 0) {
+          return res.status(404).json({ message: "Household not found" });
+        }
+
+        const lastPrompt = result.rows[0].last_donation_prompt;
+        let shouldPrompt = false;
+
+        if (!lastPrompt) {
+          shouldPrompt = true;
+        } else {
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          if (new Date(lastPrompt) < thirtyDaysAgo) {
+            shouldPrompt = true;
+          }
+        }
+
+        res.json({ shouldPrompt });
+      } catch (err) {
+        console.error("Error checking donation status:", err);
+        res.status(500).json({ message: "Error checking donation status" });
+      }
+    });
+
+    // POST Donation Prompt (Reset Timer)
+    app.post("/api/household/donation-prompt", authMiddleware, async (req, res) => {
+      const householdId = req.user?.householdId;
+      if (!householdId) return res.status(401).json({ message: "Unauthorized" });
+
+      try {
+        await pool.query(
+          "UPDATE households SET last_donation_prompt = now() WHERE id = $1",
+          [householdId]
+        );
+        res.status(200).json({ message: "Donation prompt timer reset" });
+      } catch (err) {
+        console.error("Error updating donation status:", err);
+        res.status(500).json({ message: "Error updating donation status" });
       }
     });
   })

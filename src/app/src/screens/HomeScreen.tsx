@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { buildUrl, logout } from "../api/tasksApi";
 import { useTaskStore } from "../store/useTaskStore";
-import { logout } from "../api/tasksApi";
 import { useModal } from "../context/ModalContext";
 import { FamilyWall } from "../components/FamilyWall";
+import { DonationScreen } from "./DonationScreen";
 
 type FilterAssigneeId = "all" | string;
 
@@ -17,6 +18,30 @@ export function HomeScreen() {
   const [selectedAssigneeId, setSelectedAssigneeId] =
     useState<FilterAssigneeId>("all");
   const [animatingTaskId, setAnimatingTaskId] = useState<string | null>(null);
+  const [showDonation, setShowDonation] = useState(false);
+
+  // Check donation status
+  useEffect(() => {
+    const checkDonation = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(buildUrl("/api/household/donation-status"), {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.shouldPrompt) {
+            setShowDonation(true);
+          }
+        }
+      } catch (err) {
+        console.error("Error checking donation status", err);
+      }
+    };
+    checkDonation();
+  }, []);
 
   // Auto-refresh on visibility change
   useEffect(() => {
@@ -81,12 +106,16 @@ export function HomeScreen() {
   };
 
   return (
-    <div
-      className="space-y-3 min-h-[80vh]"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <>
+      {showDonation && (
+        <DonationScreen onDismiss={() => setShowDonation(false)} />
+      )}
+      <div
+        className="space-y-3 min-h-[80vh]"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
       {/* Pull to Refresh Indicator */}
       <div
         className="fixed top-0 left-0 right-0 flex justify-center items-center pointer-events-none transition-transform duration-200 z-50"
@@ -360,9 +389,34 @@ export function HomeScreen() {
             ))}
 
             {filteredTasks.length === 0 && (
-              <p className="text-md text-gray-400">
-                No hay tareas para este filtro. 😊
-              </p>
+              <div className="col-span-full py-12 flex flex-col items-center justify-center animate-fadeIn relative overflow-hidden px-4">
+                {/* Decorative background glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-indigo-200/40 rounded-full blur-3xl animate-pulse" />
+
+                <div className="glass-pill px-12 py-8 rounded-3xl text-center space-y-4 relative z-10 border border-white/50 shadow-xl shadow-indigo-100/20">
+                  <div className="relative inline-block mb-2">
+                    <span className="text-6xl block animate-float-sparkle">🔍</span>
+                    <span className="absolute -top-1 -right-2 text-2xl animate-pulse opacity-75">✨</span>
+                    <span className="absolute -bottom-1 -left-2 text-2xl animate-rotate-slow opacity-60">🌈</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-bold animate-rainbow">
+                      ¡Todo despejado!
+                    </h3>
+                    <p className="text-sm text-slate-500 max-w-[200px] mx-auto leading-relaxed">
+                      No hay tareas para este filtro o no existen eventos hoy. 😊
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-widest animate-bounce">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping" />
+                      Filtro sin tareas
+                    </span>
+                  </div>
+                </div>
+              </div>
             )}
           </ul>
         )
@@ -498,7 +552,7 @@ export function HomeScreen() {
         )}
       </div>
     </div>
-
+    </>
 
   );
 }

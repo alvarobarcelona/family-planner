@@ -28,7 +28,7 @@ const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
 console.log("Current API_BASE_URL (empty means relative):", API_BASE_URL);
 
-function buildUrl(path: string) {
+export function buildUrl(path: string) {
   // If API_BASE_URL is empty, this returns "/api/foo", which is relative to current domain
   // This triggers the Proxy in both Dev (vite) and Prod (vercel)
   return `${API_BASE_URL}${path}`;
