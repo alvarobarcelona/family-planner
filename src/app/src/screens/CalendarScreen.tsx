@@ -319,7 +319,7 @@ export function CalendarScreen() {
                         </div>
                         {task.timeLabel && (
                           <p className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0">
-                            {task.timeLabel} h
+                            {task.timeLabel}{task.endTime && ` - ${task.endTime}`} h
                           </p>
                         )}
 

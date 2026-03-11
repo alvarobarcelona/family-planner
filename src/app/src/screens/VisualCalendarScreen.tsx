@@ -418,7 +418,7 @@ function WeekView({ currentDate, tasks, onTaskClick, toggleTaskCompletion, anima
                                                             )}
                                                             {task.timeLabel && (
                                                                 <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                                                                    {task.timeLabel} h
+                                                                    {task.timeLabel}{task.endTime && ` - ${task.endTime}`} h
                                                                 </span>
                                                             )}
                                                         </div>
@@ -573,7 +573,7 @@ const AgendaView = React.forwardRef<HTMLDivElement, AgendaViewProps>(({ currentD
                                                 </h4>
                                                 {task.timeLabel && (
                                                     <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
-                                                        {task.timeLabel} h
+                                                        {task.timeLabel}{task.endTime && ` - ${task.endTime}`} h
                                                     </span>
                                                 )}
                                             </div>

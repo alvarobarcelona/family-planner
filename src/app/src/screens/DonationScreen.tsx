@@ -11,7 +11,7 @@ export function DonationScreen({ onDismiss }: DonationScreenProps) {
   const handleDismiss = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("auth_token");
       await fetch(buildUrl("/api/household/donation-prompt"), {
         method: "POST",
         headers: {

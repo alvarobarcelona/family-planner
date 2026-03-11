@@ -3,12 +3,14 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import { HomeScreen } from "./screens/HomeScreen";
 import { AdminScreen } from "./screens/AdminScreen";
 import { LoginScreen } from "./screens/LoginScreen";
+import { InstallGuideScreen } from "./screens/InstallGuideScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { VisualCalendarScreen } from "./screens/VisualCalendarScreen";
 import { NewTaskScreen } from "./screens/NewTaskScreen";
 import { EditTaskScreen } from "./screens/EditTaskScreen";
 import { ShoppingListScreen } from "./screens/ShoppingListScreen";
 import { MembersScreen } from "./screens/MembersScreen";
+import { InfoScreen } from "./screens/InfoScreen";
 import { TaskProvider } from "./store/useTaskStore";
 import { useNotifications } from "./hooks/useNotifications";
 import { ShoppingProvider } from "./store/useShoppingStore";
@@ -117,6 +119,7 @@ function AppContent() {
           <Route path="/new" element={<NewTaskScreen />} />
           <Route path="/edit/:taskId" element={<EditTaskScreen />} />
           <Route path="/members" element={<MembersScreen />} />
+          <Route path="/info" element={<InfoScreen />} />
         </Routes>
       </main>
     </div>
@@ -136,12 +139,21 @@ import { useLocation } from "react-router-dom";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showLogin, setShowLogin] = useState(true);
   const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (token) {
       setIsAuthenticated(true);
+    }
+
+    // Check if app is running in standalone mode (installed as PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    
+    // If NOT standalone and NOT authenticated, show the guide first
+    if (!isStandalone && !token) {
+        setShowLogin(false);
     }
   }, []);
 
@@ -150,6 +162,9 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
+    if (!showLogin) {
+      return <InstallGuideScreen onContinue={() => setShowLogin(true)} />;
+    }
     return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
 
