@@ -169,7 +169,7 @@ export function NewTaskScreen() {
             id="title"
             type="text"
             className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-            placeholder="Ej: Pediatra Leo, Reunión Kita..."
+            placeholder="Ej: Pediatra Leo, Reunión guardería..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
