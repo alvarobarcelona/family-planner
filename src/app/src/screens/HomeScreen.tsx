@@ -478,12 +478,8 @@ export function HomeScreen() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2 mt-1 flex-wrap items-center">
-                      {task.timeLabel && (
-                        <p className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0">
-                          {task.timeLabel}{task.endTime && ` - ${task.endTime}`} h
-                        </p>
-                      )}
+                    <div className="flex gap-2 mt-1 justify-between items-center">
+                    
                       <div className="flex gap-1 flex-wrap">
                         {task.assignees.map((a) => (
                           <span
@@ -495,6 +491,13 @@ export function HomeScreen() {
                           </span>
                         ))}
                       </div>
+                      {task.timeLabel && (
+                        <p className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                          {task.timeLabel}{task.endTime && ` - ${task.endTime}`} h
+                        </p>
+                      )}
+
+
                     </div>
                   </div>
 

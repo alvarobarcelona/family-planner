@@ -48,7 +48,7 @@ export function InstallGuideScreen({ onContinue }: InstallGuideScreenProps) {
                         <ol className="text-sm text-slate-600 space-y-4">
                             <li className="flex gap-3 items-center">
                                 <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center shrink-0 text-xs">1</div>
-                                <span>Toca el botón <strong className="text-indigo-600 inline-flex items-center mx-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Compartir</strong> en Safari.</span>
+                                <span>Toca el botón de los 3 puntos, seguidamente <strong className="text-indigo-600 inline-flex items-center mx-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Compartir</strong> en Safari.</span>
                             </li>
                             <li className="flex gap-3 items-center">
                                 <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center shrink-0 text-xs">2</div>

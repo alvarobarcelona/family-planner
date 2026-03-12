@@ -17,7 +17,7 @@ const CATEGORIES = [
     { id: "frozen", label: "Congelados", icon: "🧊" },
     { id: "cleaning", label: "Limpieza", icon: "🧹" },
     { id: "hygiene", label: "Higiene Personal", icon: "🧴" },
-    { id: "pets", label: "Mascotas", icon: "�" },
+    { id: "pets", label: "Mascotas", icon: "🐕" },
     { id: "pharmacy", label: "Parafarmacia", icon: "💊" },
     { id: "other", label: "Otros", icon: "📦" },
 ];

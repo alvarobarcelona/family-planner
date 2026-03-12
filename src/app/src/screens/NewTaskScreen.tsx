@@ -205,7 +205,7 @@ export function NewTaskScreen() {
 
         <div className="col-span-2 sm:col-span-1 space-y-1.5">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide" htmlFor="time">
-            Hora <span className="text-slate-300 font-normal">(opc)</span>
+            Hora <span className="text-slate-400 font-normal">(opcional)</span>
           </label>
           <div className="flex gap-2 items-center">
             <input
