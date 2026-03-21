@@ -406,7 +406,13 @@ app.get("/api/vapid-public-key", (_req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
 });
 
-// Cron Job Endpoint - for external cron services to trigger notification checks
+// first cron Job for wakeup render
+app.get("/api/cron/wakeup", async (_req, res) => {
+  res.json({ message: "Server is awake" });
+});
+
+
+// second Cron Job Endpoint - for external cron services to trigger notification checks on db NEON
 app.get("/api/cron/check-notifications", async (req, res) => {
   // Verify cron secret
   const authHeader = req.headers.authorization;
