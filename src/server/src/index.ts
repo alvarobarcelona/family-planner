@@ -9,6 +9,10 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { sendNotification } from "./services/pushService";
 
+// Cache for notifications to prevent hitting Neon limits
+let cachedNotificationTasks: any[] | null = null;
+let tasksDirty: boolean = true;
+
 // Try explicit load if missing
 if (!process.env.VAPID_PUBLIC_KEY) {
   const envPath = path.resolve(process.cwd(), ".env");
@@ -1171,20 +1175,28 @@ async function checkAndSendNotifications(): Promise<{
 
   try {
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    
+    // Refresh cache only if dirty or cache doesn't exist
+    if (tasksDirty || !cachedNotificationTasks) {
+      const todayStr = now.toISOString().slice(0, 10);
+      const result = await pool.query(
+        `
+        SELECT * FROM tasks 
+        WHERE date >= $1 
+        AND notification_time IS NOT NULL 
+        AND time_label IS NOT NULL
+        AND (notification_sent IS NULL OR notification_sent = false)
+      `,
+        [todayStr],
+      );
+      cachedNotificationTasks = result.rows;
+      tasksDirty = false;
+      console.log(`Loaded scheduled notifications from DB into memory. Count: ${cachedNotificationTasks.length}`);
+    }
 
-    const result = await pool.query(
-      `
-      SELECT * FROM tasks 
-      WHERE date >= $1 
-      AND notification_time IS NOT NULL 
-      AND time_label IS NOT NULL
-      AND (notification_sent IS NULL OR notification_sent = false)
-    `,
-      [todayStr],
-    );
+    const tasksToProcess = [...cachedNotificationTasks];
 
-    for (const task of result.rows) {
+    for (const task of tasksToProcess) {
       const [hours, minutes] = task.time_label.split(":").map(Number);
 
       // Construct target date in Europe/Madrid timezone
@@ -1287,6 +1299,9 @@ async function checkAndSendNotifications(): Promise<{
           "UPDATE tasks SET notification_sent = true WHERE id = $1",
           [task.id],
         );
+
+        // Remove from memory cache to skip in next local loop run without hitting DB
+        cachedNotificationTasks = cachedNotificationTasks!.filter(t => t.id !== task.id);
       }
     }
   } catch (err) {
@@ -1386,6 +1401,7 @@ initDb()
 
     // POST crear tarea(s)
     app.post("/api/tasks", authMiddleware, async (req, res) => {
+      tasksDirty = true;
       const {
         title,
         date,
@@ -1742,6 +1758,7 @@ initDb()
 
     // PUT actualizar tarea
     app.put("/api/tasks/:id", authMiddleware, async (req, res) => {
+      tasksDirty = true;
       const { id } = req.params;
       const { updateAll } = req.query;
       const householdId = req.user?.householdId;
@@ -2013,6 +2030,7 @@ initDb()
 
     // DELETE
     app.delete("/api/tasks/:id", authMiddleware, async (req, res) => {
+      tasksDirty = true;
       const { id } = req.params;
       const { deleteAll } = req.query;
       const householdId = req.user?.householdId;
