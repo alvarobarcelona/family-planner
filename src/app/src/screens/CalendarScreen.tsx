@@ -217,17 +217,43 @@ export function CalendarScreen() {
 
       <div className="space-y-6 pl-1 pb-8 mt-4">
 
-        {grouped.map(({ date, tasks }) => {
+        {grouped.map(({ date, tasks }, index) => {
+          const currentDateObj = new Date(date);
           const isToday = new Date().toISOString().slice(0, 10) === date;
-
           const isLast = grouped[grouped.length - 1].date === date;
 
+          let showMonthSeparator = false;
+          if (index === 0) {
+            showMonthSeparator = true;
+          } else {
+            const previousDateObj = new Date(grouped[index - 1].date);
+            if (
+              currentDateObj.getMonth() !== previousDateObj.getMonth() ||
+              currentDateObj.getFullYear() !== previousDateObj.getFullYear()
+            ) {
+              showMonthSeparator = true;
+            }
+          }
+
+          const monthName = currentDateObj.toLocaleDateString("es-ES", {
+            month: "long",
+            year: "numeric",
+          });
+
           return (
-            <section
-              key={date}
-              ref={isToday ? todayRef : null}
-              className="relative flex gap-2 md:gap-3 items-start"
-            >
+            <div key={date} className="flex flex-col">
+              {showMonthSeparator && (
+                <div className="flex items-center mb-6 mt-2 ml-1">
+                  <span className="px-4 py-1.5 rounded-full bg-slate-100 text-sm font-bold text-slate-600 uppercase tracking-widest shadow-sm border border-slate-200">
+                    {monthName}
+                  </span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent ml-4"></div>
+                </div>
+              )}
+              <section
+                ref={isToday ? todayRef : null}
+                className="relative flex gap-2 md:gap-3 items-start"
+              >
               {/* Date Column with inline connector */}
               <div className="flex flex-col items-center mt-3 w-[28px] md:w-[44px] shrink-0 self-stretch">
                 <span className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider leading-none">
@@ -381,7 +407,8 @@ export function CalendarScreen() {
                   </div>
                 ))}
               </div>
-            </section>
+              </section>
+            </div>
           );
         })}
       </div>
