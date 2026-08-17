@@ -1762,6 +1762,7 @@ initDb()
       const { id } = req.params;
       const { updateAll } = req.query;
       const householdId = req.user?.householdId;
+      if (!householdId) return res.status(401).json({ message: "No autorizado" });
       const {
         title,
         date,
@@ -1821,16 +1822,20 @@ initDb()
         // SERIES UPDATE
         if (updateAll === "true") {
           const taskRes = await pool.query(
-            "SELECT series_id FROM tasks WHERE id = $1",
-            [id],
+            "SELECT series_id FROM tasks WHERE id = $1 AND household_id = $2",
+            [id, householdId],
           );
-          if ((taskRes.rowCount ?? 0) > 0 && taskRes.rows[0].series_id) {
+          if ((taskRes.rowCount ?? 0) === 0) {
+            return res.status(404).json({ message: "Tarea no encontrada" });
+          }
+          if (taskRes.rows[0].series_id) {
             const seriesId = taskRes.rows[0].series_id;
 
             // 1. Delete old series
-            await pool.query("DELETE FROM tasks WHERE series_id = $1", [
-              seriesId,
-            ]);
+            await pool.query(
+              "DELETE FROM tasks WHERE series_id = $1 AND household_id = $2",
+              [seriesId, householdId],
+            );
 
             // 2. Generate new tasks
             const base: Omit<Task, "id"> = {
@@ -1963,6 +1968,7 @@ initDb()
 
             return res.json(tasksToAdd[0]);
           }
+          // sin series_id -> cae al SINGLE UPDATE
         }
 
         // SINGLE UPDATE
