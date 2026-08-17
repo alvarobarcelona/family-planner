@@ -39,3 +39,6 @@ backups/*.sql
 
 scripts
 backups
+
+# Claude Code (personal, no compartir)
+CLAUDE.local.md
