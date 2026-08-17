@@ -150,8 +150,22 @@ function addMonths(dateStr: string, months: number): string {
 }
 
 // Auth Middleware
+// Secretos obligatorios: si falta uno, el servidor no arranca (igual que
+// DATABASE_URL en db.ts). Devuelve string para que TS lo estreche dentro
+// de los middlewares, donde el narrowing de un const no se propaga.
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} no está definida`);
+  }
+  return value;
+}
+
 const APP_SECRET_PASSWORD = process.env.APP_SECRET_PASSWORD;
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-change-me";
+
+// Sin fallback: firmar y verificar tokens con un secreto conocido permitiría
+// forjar un JWT con cualquier householdId.
+const JWT_SECRET = requireEnv("JWT_SECRET");
 
 if (!APP_SECRET_PASSWORD) {
   console.warn(
@@ -187,8 +201,9 @@ function authMiddleware(
   }
 }
 
-const ADMIN_PASSWORD =
-  process.env.ADMIN_PASSWORD || process.env.APP_SECRET_PASSWORD;
+// Sin fallback a APP_SECRET_PASSWORD: eso daría acceso al panel de admin
+// (crear/borrar households) a cualquiera con la contraseña familiar de login.
+const ADMIN_PASSWORD = requireEnv("ADMIN_PASSWORD");
 
 function adminMiddleware(
   req: express.Request,
