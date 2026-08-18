@@ -23,12 +23,15 @@ const weekdays = [
 ];
 
 const notificationOptions = [
-  { value: 0, label: "Sin notificación" },
+  { value: -1, label: "Sin notificación" },
+  { value: 0, label: "En el momento del evento" },
   { value: 10, label: "10 minutos antes" },
   { value: 30, label: "30 minutos antes" },
   { value: 60, label: "1 hora antes" },
   { value: 120, label: "2 horas antes" },
   { value: 1440, label: "1 día antes" },
+  { value: 2880, label: "2 días antes" },
+  { value: 10080, label: "1 semana antes" },
 ];
 
 export function NewTaskScreen() {
@@ -45,8 +48,8 @@ export function NewTaskScreen() {
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [description, setDescription] = useState("");
-  const [notificationTime, setNotificationTime] = useState<number>(0);
-  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>("default");
+  const [notificationTime, setNotificationTime] = useState<number>(-1);
+  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>("");
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +92,14 @@ export function NewTaskScreen() {
       setError("El título es obligatorio");
       return;
     }
+    if (!assigneeId) {
+      setError("Por favor, selecciona a quién asignar la tarea");
+      return;
+    }
+    if (!selectedCreatedBy || selectedCreatedBy === "default") {
+      setError("Por favor, selecciona quién crea la tarea");
+      return;
+    }
     if (recurrence === 'WEEKLY' && customDays.length > 0) {
       // logic ok
     }
@@ -109,7 +120,7 @@ export function NewTaskScreen() {
         recurrence,
         description: description || undefined,
         daysOfWeek: recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY' ? customDays : undefined,
-        notificationTime: notificationTime > 0 ? notificationTime : undefined,
+        notificationTime: notificationTime >= 0 ? notificationTime : undefined,
         color: selectedColor,
         createdBy: selectedCreatedBy,
         recurrenceInterval,
@@ -129,7 +140,7 @@ export function NewTaskScreen() {
       setRecurrenceEndCondition('NEVER');
       setRecurrenceEndDate("");
       setRecurrenceCount(undefined);
-      setNotificationTime(0);
+      setNotificationTime(-1);
       setSelectedColor(undefined);
 
       // Show success message with instance count
@@ -225,6 +236,11 @@ export function NewTaskScreen() {
               disabled={!time}
             />
           </div>
+          <div className="flex gap-2 mt-2">
+            <button type="button" onClick={() => setTime("09:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Mañana (09:00)</button>
+            <button type="button" onClick={() => setTime("14:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Mediodía (14:00)</button>
+            <button type="button" onClick={() => setTime("17:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Tarde (17:00)</button>
+          </div>
         </div>
 
         {/* End Date */}
@@ -247,23 +263,32 @@ export function NewTaskScreen() {
         </div>
 
         {/* Priority */}
-        <div className="col-span-2 space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700">Prioridad</label>
-          <div className="flex gap-6">
-            {(['LOW', 'MEDIUM', 'HIGH'] as Priority[]).map((p) => (
-              <label key={p} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="priority"
-                  className="text-slate-900 focus:ring-slate-900"
-                  checked={priority === p}
-                  onChange={() => setPriority(p)}
-                />
-                <span className="text-sm text-slate-600">
-                  {p === 'LOW' ? 'Baja' : p === 'MEDIUM' ? 'Media' : 'Alta'}
-                </span>
-              </label>
-            ))}
+        <div className="col-span-2 space-y-2">
+          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Prioridad</label>
+          <div className="flex gap-2">
+            {(['LOW', 'MEDIUM', 'HIGH'] as Priority[]).map((p) => {
+              let colors = "bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200";
+              let label = "";
+              if (priority === p) {
+                if (p === 'LOW') colors = "bg-green-100 text-green-700 border-green-300 ring-2 ring-green-100/50";
+                if (p === 'MEDIUM') colors = "bg-amber-100 text-amber-700 border-amber-300 ring-2 ring-amber-100/50";
+                if (p === 'HIGH') colors = "bg-red-100 text-red-700 border-red-300 ring-2 ring-red-100/50";
+              }
+              if (p === 'LOW') label = "🟢 Baja";
+              if (p === 'MEDIUM') label = "🟡 Media";
+              if (p === 'HIGH') label = "🔴 Alta";
+
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPriority(p)}
+                  className={`flex-1 py-2 px-3 rounded-xl border text-sm font-semibold transition-all ${colors}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -302,44 +327,60 @@ export function NewTaskScreen() {
 
         <div className="col-span-2 h-px bg-slate-100 my-1" />
 
-        {/* Assignee & Created By Row - On mobile keep full width if content is long, but let's try 2 cols if names are short? 
-            Since names CAN be long, better to keep them full width or distinct. 
-            User asked for "responsive", so typically fields stack on mobile.
-            But "Asignado a" and "Creado por" are related.
-            Let's keep them separate for clarity and touch targets on mobile.
-        */}
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
+        {/* Assignee & Created By Row */}
+        <div className="col-span-2 sm:col-span-1 space-y-2">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Asignado a</label>
-          <select
-            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-            value={assigneeId}
-            onChange={(e) => setAssigneeId(e.target.value)}
-            required
-          >
-            <option value="">Seleccionar miembro...</option>
-            {familyMembers.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap gap-2">
+            {familyMembers.map((m) => {
+              const isSelected = assigneeId === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setAssigneeId(m.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
+                    isSelected ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-105' : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
+                  }`}
+                >
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white font-bold"
+                    style={{ backgroundColor: m.color || '#94a3b8' }}
+                  >
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium">{m.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
+        <div className="col-span-2 sm:col-span-1 space-y-2">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Creado por</label>
-          <select
-            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-            value={selectedCreatedBy}
-            onChange={(e) => setSelectedCreatedBy(e.target.value)}
-            required
-          >
-            <option value="">Seleccionar miembro...</option>
-            {createdBy.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap gap-2">
+            {createdBy.map((m) => {
+              const isSelected = selectedCreatedBy === m.id;
+              const color = (m as any).color || '#94a3b8';
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelectedCreatedBy(m.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
+                    isSelected ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-105' : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
+                  }`}
+                >
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white font-bold"
+                    style={{ backgroundColor: color }}
+                  >
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium">{m.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Recurrence (Advanced) */}
