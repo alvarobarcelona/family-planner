@@ -1347,7 +1347,7 @@ initDb()
         const householdId = req.user?.householdId;
         const result = await pool.query(
           `
-      SELECT id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at
+      SELECT id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at, recurrence_interval, recurrence_end_date, recurrence_count
       FROM tasks
       WHERE household_id = $1
       ORDER BY date, time_label NULLS FIRST, title;
@@ -1380,6 +1380,9 @@ initDb()
           isCompleted: (row.is_completed ?? undefined) as boolean | undefined,
           createdBy: (row.created_by ?? undefined) as string | undefined,
           createdAt: (row.created_at ?? undefined) as string | undefined,
+          recurrenceInterval: (row.recurrence_interval ?? undefined) as number | undefined,
+          recurrenceEndDate: (row.recurrence_end_date ?? undefined) as string | undefined,
+          recurrenceCount: (row.recurrence_count ?? undefined) as number | undefined,
         }));
 
         res.json(tasks);
@@ -1388,6 +1391,7 @@ initDb()
         res.status(500).json({ message: "Error interno" });
       }
     });
+
 
     // GET count of instances in a series
     app.get(
@@ -1495,6 +1499,15 @@ initDb()
       };
 
       const tasksToAdd: Task[] = [];
+
+      let eventDurationDays = 0;
+      if (endDate && endDate > date) {
+        const d1 = new Date(date);
+        const d2 = new Date(endDate);
+        d1.setHours(0,0,0,0);
+        d2.setHours(0,0,0,0);
+        eventDurationDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+      }
 
       // 1. RANGO DE FECHAS (Prioridad especial: llena todos los días entre start/end independiente de recurrencia)
       if ((!recurrence || recurrence === "NONE") && endDate && endDate > date) {
@@ -1651,10 +1664,12 @@ initDb()
                 );
                 const taskDateStr = `${taskYear}-${taskMonth}-${taskDay}`;
 
+                const newEndDate = eventDurationDays > 0 ? addDays(taskDateStr, eventDurationDays) : undefined;
                 tasksToAdd.push({
                   ...base,
                   id: randomUUID(),
                   date: taskDateStr,
+                  endDate: newEndDate || base.endDate,
                 });
                 totalEvents++;
               }
@@ -1698,10 +1713,13 @@ initDb()
 
             while (shouldContinue(currentDate, count)) {
               // Add current instance
+              const currentStr = currentDate.toISOString().slice(0, 10);
+              const newEndDate = eventDurationDays > 0 ? addDays(currentStr, eventDurationDays) : undefined;
               tasksToAdd.push({
                 ...base,
                 id: randomUUID(),
-                date: currentDate.toISOString().slice(0, 10),
+                date: currentStr,
+                endDate: newEndDate || base.endDate,
               });
               count++;
 
@@ -1870,45 +1888,28 @@ initDb()
               color,
               createdBy,
               createdAt,
+              recurrenceInterval: (req.body as any).recurrenceInterval,
+              recurrenceEndDate: (req.body as any).recurrenceEndDate,
+              recurrenceCount: (req.body as any).recurrenceCount,
             };
 
             const tasksToAdd: Task[] = [];
 
-            if (
-              recurrence === "CUSTOM_WEEKLY" &&
-              Array.isArray(daysOfWeek) &&
-              daysOfWeek.length
-            ) {
-              const weeks =
-                durationWeeks && durationWeeks > 0 ? durationWeeks : 4;
-              for (let week = 0; week < weeks; week++) {
-                for (const weekday of daysOfWeek) {
-                  const jsTarget = weekday === 7 ? 0 : weekday;
-                  const baseDate = new Date(date);
-                  baseDate.setHours(12, 0, 0, 0);
-                  baseDate.setDate(baseDate.getDate() + week * 7);
-                  const diff = (jsTarget - baseDate.getDay() + 7) % 7;
-                  baseDate.setDate(baseDate.getDate() + diff);
-                  const taskDate = baseDate.toISOString().slice(0, 10);
-                  tasksToAdd.push({
-                    ...base,
-                    id: randomUUID(),
-                    date: taskDate,
-                  });
-                }
-              }
-            } else if (
-              (!recurrence || recurrence === "NONE") &&
-              endDate &&
-              endDate > date
-            ) {
-              // RANGO DE FECHAS -> Convertir a serie diaria
+            let eventDurationDays = 0;
+            if (endDate && endDate > date) {
+              const d1 = new Date(date);
+              const d2 = new Date(endDate);
+              d1.setHours(0,0,0,0);
+              d2.setHours(0,0,0,0);
+              eventDurationDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+            }
+
+      // 1. RANGO DE FECHAS (Prioridad especial: llena todos los días entre start/end independiente de recurrencia)
+            if ((!recurrence || recurrence === "NONE") && endDate && endDate > date) {
               const start = new Date(date);
               const end = new Date(endDate);
               const diffTime = Math.abs(end.getTime() - start.getTime());
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-              // Reuse existing seriesId if available
               const rangeSeriesId = base.seriesId || randomUUID();
 
               for (let i = 0; i <= diffDays; i++) {
@@ -1921,45 +1922,131 @@ initDb()
                   recurrence: "NONE",
                 });
               }
-            } else {
-              // Normal recurrence logic
-              const baseTask: Task = { ...base, id: randomUUID() };
-              tasksToAdd.push(baseTask);
-              if (recurrence === "DAILY") {
-                for (let i = 1; i <= 6; i++) {
-                  tasksToAdd.push({
-                    ...base,
-                    id: randomUUID(),
-                    date: addDays(date, i),
-                  });
+            }
+            // 2. RECURRENCIA (DAILY, WEEKLY, MONTHLY, YEARLY, CUSTOM_WEEKLY)
+            else {
+              if (recurrence && recurrence !== "NONE") {
+                const interval = (req.body as any).recurrenceInterval || 1;
+                const limitDateStr = (req.body as any).recurrenceEndDate;
+                const limitCount = (req.body as any).recurrenceCount;
+
+                // SPECIAL CASE: WEEKLY/CUSTOM_WEEKLY with specific days
+                if (
+                  (recurrence === "CUSTOM_WEEKLY" || recurrence === "WEEKLY") &&
+                  Array.isArray(daysOfWeek) &&
+                  daysOfWeek.length > 0
+                ) {
+                  let weekIndex = 0;
+                  let totalEvents = 0;
+                  const MAX_WEEKS = limitCount || 52;
+                  const [year, month, day] = date.split("-").map(Number);
+                  const anchor = new Date(year, month - 1, day, 12, 0, 0, 0);
+                  const jsDay = anchor.getDay();
+                  const isoDay = jsDay === 0 ? 7 : jsDay;
+                  const hasUpcomingDayThisWeek = daysOfWeek.some((d) => d >= isoDay);
+
+                  let mondayOfStartWeek: Date;
+                  if (hasUpcomingDayThisWeek) {
+                    const daysToMonday = isoDay - 1;
+                    mondayOfStartWeek = new Date(anchor);
+                    mondayOfStartWeek.setDate(mondayOfStartWeek.getDate() - daysToMonday);
+                  } else {
+                    const daysUntilNextMonday = isoDay === 1 ? 7 : (8 - isoDay) % 7;
+                    mondayOfStartWeek = new Date(anchor);
+                    mondayOfStartWeek.setDate(mondayOfStartWeek.getDate() + daysUntilNextMonday);
+                  }
+
+                  while (weekIndex < MAX_WEEKS) {
+                    const thisWeekMonday = new Date(mondayOfStartWeek);
+                    thisWeekMonday.setDate(thisWeekMonday.getDate() + weekIndex * interval * 7);
+                    thisWeekMonday.setHours(0, 0, 0, 0);
+
+                    if (limitDateStr) {
+                      const limitDate = new Date(limitDateStr);
+                      limitDate.setHours(23, 59, 59, 999);
+                      if (thisWeekMonday.getTime() > limitDate.getTime()) break;
+                    }
+
+                    const durationWeeks = (req.body as any).durationWeeks;
+                    if (!limitDateStr && !limitCount && durationWeeks && weekIndex >= durationWeeks) break;
+
+                    for (const weekday of daysOfWeek) {
+                      const targetDayDate = new Date(thisWeekMonday);
+                      targetDayDate.setDate(targetDayDate.getDate() + (weekday - 1));
+
+                      if (limitDateStr) {
+                        const [limitYear, limitMonth, limitDay] = limitDateStr.split("-").map(Number);
+                        const limitDate = new Date(limitYear, limitMonth - 1, limitDay, 23, 59, 59, 999);
+                        if (targetDayDate.getTime() > limitDate.getTime()) continue;
+                      }
+
+                      const taskYear = targetDayDate.getFullYear();
+                      const taskMonth = String(targetDayDate.getMonth() + 1).padStart(2, "0");
+                      const taskDay = String(targetDayDate.getDate()).padStart(2, "0");
+                      const taskDateStr = `${taskYear}-${taskMonth}-${taskDay}`;
+
+                      const newEndDate = eventDurationDays > 0 ? addDays(taskDateStr, eventDurationDays) : undefined;
+                      tasksToAdd.push({ ...base, id: randomUUID(), date: taskDateStr, endDate: newEndDate || base.endDate });
+                      totalEvents++;
+                    }
+
+                    weekIndex++;
+                    if (weekIndex > 500) break;
+                  }
                 }
-              } else if (recurrence === "WEEKLY") {
-                for (let i = 1; i <= 3; i++) {
-                  tasksToAdd.push({
-                    ...base,
-                    id: randomUUID(),
-                    date: addDays(date, 7 * i),
-                  });
+                // SIMPLE RECURRENCES: DAILY, MONTHLY, YEARLY, plain WEEKLY (no specific days)
+                else {
+                  let currentDate = new Date(date);
+                  let count = 0;
+                  const MAX_YEARS = 3;
+                  const absoluteMaxDate = new Date(currentDate);
+                  absoluteMaxDate.setFullYear(absoluteMaxDate.getFullYear() + MAX_YEARS);
+
+                  const shouldContinue = (d: Date, c: number) => {
+                    if (limitDateStr && d > new Date(limitDateStr)) return false;
+                    if (limitCount && c >= limitCount) return false;
+                    if (!limitDateStr && !limitCount) {
+                      if (recurrence === "DAILY" && c >= 30) return false;
+                      if (recurrence === "WEEKLY" && c >= 12) return false;
+                      if (recurrence === "MONTHLY" && c >= 12) return false;
+                      if (recurrence === "YEARLY" && c >= 3) return false;
+                    }
+                    if (d > absoluteMaxDate) return false;
+                    return true;
+                  };
+
+                  while (shouldContinue(currentDate, count)) {
+                    const currentStr = currentDate.toISOString().slice(0, 10);
+                    const newEndDate = eventDurationDays > 0 ? addDays(currentStr, eventDurationDays) : undefined;
+                    tasksToAdd.push({ ...base, id: randomUUID(), date: currentStr, endDate: newEndDate || base.endDate });
+                    count++;
+                    const nextDate = new Date(currentDate);
+                    if (recurrence === "DAILY") {
+                      nextDate.setDate(nextDate.getDate() + interval);
+                    } else if (recurrence === "WEEKLY") {
+                      nextDate.setDate(nextDate.getDate() + interval * 7);
+                    } else if (recurrence === "MONTHLY") {
+                      nextDate.setMonth(nextDate.getMonth() + interval);
+                    } else if (recurrence === "YEARLY") {
+                      nextDate.setFullYear(nextDate.getFullYear() + interval);
+                    }
+                    currentDate = nextDate;
+                    if (!shouldContinue(currentDate, count)) break;
+                  }
                 }
-              } else if (recurrence === "MONTHLY") {
-                for (let i = 1; i <= 11; i++) {
-                  tasksToAdd.push({
-                    ...base,
-                    id: randomUUID(),
-                    date: addMonths(date, i),
-                  });
-                }
+              } else {
+                tasksToAdd.push({ ...base, id: randomUUID() });
               }
             }
 
             // Insert all
-            const insertPromises = tasksToAdd.map((t) =>
+            const insertPromises = tasksToAdd.map((t: any) =>
               pool.query(
-                `INSERT INTO tasks (id, household_id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+                `INSERT INTO tasks (id, household_id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, recurrence_interval, recurrence_end_date, recurrence_count, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
                 [
                   t.id,
-                  householdId, // Add householdId
+                  householdId,
                   t.title,
                   t.date,
                   t.endDate ?? null,
@@ -1975,7 +2062,10 @@ initDb()
                   t.notificationTime ?? null,
                   t.color ?? null,
                   t.createdBy ?? null,
-                  t.createdAt ?? new Date(), // Use provided createdAt or current time
+                  t.recurrenceInterval ?? 1,
+                  t.recurrenceEndDate ?? null,
+                  t.recurrenceCount ?? null,
+                  t.createdAt ?? new Date(),
                 ],
               ),
             );
@@ -1990,7 +2080,7 @@ initDb()
         const result = await pool.query(
           `
       UPDATE tasks
-      SET title = $1, date = $2, end_date = $3, time_label = $4, end_time = $5, priority = $6, recurrence = $7, description = $8, assignees = $9, days_of_week = $10, duration_weeks = $11, notification_time = $12, color = $13, is_completed = $14, created_by = COALESCE($15, created_by), created_at = COALESCE($16, created_at)
+      SET title = $1, date = $2, end_date = $3, time_label = $4, end_time = $5, priority = $6, recurrence = $7, description = $8, assignees = $9, days_of_week = $10, duration_weeks = $11, notification_time = $12, color = $13, is_completed = $14, created_by = COALESCE($15, created_by), created_at = COALESCE($16, created_at), recurrence_interval = $19, recurrence_end_date = $20, recurrence_count = $21
       WHERE id = $17 AND household_id = $18
       RETURNING *
     `,
@@ -2013,6 +2103,9 @@ initDb()
             createdAt ?? null,
             id,
             householdId,
+            (req.body as any).recurrenceInterval ?? null,
+            (req.body as any).recurrenceEndDate ?? null,
+            (req.body as any).recurrenceCount ?? null,
           ],
         );
 

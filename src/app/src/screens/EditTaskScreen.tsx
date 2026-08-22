@@ -1,36 +1,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useModal } from "../context/ModalContext";
 import {
   useTaskStore,
   type Priority,
   type Recurrence,
   type Task,
 } from "../store/useTaskStore";
-import { useModal } from "../context/ModalContext";
 import { getSeriesCount } from "../api/tasksApi";
-
-const notificationOptions = [
-  { value: 0, label: "Sin recordatorio" },
-  { value: 5, label: "5 minutos antes" },
-  { value: 10, label: "10 minutos antes" },
-  { value: 15, label: "15 minutos antes" },
-  { value: 30, label: "30 minutos antes" },
-  { value: 60, label: "1 hora antes" },
-  { value: 120, label: "2 horas antes" },
-  { value: 1440, label: "1 día antes" },
-];
-
-const colorOptions = [
-  { value: "", label: "Por defecto" },
-  { value: "#f87171", label: "Rojo" },
-  { value: "#fb923c", label: "Naranja" },
-  { value: "#fbbf24", label: "Amarillo" },
-  { value: "#4ade80", label: "Verde" },
-  { value: "#22d3ee", label: "Cian" },
-  { value: "#818cf8", label: "Índigo" },
-  { value: "#c084fc", label: "Violeta" },
-  { value: "#f472b6", label: "Rosa" },
-];
 
 const weekdays = [
   { value: 1, label: "L" },
@@ -42,11 +19,37 @@ const weekdays = [
   { value: 7, label: "D" },
 ];
 
+const notificationOptions = [
+  { value: -1, label: "Sin notificación" },
+  { value: 0, label: "En el momento del evento" },
+  { value: 10, label: "10 minutos antes" },
+  { value: 30, label: "30 minutos antes" },
+  { value: 60, label: "1 hora antes" },
+  { value: 120, label: "2 horas antes" },
+  { value: 1440, label: "1 día antes" },
+  { value: 2880, label: "2 días antes" },
+  { value: 10080, label: "1 semana antes" },
+];
+
+const colorOptions = [
+  { value: undefined, label: "Por defecto" },
+  { value: "#ef4444", label: "Rojo" },
+  { value: "#f97316", label: "Naranja" },
+  { value: "#f59e0b", label: "Ámbar" },
+  { value: "#22c55e", label: "Verde" },
+  { value: "#14b8a6", label: "Turquesa" },
+  { value: "#3b82f6", label: "Azul" },
+  { value: "#6366f1", label: "Índigo" },
+  { value: "#a855f7", label: "Violeta" },
+  { value: "#ec4899", label: "Rosa" },
+  { value: "#64748b", label: "Gris" },
+];
+
 export function EditTaskScreen() {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
-  const { tasks, removeTask, updateTask, familyMembers } = useTaskStore();
-  const { confirm } = useModal();
+  const { confirm, alert } = useModal();
+  const { tasks, updateTask, removeTask, familyMembers, createdBy } = useTaskStore();
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
@@ -57,47 +60,75 @@ export function EditTaskScreen() {
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [description, setDescription] = useState("");
-  const [notificationTime, setNotificationTime] = useState(0);
-  const [selectedColor, setSelectedColor] = useState<string | undefined>("");
-  const [storedCreatedBy, setStoredCreatedBy] = useState("familia");
+  const [notificationTime, setNotificationTime] = useState<number>(-1);
+  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>("");
   const [storedCreatedAt, setStoredCreatedAt] = useState<string | undefined>();
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [seriesCount, setSeriesCount] = useState<number | null>(null);
-  const [currentTask, setCurrentTask] = useState<Task | null>(null);
 
-  // States for read-only recurrence display information
   const [customDays, setCustomDays] = useState<number[]>([]);
-  const [customDurationWeeks, setCustomDurationWeeks] = useState(4);
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+  const [recurrenceEndCondition, setRecurrenceEndCondition] = useState<'NEVER' | 'DATE' | 'COUNT'>('NEVER');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
+  const [recurrenceCount, setRecurrenceCount] = useState<number | undefined>(undefined);
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
+
+  const toggleCustomDay = (value: number) => {
+    setCustomDays((prev) =>
+      prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value]
+    );
+  };
 
   useEffect(() => {
     if (taskId && tasks.length > 0) {
       const task = tasks.find((t) => t.id === taskId);
       if (task) {
-        setCurrentTask(task);
         setTitle(task.title);
-        setDate(task.date);
-        setEndDate(task.endDate || "");
         setTime(task.timeLabel || "");
         setEndTime(task.endTime || "");
-        setAssigneeId(task.assignees[0]?.id || "familia");
+        setAssigneeId(task.assignees[0]?.id || "");
         setPriority(task.priority);
         setRecurrence(task.recurrence || "NONE");
         setDescription(task.description || "");
-        setNotificationTime(task.notificationTime || 0);
+        setNotificationTime(task.notificationTime ?? -1);
         setSelectedColor(task.color);
-        setStoredCreatedBy(task.createdBy || "familia");
+        setSelectedCreatedBy(task.createdBy || "");
         setStoredCreatedAt(task.createdAt);
 
-        // Populate custom days for read-only display
-        if (task.recurrence === "CUSTOM_WEEKLY" || task.recurrence === "WEEKLY") {
-          setCustomDays(task.daysOfWeek || []);
-          setCustomDurationWeeks(task.durationWeeks || 4);
+        // Detect date-range series: recurrence=NONE with a seriesId
+        // Each day is its own task row with no endDate, so we reconstruct the range
+        if (task.seriesId && (!task.recurrence || task.recurrence === "NONE") && !task.endDate) {
+          const seriesTasks = tasks.filter((t) => t.seriesId === task.seriesId);
+          const sortedDates = seriesTasks.map((t) => t.date).sort();
+          const firstDate = sortedDates[0];
+          const lastDate = sortedDates[sortedDates.length - 1];
+          setDate(firstDate);
+          // Only set endDate if the series actually spans more than 1 day
+          setEndDate(lastDate !== firstDate ? lastDate : "");
+        } else {
+          // Normal task or recurring task: use its own date/endDate
+          setDate(task.date);
+          setEndDate(task.endDate || "");
         }
 
-        // Fetch series count if this task is part of a series
+        setRecurrenceInterval(task.recurrenceInterval || 1);
+        if (task.recurrenceEndDate) {
+          setRecurrenceEndCondition('DATE');
+          setRecurrenceEndDate(task.recurrenceEndDate.slice(0, 10));
+        } else if (task.recurrenceCount) {
+          setRecurrenceEndCondition('COUNT');
+          setRecurrenceCount(task.recurrenceCount);
+        } else {
+          setRecurrenceEndCondition('NEVER');
+        }
+
+        if (task.recurrence === "CUSTOM_WEEKLY" || task.recurrence === "WEEKLY") {
+          setCustomDays(task.daysOfWeek || []);
+        }
+
         if (task.seriesId) {
           getSeriesCount(task.seriesId)
             .then(count => setSeriesCount(count))
@@ -115,13 +146,19 @@ export function EditTaskScreen() {
     }
   }, [taskId, tasks]);
 
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!title) {
-      setError("Debes indicar un título");
+    setError(null);
+
+    if (!title.trim()) {
+      setError("El título es obligatorio");
       return;
     }
-    setError(null);
+    if (!assigneeId) {
+      setError("Por favor, selecciona a quién asignar la tarea");
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -135,10 +172,14 @@ export function EditTaskScreen() {
         priority,
         recurrence,
         description: description || undefined,
-        notificationTime: notificationTime > 0 ? notificationTime : undefined,
+        daysOfWeek: recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY' ? customDays : undefined,
+        notificationTime: notificationTime >= 0 ? notificationTime : undefined,
         color: selectedColor,
-        createdBy: storedCreatedBy,
+        createdBy: selectedCreatedBy,
         createdAt: storedCreatedAt,
+        recurrenceInterval,
+        recurrenceEndDate: recurrenceEndCondition === 'DATE' ? recurrenceEndDate : undefined,
+        recurrenceCount: recurrenceEndCondition === 'COUNT' ? recurrenceCount : undefined,
       });
 
       navigate(-1);
@@ -177,8 +218,8 @@ export function EditTaskScreen() {
           <input
             id="title"
             type="text"
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all font-medium"
-            placeholder="Título de la tarea"
+            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+            placeholder="Ej: Pediatra Leo, Reunión guardería..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -191,7 +232,7 @@ export function EditTaskScreen() {
           </label>
           <textarea
             id="description"
-            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-50 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
+            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-200 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
             placeholder="Detalles adicionales..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -206,7 +247,7 @@ export function EditTaskScreen() {
           <input
             id="date"
             type="date"
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
@@ -214,13 +255,13 @@ export function EditTaskScreen() {
 
         <div className="col-span-2 sm:col-span-1 space-y-1.5">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide" htmlFor="time">
-            Hora <span className="text-slate-300 font-normal">(opcional)</span>
+            Hora <span className="text-slate-400 font-normal">(opcional)</span>
           </label>
           <div className="flex gap-2 items-center">
             <input
               id="time"
               type="time"
-              className="w-full rounded-xl border-slate-200 bg-slate-50 px-2 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all cursor-text text-left"
+              className="w-full rounded-xl border-slate-200 bg-slate-200 px-2 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
               value={time}
               onChange={(e) => setTime(e.target.value)}
             />
@@ -228,11 +269,16 @@ export function EditTaskScreen() {
             <input
               id="endTime"
               type="time"
-              className="w-full rounded-xl border-slate-200 bg-slate-50 px-2 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50 cursor-text text-left"
+              className="w-full rounded-xl border-slate-200 bg-slate-200 px-2 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               disabled={!time}
             />
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button type="button" onClick={() => setTime("09:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Mañana (09:00)</button>
+            <button type="button" onClick={() => setTime("14:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Mediodía (14:00)</button>
+            <button type="button" onClick={() => setTime("17:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Tarde (17:00)</button>
           </div>
         </div>
 
@@ -241,36 +287,45 @@ export function EditTaskScreen() {
           <label className="block text-sm font-medium text-slate-700" htmlFor="endDate">
             Fecha fin (Opcional, para eventos de varios días)
           </label>
-          <input
-            id="endDate"
-            type="date"
-            className="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            min={date}
-          />
+          <div className="flex gap-2 items-center">
+            <input
+              id="endDate"
+              type="date"
+              className="flex-1 rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={date}
+            />
+          </div>
         </div>
 
-        <div className="col-span-2 h-px bg-slate-100 my-1" />
-
         {/* Priority */}
-        <div className="col-span-2 space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700">Prioridad</label>
-          <div className="flex gap-6">
-            {(['LOW', 'MEDIUM', 'HIGH'] as Priority[]).map((p) => (
-              <label key={p} className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="priority"
-                  className="text-slate-900 focus:ring-slate-900 w-4 h-4"
-                  checked={priority === p}
-                  onChange={() => setPriority(p)}
-                />
-                <span className={`text-sm font-medium transition-colors ${priority === p ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-700'}`}>
-                  {p === 'LOW' ? 'Baja' : p === 'MEDIUM' ? 'Media' : 'Alta'}
-                </span>
-              </label>
-            ))}
+        <div className="col-span-2 space-y-2">
+          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Prioridad</label>
+          <div className="flex gap-2">
+            {(['LOW', 'MEDIUM', 'HIGH'] as Priority[]).map((p) => {
+              let colors = "bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200";
+              let label = "";
+              if (priority === p) {
+                if (p === 'LOW') colors = "bg-green-100 text-green-700 border-green-300 ring-2 ring-green-100/50";
+                if (p === 'MEDIUM') colors = "bg-amber-100 text-amber-700 border-amber-300 ring-2 ring-amber-100/50";
+                if (p === 'HIGH') colors = "bg-red-100 text-red-700 border-red-300 ring-2 ring-red-100/50";
+              }
+              if (p === 'LOW') label = "🟢 Baja";
+              if (p === 'MEDIUM') label = "🟡 Media";
+              if (p === 'HIGH') label = "🔴 Alta";
+
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPriority(p)}
+                  className={`flex-1 py-2 px-3 rounded-xl border text-sm font-semibold transition-all ${colors}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -282,7 +337,7 @@ export function EditTaskScreen() {
           <div className="relative">
             <select
               id="notification"
-              className="w-full appearance-none rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50"
+              className="w-full appearance-none rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50"
               value={notificationTime}
               onChange={(e) => setNotificationTime(Number(e.target.value))}
               disabled={!time}
@@ -293,6 +348,7 @@ export function EditTaskScreen() {
                 </option>
               ))}
             </select>
+            {/* Custom simple chevron */}
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -301,82 +357,206 @@ export function EditTaskScreen() {
           </div>
           {!time && (
             <p className="text-xs text-amber-500 flex items-center gap-1">
-              <span>⚠️</span> Selecciona una hora para activar recordatorios
+              ⚠️ Selecciona una hora para activar recordatorios
             </p>
           )}
         </div>
 
         <div className="col-span-2 h-px bg-slate-100 my-1" />
 
-        {/* Assignee */}
-        <div className="col-span-2 space-y-1.5">
+        {/* Assignee Row */}
+        <div className="col-span-2 space-y-2">
           <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Asignado a</label>
-          <div className="relative">
-            <select
-              className="w-full appearance-none rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all font-medium"
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-            >
-              {familyMembers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {familyMembers.map((m) => {
+              const isSelected = assigneeId === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setAssigneeId(m.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
+                    isSelected ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-105' : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
+                  }`}
+                >
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white font-bold"
+                    style={{ backgroundColor: m.color || '#94a3b8' }}
+                  >
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium">{m.name}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Recurrence - Read Only Display */}
-        {recurrence && recurrence !== "NONE" && (
-          <div className="col-span-2 space-y-3 bg-amber-50/50 p-4 rounded-xl border border-amber-100 flex flex-col shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Recurrencia activa</span>
+        {/* Recurrence (Advanced) */}
+        <div className="col-span-2 space-y-3 bg-slate-200 p-4 rounded-xl border border-slate-100">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-slate-700" htmlFor="recurrence">
+              Repetición
+            </label>
+            <div className="relative">
+              <select
+                id="recurrence"
+                className="w-full appearance-none rounded-xl border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-slate-900 focus:ring-0 transition-all"
+                value={recurrence}
+                onChange={(e) => {
+                  const val = e.target.value as Recurrence;
+                  setRecurrence(val);
+                  if (val !== 'WEEKLY' && val !== 'CUSTOM_WEEKLY') {
+                    setCustomDays([]);
+                  }
+                }}
+              >
+                <option value="NONE">No repetir</option>
+                <option value="DAILY">Diaria</option>
+                <option value="WEEKLY">Semanal</option>
+                <option value="MONTHLY">Mensual</option>
+                <option value="YEARLY">Anual</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-semibold text-slate-800">
-                {recurrence === "DAILY" && "Diaria"}
-                {recurrence === "WEEKLY" && customDays.length > 0 && (
-                  <>
-                    Semanal - {customDays.map(d => {
-                      const day = weekdays.find(w => w.value === d);
-                      return day?.label;
-                    }).join(", ")}
-                  </>
-                )}
-                {recurrence === "WEEKLY" && customDays.length === 0 && "Semanal"}
-                {recurrence === "MONTHLY" && "Mensual"}
-                {recurrence === "YEARLY" && "Anual"}
-                {recurrence === "CUSTOM_WEEKLY" && customDays.length > 0 && (
-                  <>
-                    Personalizada - {customDays.map(d => {
-                      const day = weekdays.find(w => w.value === d);
-                      return day?.label;
-                    }).join(", ")}
-                  </>
-                )}
-              </span>
-              <span className="text-xs text-slate-500 font-medium">
-                {currentTask?.recurrenceEndDate && (
-                  <>Finaliza el {new Date(currentTask.recurrenceEndDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</>
-                )}
-                {currentTask?.recurrenceCount && !currentTask?.recurrenceEndDate && (
-                  <>Durante {currentTask.recurrenceCount} {recurrence === "WEEKLY" || recurrence === "CUSTOM_WEEKLY" ? "semanas" : "veces"}</>
-                )}
-                {!currentTask?.recurrenceEndDate && !currentTask?.recurrenceCount && (
-                  <>Sin fecha de finalización (ilimitada)</>
-                )}
-              </span>
-            </div>
-            <p className="text-[11px] text-amber-700 bg-white/60 p-2 rounded-lg border border-amber-200/50 italic leading-snug">
-              ℹ️ Los patrones de recurrencia no se pueden editar. Si necesitas cambiarlo, elimina la serie y crea una nueva.
-            </p>
           </div>
-        )}
+
+          {recurrence !== 'NONE' && (
+            <div className="space-y-4 animate-fadeIn">
+              {/* Interval */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-600">Cada</span>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-20 rounded-xl border-slate-200 bg-white px-3 py-2 text-center text-sm focus:border-slate-900 focus:ring-0"
+                  value={recurrenceInterval}
+                  onChange={(e) => setRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+                <span className="text-sm text-slate-600">
+                  {recurrence === 'DAILY' && (recurrenceInterval === 1 ? 'día' : 'días')}
+                  {recurrence === 'WEEKLY' && (recurrenceInterval === 1 ? 'semana' : 'semanas')}
+                  {recurrence === 'MONTHLY' && (recurrenceInterval === 1 ? 'mes' : 'meses')}
+                  {recurrence === 'YEARLY' && (recurrenceInterval === 1 ? 'año' : 'años')}
+                </span>
+              </div>
+
+              {/* Weekdays (Visible only for Weekly) */}
+              {(recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY') && (
+                <div className="space-y-2">
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Días de la semana</span>
+                  <div className="flex gap-2 flex-wrap">
+                    {weekdays.map((d) => {
+                      const isActive = customDays.includes(d.value);
+                      return (
+                        <button
+                          key={d.value}
+                          type="button"
+                          onClick={() => toggleCustomDay(d.value)}
+                          className={
+                            "w-9 h-9 rounded-full text-xs font-bold transition-all " +
+                            (isActive
+                              ? "bg-slate-900 text-white shadow-md scale-105"
+                              : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300")
+                          }
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {customDays.length === 0 && (
+                    <p className="text-xs text-slate-400">Si no seleccionas ninguno, se usará el día de la fecha de inicio.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="h-px bg-slate-200" />
+
+              {/* End Condition */}
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Finaliza</span>
+
+                <div className="flex flex-col gap-2">
+                  {/* NEVER */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="endCondition"
+                      className="text-slate-900 focus:ring-slate-900"
+                      checked={recurrenceEndCondition === 'NEVER'}
+                      onChange={() => setRecurrenceEndCondition('NEVER')}
+                    />
+                    <span className="text-sm text-slate-700">Nunca</span>
+                    <span className="text-[11px] text-slate-400 italic">
+                      {recurrence === 'DAILY' && '(máx. 30 eventos)'}
+                      {recurrence === 'WEEKLY' && customDays.length === 0 && '(máx. 12 eventos)'}
+                      {(recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY') && customDays.length > 0 && '(máx. 52 semanas)'}
+                      {recurrence === 'MONTHLY' && '(máx. 12 eventos)'}
+                      {recurrence === 'YEARLY' && '(máx. 3 eventos)'}
+                    </span>
+                  </label>
+
+                  {/* DATE */}
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                      <input
+                        type="radio"
+                        name="endCondition"
+                        className="text-slate-900 focus:ring-slate-900"
+                        checked={recurrenceEndCondition === 'DATE'}
+                        onChange={() => setRecurrenceEndCondition('DATE')}
+                      />
+                      <span className="text-sm text-slate-700">El día</span>
+                    </label>
+                    <input
+                      type="date"
+                      className="flex-1 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-sm focus:border-slate-900 focus:ring-0 disabled:opacity-50"
+                      disabled={recurrenceEndCondition !== 'DATE'}
+                      value={recurrenceEndDate}
+                      onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                      min={date}
+                    />
+                  </div>
+
+                  {/* COUNT */}
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                      <input
+                        type="radio"
+                        name="endCondition"
+                        className="text-slate-900 focus:ring-slate-900"
+                        checked={recurrenceEndCondition === 'COUNT'}
+                        onChange={() => setRecurrenceEndCondition('COUNT')}
+                      />
+                      <span className="text-sm text-slate-700">Después de</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="w-20 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-center text-sm focus:border-slate-900 focus:ring-0 disabled:opacity-50"
+                      disabled={recurrenceEndCondition !== 'COUNT'}
+                      value={recurrenceCount || ''}
+                      onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || undefined)}
+                      placeholder="#"
+                    />
+                    <span className="text-sm text-slate-600">
+                      {recurrence === 'WEEKLY' && customDays.length > 0
+                        ? (recurrenceCount === 1 ? 'semana' : 'semanas')
+                        : (recurrenceCount === 1 ? 'vez' : 'veces')
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
 
         {/* Color */}
         <div className="col-span-2 space-y-2">
@@ -402,7 +582,7 @@ export function EditTaskScreen() {
           </div>
         </div>
 
-
+        {/* Error Message */}
         {error && (
           <div className="col-span-2 p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -412,27 +592,34 @@ export function EditTaskScreen() {
           </div>
         )}
 
-        {/* Main Action Buttons */}
+        {/* Action Buttons */}
         <div className="col-span-2 flex gap-3 pt-6 mt-2 border-t border-slate-100">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-700 py-3.5 text-sm font-semibold hover:bg-slate-50 active:scale-95 transition-all"
+            className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-700 py-3.5 text-sm font-semibold hover:bg-slate-200 active:scale-95 transition-all"
           >
             Cancelar
           </button>
-
           <button
             type="submit"
             disabled={isSubmitting}
             className="flex-[2] rounded-xl bg-slate-900 text-white py-3.5 text-sm font-semibold shadow-lg shadow-slate-900/20 hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-70 disabled:shadow-none"
           >
-            {isSubmitting ? "Guardando..." : "Guardar Cambios"}
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Guardando...
+              </span>
+            ) : "Guardar Cambios"}
           </button>
         </div>
 
         {/* Individual Delete Link */}
-        <div className="col-span-2 flex justify-center">
+        <div className="col-span-2 flex justify-center mt-2">
           <button
             type="button"
             onClick={async () => {
@@ -513,18 +700,21 @@ export function EditTaskScreen() {
                         {
                           title,
                           date,
+                          endDate: endDate || undefined,
                           time: time || undefined,
                           endTime: endTime || undefined,
                           assigneeId,
                           priority,
                           recurrence: recurrence,
                           description: description || undefined,
-                          daysOfWeek: customDays,
-                          durationWeeks: customDurationWeeks,
-                          notificationTime: notificationTime > 0 ? notificationTime : undefined,
+                          daysOfWeek: recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY' ? customDays : undefined,
+                          notificationTime: notificationTime >= 0 ? notificationTime : undefined,
                           color: selectedColor,
-                          createdBy: storedCreatedBy,
+                          createdBy: selectedCreatedBy,
                           createdAt: storedCreatedAt,
+                          recurrenceInterval,
+                          recurrenceEndDate: recurrenceEndCondition === 'DATE' ? recurrenceEndDate : undefined,
+                          recurrenceCount: recurrenceEndCondition === 'COUNT' ? recurrenceCount : undefined,
                         },
                         true
                       );
