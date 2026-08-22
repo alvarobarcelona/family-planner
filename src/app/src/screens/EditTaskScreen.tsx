@@ -5,7 +5,6 @@ import {
   useTaskStore,
   type Priority,
   type Recurrence,
-  type Task,
 } from "../store/useTaskStore";
 import { getSeriesCount } from "../api/tasksApi";
 
@@ -48,8 +47,8 @@ const colorOptions = [
 export function EditTaskScreen() {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
-  const { confirm, alert } = useModal();
-  const { tasks, updateTask, removeTask, familyMembers, createdBy } = useTaskStore();
+  const { confirm } = useModal();
+  const { tasks, updateTask, removeTask, familyMembers } = useTaskStore();
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
