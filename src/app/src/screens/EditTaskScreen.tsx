@@ -48,7 +48,7 @@ export function EditTaskScreen() {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const { confirm } = useModal();
-  const { tasks, updateTask, removeTask, familyMembers } = useTaskStore();
+  const { tasks, updateTask, removeTask, familyMembers, currentMemberId, currentMemberName } = useTaskStore();
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
@@ -74,6 +74,7 @@ export function EditTaskScreen() {
   const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
   const [recurrenceCount, setRecurrenceCount] = useState<number | undefined>(undefined);
   const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const toggleCustomDay = (value: number) => {
     setCustomDays((prev) =>
@@ -96,6 +97,7 @@ export function EditTaskScreen() {
         setSelectedColor(task.color);
         setSelectedCreatedBy(task.createdBy || "");
         setStoredCreatedAt(task.createdAt);
+        setIsPrivate(task.isPrivate ?? false);
 
         // Detect date-range series: recurrence=NONE with a seriesId
         // Each day is its own task row with no endDate, so we reconstruct the range
@@ -179,6 +181,7 @@ export function EditTaskScreen() {
         recurrenceInterval,
         recurrenceEndDate: recurrenceEndCondition === 'DATE' ? recurrenceEndDate : undefined,
         recurrenceCount: recurrenceEndCondition === 'COUNT' ? recurrenceCount : undefined,
+        isPrivate,
       });
 
       navigate(-1);
@@ -580,6 +583,38 @@ export function EditTaskScreen() {
             ))}
           </div>
         </div>
+        {/* Private toggle — only visible for the task creator */}
+        {currentMemberId && tasks.find(t => t.id === taskId)?.createdByMemberId === currentMemberId && (
+          <div className="col-span-2">
+            <button
+              id="toggle-private-task-edit"
+              type="button"
+              onClick={() => setIsPrivate((v) => !v)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                isPrivate
+                  ? "bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{isPrivate ? "🔒" : "👁️"}</span>
+                <div className="text-left">
+                  <p className="text-sm font-semibold">{isPrivate ? "Tarea privada" : "Tarea pública"}</p>
+                  <p className={`text-xs ${isPrivate ? "text-slate-300" : "text-slate-400"}`}>
+                    {isPrivate ? `Solo la verás tú (${currentMemberName})` : "Visible para toda la familia"}
+                  </p>
+                </div>
+              </div>
+              <div className={`w-10 h-6 rounded-full transition-all duration-300 relative ${
+                isPrivate ? "bg-indigo-500" : "bg-slate-300"
+              }`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${
+                  isPrivate ? "left-5" : "left-1"
+                }`} />
+              </div>
+            </button>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (
@@ -637,7 +672,7 @@ export function EditTaskScreen() {
             disabled={isSubmitting}
             className="text-sm text-red-500 font-medium hover:text-red-700 hover:underline transition-all py-1"
           >
-            Eliminar solo este evento individual
+            Eliminar solo este evento
           </button>
         </div>
 
@@ -714,6 +749,7 @@ export function EditTaskScreen() {
                           recurrenceInterval,
                           recurrenceEndDate: recurrenceEndCondition === 'DATE' ? recurrenceEndDate : undefined,
                           recurrenceCount: recurrenceEndCondition === 'COUNT' ? recurrenceCount : undefined,
+                          isPrivate,
                         },
                         true
                       );

@@ -37,7 +37,7 @@ const notificationOptions = [
 export function NewTaskScreen() {
   const navigate = useNavigate();
   const { alert } = useModal();
-  const { addTask, familyMembers, createdBy } = useTaskStore();
+  const { addTask, familyMembers, createdBy, currentMemberId, currentMemberName } = useTaskStore();
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(todayStr());
@@ -49,10 +49,14 @@ export function NewTaskScreen() {
   const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [description, setDescription] = useState("");
   const [notificationTime, setNotificationTime] = useState<number>(-1);
-  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>("");
+  // Pre-fill createdBy from active member profile
+  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>(
+    () => currentMemberId || ""
+  );
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const [customDays, setCustomDays] = useState<number[]>([]);
   // const [customDurationWeeks, setCustomDurationWeeks] = useState(4); // Removed in favor of generic recurrence
@@ -126,6 +130,7 @@ export function NewTaskScreen() {
         recurrenceInterval,
         recurrenceEndDate: recurrenceEndCondition === 'DATE' ? recurrenceEndDate : undefined,
         recurrenceCount: recurrenceEndCondition === 'COUNT' ? recurrenceCount : undefined,
+        isPrivate: currentMemberId ? isPrivate : false,
       });
 
       // Reset básico y volvemos a Hoy
@@ -142,6 +147,7 @@ export function NewTaskScreen() {
       setRecurrenceCount(undefined);
       setNotificationTime(-1);
       setSelectedColor(undefined);
+      setIsPrivate(false);
 
       // Show success message with instance count
       const instanceCount = createdTasks?.length || 1;
@@ -573,6 +579,38 @@ export function NewTaskScreen() {
           </div>
         </div>
 
+        {/* Private toggle — only visible when a member profile is active */}
+        {currentMemberId && (
+          <div className="col-span-2">
+            <button
+              id="toggle-private-task"
+              type="button"
+              onClick={() => setIsPrivate((v) => !v)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                isPrivate
+                  ? "bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{isPrivate ? "🔒" : "👁️"}</span>
+                <div className="text-left">
+                  <p className="text-sm font-semibold">{isPrivate ? "Tarea privada" : "Tarea pública"}</p>
+                  <p className={`text-xs ${isPrivate ? "text-slate-300" : "text-slate-400"}`}>
+                    {isPrivate ? `Solo la verás tú (${currentMemberName})` : "Visible para toda la familia"}
+                  </p>
+                </div>
+              </div>
+              <div className={`w-10 h-6 rounded-full transition-all duration-300 relative ${
+                isPrivate ? "bg-indigo-500" : "bg-slate-300"
+              }`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${
+                  isPrivate ? "left-5" : "left-1"
+                }`} />
+              </div>
+            </button>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (

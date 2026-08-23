@@ -136,7 +136,7 @@ export function FamilyWall() {
                         >
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        <span className="relative">Nueva Nota</span>
+                        <span className="relative">Nota</span>
                     </button>
                 )}
             </div>

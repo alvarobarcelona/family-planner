@@ -269,7 +269,7 @@ export function HomeScreen() {
                         </div>
                       </button>
 
-                      <div className="flex-1">
+                      <div className="flex-1 flex items-center gap-1.5">
                         <p
                           className={
                             `text-sm font-medium leading-snug ${task.isCompleted ? "line-through text-gray-400" : ""} ` +
@@ -280,6 +280,9 @@ export function HomeScreen() {
                         >
                           {task.title}
                         </p>
+                        {task.isPrivate && (
+                          <span title="Tarea Privada" className="text-xs">🔒</span>
+                        )}
                       </div>
 
                       <div>
@@ -463,7 +466,7 @@ export function HomeScreen() {
 
                   <div className="flex-1">
                     <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1">
+                      <div className="flex-1 flex items-center gap-1.5">
                         <p
                           className={
                             `text-sm font-medium leading-snug ${task.isCompleted ? "line-through text-gray-400" : ""} ` +
@@ -472,6 +475,9 @@ export function HomeScreen() {
                         >
                           {task.title}
                         </p>
+                        {task.isPrivate && (
+                          <span title="Tarea Privada" className="text-xs">🔒</span>
+                        )}
                       </div>
                       <div>
                         {task.notificationTime != null && <span className="animate-bell-shake">🔔</span>}

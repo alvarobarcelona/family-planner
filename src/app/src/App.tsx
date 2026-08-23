@@ -11,7 +11,9 @@ import { EditTaskScreen } from "./screens/EditTaskScreen";
 import { ShoppingListScreen } from "./screens/ShoppingListScreen";
 import { MembersScreen } from "./screens/MembersScreen";
 import { InfoScreen } from "./screens/InfoScreen";
+import { ProfileSelectScreen } from "./screens/ProfileSelectScreen";
 import { TaskProvider } from "./store/useTaskStore";
+import { useTaskStore } from "./store/useTaskStore";
 import { useNotifications } from "./hooks/useNotifications";
 import { ShoppingProvider } from "./store/useShoppingStore";
 import { FamilyWallProvider } from "./store/useFamilyWallStore";
@@ -19,10 +21,18 @@ import { FamilyWallProvider } from "./store/useFamilyWallStore";
 
 function AppContent() {
   useNotifications();
+  const { currentMemberName, currentMemberColor } = useTaskStore();
+
+  const [showProfileSelect, setShowProfileSelect] = useState(false);
 
   return (
     <div className="min-h-screen text-slate-900 flex flex-col relative">
-      <main className="flex-1 w-full mx-auto px-4 py-4 pb-36 pb-[calc(9rem+env(safe-area-inset-bottom))] max-w-md md:max-w-4xl lg:max-w-6xl transition-all duration-300">
+      {/* Profile selector overlay */}
+      {showProfileSelect && (
+        <ProfileSelectScreen onSelected={() => setShowProfileSelect(false)} />
+      )}
+
+      <main className="flex-1 w-full mx-auto px-4 py-8 pb-36 pb-[calc(9rem+env(safe-area-inset-bottom))] max-w-md md:max-w-4xl lg:max-w-6xl transition-all duration-300">
         <nav className="fixed bottom-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[95%] md:w-[60%] md:max-w-lg bg-white/90 backdrop-blur-xl border border-black/50 shadow-2xl shadow-slate-200/50 rounded-2xl z-50 transition-all duration-300">
           <div className="grid grid-cols-5 items-end justify-items-center py-2 px-1 h-[4.5rem]">
 
@@ -110,6 +120,24 @@ function AppContent() {
           </div>
         </nav>
 
+        {/* Current member indicator — top right */}
+        {currentMemberName && (
+          <button
+            id="current-member-indicator"
+            onClick={() => setShowProfileSelect(true)}
+            title={`Perfil: ${currentMemberName} — Pulsa para cambiar`}
+            className="fixed top-2 left-1/2 -translate-x-1/2 md:top-4 md:right-4 md:left-auto md:translate-x-0 z-40 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200 shadow-lg rounded-full px-3 py-1.5 transition-all hover:shadow-xl hover:scale-105 active:scale-85"
+          >
+            <div
+              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
+              style={{ backgroundColor: currentMemberColor || "#6366f1" }}
+            >
+              {currentMemberName.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-xs font-semibold text-slate-700">{currentMemberName}</span>
+          </button>
+        )}
+
         <Routes>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/login" element={<LoginScreen />} />
@@ -140,6 +168,9 @@ import { useLocation } from "react-router-dom";
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
+  const [hasMemberProfile, setHasMemberProfile] = useState(
+    () => !!localStorage.getItem("member_token")
+  );
   const location = useLocation();
 
   useEffect(() => {
@@ -173,7 +204,12 @@ export default function App() {
       <ModalProvider>
         <ShoppingProvider>
           <FamilyWallProvider>
-            <AppContent />
+            {/* Show profile selector if authenticated but no member profile chosen */}
+            {!hasMemberProfile ? (
+              <ProfileSelectScreen onSelected={() => setHasMemberProfile(true)} />
+            ) : (
+              <AppContent />
+            )}
           </FamilyWallProvider>
         </ShoppingProvider>
       </ModalProvider>

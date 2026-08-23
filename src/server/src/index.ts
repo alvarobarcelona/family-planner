@@ -27,6 +27,8 @@ declare global {
         householdId: string;
         name: string;
         role: string;
+        memberId?: string;    // ID del miembro seleccionado (member-aware token)
+        memberName?: string;  // Nombre del miembro seleccionado
       };
     }
   }
@@ -106,6 +108,8 @@ interface Task {
   recurrenceInterval?: number;
   recurrenceEndDate?: string;
   recurrenceCount?: number;
+  isPrivate?: boolean;          // whether the task is private to its creator
+  createdByMemberId?: string;   // ID del miembro que creó la tarea
 }
 
 // Helper function to get Central European Time offset (UTC+1 or UTC+2)
@@ -194,6 +198,8 @@ function authMiddleware(
       householdId: decoded.householdId,
       name: decoded.name,
       role: decoded.role,
+      memberId: decoded.memberId ?? undefined,
+      memberName: decoded.memberName ?? undefined,
     };
     next();
   } catch (err) {
@@ -1345,14 +1351,22 @@ initDb()
     app.get("/api/tasks", authMiddleware, async (req, res) => {
       try {
         const householdId = req.user?.householdId;
+        const memberId = req.user?.memberId ?? null;
+
+        // Si hay memberId en el token, filtramos tareas privadas ajenas en SQL.
+        // Si no hay memberId (sesión de hogar sin perfil), solo se devuelven públicas.
         const result = await pool.query(
           `
-      SELECT id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at, recurrence_interval, recurrence_end_date, recurrence_count
+      SELECT id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, is_completed, created_by, created_at, recurrence_interval, recurrence_end_date, recurrence_count, is_private, created_by_member_id
       FROM tasks
       WHERE household_id = $1
+        AND (
+          COALESCE(is_private, false) = false
+          OR created_by_member_id = $2
+        )
       ORDER BY date, time_label NULLS FIRST, title;
     `,
-          [householdId],
+          [householdId, memberId],
         );
 
         const rows = result.rows as any[];
@@ -1383,12 +1397,59 @@ initDb()
           recurrenceInterval: (row.recurrence_interval ?? undefined) as number | undefined,
           recurrenceEndDate: (row.recurrence_end_date ?? undefined) as string | undefined,
           recurrenceCount: (row.recurrence_count ?? undefined) as number | undefined,
+          isPrivate: (row.is_private ?? false) as boolean,
+          createdByMemberId: (row.created_by_member_id ?? undefined) as string | undefined,
         }));
 
         res.json(tasks);
       } catch (err) {
         console.error("Error en GET /api/tasks", err);
         res.status(500).json({ message: "Error interno" });
+      }
+    });
+
+    // POST seleccionar perfil de miembro — emite un member-aware token
+    app.post("/api/auth/member", authMiddleware, async (req, res) => {
+      const { memberId } = req.body;
+      const householdId = req.user?.householdId;
+
+      if (!memberId || !householdId) {
+        return res.status(400).json({ message: "memberId requerido" });
+      }
+
+      try {
+        const memberRes = await pool.query(
+          "SELECT id, name, color FROM family_members WHERE id = $1 AND household_id = $2",
+          [memberId, householdId],
+        );
+
+        if ((memberRes.rowCount ?? 0) === 0) {
+          return res.status(400).json({ message: "Miembro no válido" });
+        }
+
+        const member = memberRes.rows[0];
+
+        const memberToken = jwt.sign(
+          {
+            householdId,
+            name: req.user!.name,
+            role: "family",
+            memberId: member.id,
+            memberName: member.name,
+          },
+          JWT_SECRET,
+          { expiresIn: "30d" },
+        );
+
+        return res.json({
+          memberToken,
+          memberId: member.id,
+          memberName: member.name,
+          memberColor: member.color,
+        });
+      } catch (err) {
+        console.error("Error en POST /api/auth/member", err);
+        return res.status(500).json({ message: "Error interno" });
       }
     });
 
@@ -1436,6 +1497,7 @@ initDb()
         notificationTime,
         color,
         createdBy,
+        isPrivate,
       } = req.body as {
         title?: string;
         date?: string;
@@ -1453,7 +1515,9 @@ initDb()
         color?: string;
         createdBy?: string;
         createdAt?: string;
+        isPrivate?: boolean;
       };
+      const createdByMemberId = req.user?.memberId ?? null;
 
       const householdId = req.user?.householdId;
       if (!householdId)
@@ -1752,8 +1816,8 @@ initDb()
         const insertPromises = tasksToAdd.map((t: any) =>
           pool.query(
             `
-        INSERT INTO tasks (id, household_id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, recurrence_interval, recurrence_end_date, recurrence_count)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        INSERT INTO tasks (id, household_id, title, date, end_date, time_label, end_time, priority, recurrence, description, assignees, series_id, days_of_week, duration_weeks, notification_time, color, created_by, recurrence_interval, recurrence_end_date, recurrence_count, is_private, created_by_member_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       `,
             [
               t.id,
@@ -1776,13 +1840,22 @@ initDb()
               t.recurrenceInterval ?? 1,
               t.recurrenceEndDate ?? null,
               t.recurrenceCount ?? null,
+              isPrivate ?? false,
+              createdByMemberId,
             ],
           ),
         );
 
         await Promise.all(insertPromises);
 
-        res.status(201).json(tasksToAdd);
+        // Attach isPrivate and createdByMemberId to the returned tasks
+        const tasksWithPrivacy = tasksToAdd.map((t: any) => ({
+          ...t,
+          isPrivate: isPrivate ?? false,
+          createdByMemberId: createdByMemberId ?? undefined,
+        }));
+
+        res.status(201).json(tasksWithPrivacy);
       } catch (err) {
         console.error("Error en POST /api/tasks", err);
         res.status(500).json({ message: "Error interno" });
@@ -1813,6 +1886,7 @@ initDb()
         isCompleted,
         createdBy,
         createdAt,
+        isPrivate,
       } = req.body as {
         title?: string;
         date?: string;
@@ -1830,6 +1904,7 @@ initDb()
         isCompleted?: boolean;
         createdBy?: string;
         createdAt?: string;
+        isPrivate?: boolean;
       };
 
       if (!title || !date || !assigneeId || !priority) {
@@ -2080,7 +2155,7 @@ initDb()
         const result = await pool.query(
           `
       UPDATE tasks
-      SET title = $1, date = $2, end_date = $3, time_label = $4, end_time = $5, priority = $6, recurrence = $7, description = $8, assignees = $9, days_of_week = $10, duration_weeks = $11, notification_time = $12, color = $13, is_completed = $14, created_by = COALESCE($15, created_by), created_at = COALESCE($16, created_at), recurrence_interval = $19, recurrence_end_date = $20, recurrence_count = $21
+      SET title = $1, date = $2, end_date = $3, time_label = $4, end_time = $5, priority = $6, recurrence = $7, description = $8, assignees = $9, days_of_week = $10, duration_weeks = $11, notification_time = $12, color = $13, is_completed = $14, created_by = COALESCE($15, created_by), created_at = COALESCE($16, created_at), recurrence_interval = $19, recurrence_end_date = $20, recurrence_count = $21, is_private = COALESCE($22, is_private)
       WHERE id = $17 AND household_id = $18
       RETURNING *
     `,
@@ -2106,6 +2181,7 @@ initDb()
             (req.body as any).recurrenceInterval ?? null,
             (req.body as any).recurrenceEndDate ?? null,
             (req.body as any).recurrenceCount ?? null,
+            isPrivate ?? null,
           ],
         );
 
@@ -2133,6 +2209,8 @@ initDb()
           isCompleted: row.is_completed ?? undefined,
           createdBy: row.created_by ?? undefined,
           createdAt: row.created_at ?? undefined,
+          isPrivate: row.is_private ?? false,
+          createdByMemberId: row.created_by_member_id ?? undefined,
         };
 
         res.json(updatedTask);

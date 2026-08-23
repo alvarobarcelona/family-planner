@@ -5,6 +5,7 @@ export interface CreateTaskDto {
   date: string; // YYYY-MM-DD
   endDate?: string;
   time?: string;
+  endTime?: string;
   assigneeId: string;
   priority: Priority;
   recurrence: Recurrence;
@@ -19,6 +20,7 @@ export interface CreateTaskDto {
   recurrenceInterval?: number;
   recurrenceEndDate?: string;
   recurrenceCount?: number;
+  isPrivate?: boolean;
 }
 
 // If VITE_API_URL is set (e.g. for specific dev), use it.
@@ -34,8 +36,18 @@ export function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`;
 }
 
-function getAuthHeaders(): Record<string, string> {
+// Returns the household-level auth_token (for operations that only need household context)
+function getHouseholdAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// Returns the member-scoped token if available, falling back to the household token.
+// All regular API calls should use this so the server can filter private tasks.
+function getAuthHeaders(): Record<string, string> {
+  const memberToken = localStorage.getItem("member_token");
+  const authToken = localStorage.getItem("auth_token");
+  const token = memberToken ?? authToken;
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -156,4 +168,41 @@ export async function getSeriesCount(seriesId: string): Promise<number> {
 
   const data = await res.json();
   return data.count;
+}
+
+// Selecciona un perfil de miembro y obtiene un member-aware JWT del servidor.
+// Siempre usa el auth_token del hogar (no el member_token) para esta llamada.
+export async function selectMemberApi(memberId: string): Promise<{
+  memberToken: string;
+  memberId: string;
+  memberName: string;
+  memberColor: string;
+}> {
+  const res = await fetch(buildUrl("/api/auth/member"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHouseholdAuthHeaders(),
+    },
+    body: JSON.stringify({ memberId }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Error seleccionando miembro: ${res.status} - ${text}`);
+  }
+
+  const data = await res.json();
+  localStorage.setItem("member_token", data.memberToken);
+  localStorage.setItem("current_member_id", data.memberId);
+  localStorage.setItem("current_member_name", data.memberName);
+  localStorage.setItem("current_member_color", data.memberColor);
+  return data;
+}
+
+export function clearMemberApi(): void {
+  localStorage.removeItem("member_token");
+  localStorage.removeItem("current_member_id");
+  localStorage.removeItem("current_member_name");
+  localStorage.removeItem("current_member_color");
 }

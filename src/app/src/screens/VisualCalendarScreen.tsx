@@ -408,9 +408,14 @@ function WeekView({ currentDate, tasks, onTaskClick, toggleTaskCompletion, anima
                                                     onClick={() => onTaskClick(task.id)}
                                                 >
                                                     <div className="flex justify-between items-start gap-2">
-                                                        <p className={`text-sm font-semibold leading-snug truncate ${task.isCompleted ? "line-through text-slate-500" : "text-slate-800"}`}>
-                                                            {task.title}
-                                                        </p>
+                                                        <div className="flex items-center gap-1.5">
+                                                          <p className={`text-sm font-semibold leading-snug truncate ${task.isCompleted ? "line-through text-slate-500" : "text-slate-800"}`}>
+                                                              {task.title}
+                                                          </p>
+                                                          {task.isPrivate && (
+                                                            <span title="Tarea Privada" className="text-xs shrink-0">🔒</span>
+                                                          )}
+                                                        </div>
 
                                                         <div className="flex items-center gap-1.5 shrink-0">
                                                             {task.notificationTime != null && (
@@ -568,9 +573,14 @@ const AgendaView = React.forwardRef<HTMLDivElement, AgendaViewProps>(({ currentD
 
                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                                             <div className="flex justify-between items-start gap-2">
-                                                <h4 className="text-sm font-bold text-slate-800 truncate leading-tight group-hover:text-indigo-700 transition-colors">
-                                                    {task.title}
-                                                </h4>
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                  <h4 className="text-sm font-bold text-slate-800 truncate leading-tight group-hover:text-indigo-700 transition-colors">
+                                                      {task.title}
+                                                  </h4>
+                                                  {task.isPrivate && (
+                                                    <span title="Tarea Privada" className="text-xs shrink-0">🔒</span>
+                                                  )}
+                                                </div>
                                                 {task.timeLabel && (
                                                     <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
                                                         {task.timeLabel}{task.endTime && ` - ${task.endTime}`} h

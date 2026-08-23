@@ -3,7 +3,9 @@ import { Assignee } from "../store/useTaskStore";
 const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 const getHeaders = () => {
-  const token = localStorage.getItem("auth_token");
+  const memberToken = localStorage.getItem("member_token");
+  const authToken = localStorage.getItem("auth_token");
+  const token = memberToken ?? authToken;
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

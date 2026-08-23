@@ -9,8 +9,9 @@ import {
 } from "react";
 
 // API Imports
-import { getTasks, createTasks, deleteTask, updateTask as apiUpdateTask } from "../api/tasksApi";
+import { getTasks, createTasks, deleteTask, updateTask as apiUpdateTask, selectMemberApi, clearMemberApi } from "../api/tasksApi";
 import { getMembers } from "../api/membersApi";
+
 
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
@@ -48,6 +49,8 @@ export interface Task {
   recurrenceInterval?: number;
   recurrenceEndDate?: string;
   recurrenceCount?: number;
+  isPrivate?: boolean;         // whether the task is private to its creator
+  createdByMemberId?: string;  // ID del miembro que creó la tarea
 }
 
 export interface CreateTaskInput {
@@ -69,6 +72,7 @@ export interface CreateTaskInput {
   recurrenceInterval?: number;
   recurrenceEndDate?: string;
   recurrenceCount?: number;
+  isPrivate?: boolean;
 }
 
 interface TaskContextValue {
@@ -83,6 +87,12 @@ interface TaskContextValue {
   isLoading: boolean;
   refreshTasks: () => Promise<void>;
   createdBy: CreatedBy[];
+  // Member profile
+  currentMemberId: string | null;
+  currentMemberName: string | null;
+  currentMemberColor: string | null;
+  selectMember: (memberId: string) => Promise<void>;
+  clearMember: () => void;
 }
 
 function todayStr(): string {
@@ -114,8 +124,19 @@ const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Assignee[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
+
+  // Member profile state — persisted in localStorage
+  const [currentMemberId, setCurrentMemberId] = useState<string | null>(
+    () => localStorage.getItem("current_member_id")
+  );
+  const [currentMemberName, setCurrentMemberName] = useState<string | null>(
+    () => localStorage.getItem("current_member_name")
+  );
+  const [currentMemberColor, setCurrentMemberColor] = useState<string | null>(
+    () => localStorage.getItem("current_member_color")
+  );
 
   // Function to load tasks - defined with useCallback to be exposed
   const load = useCallback(async () => {
@@ -241,6 +262,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           color: task.color,
           isCompleted: !task.isCompleted,
           createdBy: task.createdBy,
+          isPrivate: task.isPrivate,
         }),
       });
 
@@ -287,6 +309,26 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         isLoading,
         refreshTasks: load, // Expose load as refreshTasks
         createdBy: members, // Reusing members as createdBy list for now
+        // Member profile
+        currentMemberId,
+        currentMemberName,
+        currentMemberColor,
+        selectMember: async (memberId: string) => {
+          const data = await selectMemberApi(memberId);
+          setCurrentMemberId(data.memberId);
+          setCurrentMemberName(data.memberName);
+          setCurrentMemberColor(data.memberColor);
+          // Reload tasks with the new member-scoped token
+          await load();
+        },
+        clearMember: () => {
+          clearMemberApi();
+          setCurrentMemberId(null);
+          setCurrentMemberName(null);
+          setCurrentMemberColor(null);
+          // Reload tasks without member token (only public tasks)
+          load();
+        },
       }}
     >
       {children}

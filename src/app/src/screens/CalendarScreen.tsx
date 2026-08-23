@@ -314,7 +314,7 @@ export function CalendarScreen() {
                           </div>
                         </button>
 
-                        <div className="flex-1">
+                        <div className="flex-1 flex items-center gap-1.5">
                           <p
                             className={
                               `text-sm font-semibold text-slate-700 leading-snug ${task.isCompleted ? "line-through text-slate-400" : ""} ` +
@@ -323,6 +323,9 @@ export function CalendarScreen() {
                           >
                             {task.title}
                           </p>
+                          {task.isPrivate && (
+                            <span title="Tarea Privada" className="text-xs">🔒</span>
+                          )}
                         </div>
 
                         <div>
