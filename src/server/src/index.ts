@@ -1285,14 +1285,26 @@ async function checkAndSendNotifications(): Promise<{
         );
 
         for (const sub of subsRes.rows) {
-          const timeText =
-            task.notification_time === 1440
-              ? "1 día"
-              : `${task.notification_time} minutos`;
+          let timeText = `${task.notification_time} minutos`;
+          
+          if (task.notification_time >= 10080 && task.notification_time % 10080 === 0) {
+            const weeks = task.notification_time / 10080;
+            timeText = weeks === 1 ? "1 semana" : `${weeks} semanas`;
+          } else if (task.notification_time >= 1440 && task.notification_time % 1440 === 0) {
+            const days = task.notification_time / 1440;
+            timeText = days === 1 ? "1 día" : `${days} días`;
+          } else if (task.notification_time >= 60 && task.notification_time % 60 === 0) {
+            const hours = task.notification_time / 60;
+            timeText = hours === 1 ? "1 hora" : `${hours} horas`;
+          }
+
+          const bodyText = task.notification_time === 0 
+            ? "¡Comienza ahora!" 
+            : `Comienza en ${timeText}`;
 
           const payload = {
             title: `${task.title}`,
-            body: `Comienza en ${timeText}`,
+            body: bodyText,
             url: "/",
             icon: "/icon-192x192.png",
           };
