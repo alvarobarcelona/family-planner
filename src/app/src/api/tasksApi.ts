@@ -68,6 +68,10 @@ export async function login(name: string, password: string): Promise<void> {
 
 export function logout() {
   localStorage.removeItem("auth_token");
+  localStorage.removeItem("member_token");
+  localStorage.removeItem("current_member_id");
+  localStorage.removeItem("current_member_name");
+  localStorage.removeItem("current_member_color");
   window.location.reload();
 }
 
@@ -76,6 +80,9 @@ export async function getTasks(): Promise<Task[]> {
     headers: { ...getAuthHeaders() },
   });
   if (!res.ok) {
+    if (res.status === 401) {
+      logout();
+    }
     const text = await res.text();
     throw new Error(
       `Error loading tasks: ${res.status} ${text.substring(0, 100)}`,

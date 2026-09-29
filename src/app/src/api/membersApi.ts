@@ -1,4 +1,5 @@
 import { Assignee } from "../store/useTaskStore";
+import { logout } from "./tasksApi";
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
@@ -16,7 +17,12 @@ export const getMembers = async (): Promise<Assignee[]> => {
   const res = await fetch(`${API_URL}/api/members`, {
     headers: getHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to fetch members");
+  if (!res.ok) {
+    if (res.status === 401) {
+      logout();
+    }
+    throw new Error("Failed to fetch members");
+  }
   return res.json();
 };
 
