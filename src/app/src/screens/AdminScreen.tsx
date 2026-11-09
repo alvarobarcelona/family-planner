@@ -121,7 +121,7 @@ export function AdminScreen() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Admin Password"
-                        className="w-full border p-2 rounded mb-4"
+                        className="w-full border p-2 rounded mb-4 bg-slate-300 focus:bg-white"
                     />
                     {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
@@ -232,7 +232,7 @@ export function AdminScreen() {
                                 type="text"
                                 value={newHouseholdName}
                                 onChange={(e) => setNewHouseholdName(e.target.value)}
-                                className="w-full border p-2 rounded"
+                                className="w-full border p-2 rounded bg-slate-300 focus:bg-white"
                                 required
                             />
                         </div>
@@ -244,7 +244,7 @@ export function AdminScreen() {
                                 type="text"
                                 value={newHouseholdPassword}
                                 onChange={(e) => setNewHouseholdPassword(e.target.value)}
-                                className="w-full border p-2 rounded"
+                                className="w-full border p-2 rounded bg-slate-300 focus:bg-white"
                                 required
                             />
                         </div>
@@ -343,7 +343,7 @@ export function AdminScreen() {
                                 type="text"
                                 value={editingPassword}
                                 onChange={(e) => setEditingPassword(e.target.value)}
-                                className="w-full border p-2 rounded mb-4"
+                                className="w-full border p-2 rounded mb-4 bg-slate-300 focus:bg-white"
                                 placeholder="Nueva contraseña"
                                 required
 
@@ -384,7 +384,7 @@ export function AdminScreen() {
                                 type="text"
                                 value={editingName}
                                 onChange={(e) => setEditingName(e.target.value)}
-                                className="w-full border p-2 rounded mb-4"
+                                className="w-full border p-2 rounded mb-4 bg-slate-300 focus:bg-white"
                                 placeholder="Nuevo nombre"
                                 required
 

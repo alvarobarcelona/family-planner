@@ -207,7 +207,7 @@ export function MembersScreen() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Nombre (ej. Mamá)"
-                            className="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
+                            className="flex-1 bg-slate-300 focus:bg-white border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
                         />
                         <button
                             type="submit"
@@ -249,7 +249,7 @@ export function MembersScreen() {
                                         <input
                                             value={editName}
                                             onChange={(e) => setEditName(e.target.value)}
-                                            className="flex-1 bg-slate-50 border rounded-lg px-3 py-2"
+                                            className="flex-1 bg-slate-300 focus:bg-white border rounded-lg px-3 py-2"
                                         />
                                         <button onClick={() => handleUpdate(m.id)} className="bg-green-500 text-white px-3 py-2 rounded-lg">💾</button>
                                         <button onClick={() => setIsEditing(null)} className="bg-slate-200 text-slate-600 px-3 py-2 rounded-lg">❌</button>

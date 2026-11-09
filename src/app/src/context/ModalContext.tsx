@@ -11,7 +11,11 @@ interface ModalOptions {
 interface ModalContextValue {
     alert: (message: string, options?: ModalOptions) => Promise<void>;
     confirm: (message: string, options?: ModalOptions) => Promise<boolean | null>;
+    /** Non-blocking message that disappears on its own. */
+    toast: (message: string) => void;
 }
+
+const TOAST_DURATION_MS = 2500;
 
 const ModalContext = createContext<ModalContextValue | undefined>(undefined);
 
@@ -94,9 +98,31 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [toastVisible, setToastVisible] = useState(false);
+    const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const toast = useCallback((message: string) => {
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        setToastMessage(message);
+        setToastVisible(true);
+        toastTimerRef.current = setTimeout(() => setToastVisible(false), TOAST_DURATION_MS);
+    }, []);
+
     return (
-        <ModalContext.Provider value={{ alert, confirm }}>
+        <ModalContext.Provider value={{ alert, confirm, toast }}>
             {children}
+
+            {toastMessage && (
+                <div
+                    role="status"
+                    aria-live="polite"
+                    onClick={() => setToastVisible(false)}
+                    className={`fixed left-1/2 -translate-x-1/2 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-[60] max-w-[90%] px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium shadow-lg transition-all duration-300 ${toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}
+                >
+                    {toastMessage}
+                </div>
+            )}
 
             {content && (
                 <Modal

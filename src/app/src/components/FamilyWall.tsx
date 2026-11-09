@@ -1,7 +1,51 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useFamilyWallStore } from "../store/useFamilyWallStore";
 import { useTaskStore } from "../store/useTaskStore"; // To get family members
 import { useModal } from "../context/ModalContext";
+
+/** Full-screen photo viewer. Closes on any tap, the ✕ button or Escape. */
+function PhotoViewer({ imageUrl, caption, onClose }: { imageUrl: string; caption?: string; onClose: () => void }) {
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onClose();
+        };
+        document.addEventListener("keydown", handleKey);
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden"; // Prevent background scrolling
+        return () => {
+            document.removeEventListener("keydown", handleKey);
+            document.body.style.overflow = prevOverflow;
+        };
+    }, [onClose]);
+
+    return (
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Foto de la nota"
+            onClick={onClose}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+            <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar"
+                className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white text-xl flex items-center justify-center transition-colors"
+            >
+                ✕
+            </button>
+            {/* Shown at natural size at most: photos are stored at ≤600px, upscaling would blur them */}
+            <img
+                src={imageUrl}
+                alt={caption || "Foto de la nota"}
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl"
+            />
+            {caption && (
+                <p className="max-w-md text-center text-white/90 text-sm whitespace-pre-line line-clamp-4">{caption}</p>
+            )}
+        </div>
+    );
+}
 
 const NOTE_COLORS = [
     { bg: "bg-yellow-200", border: "border-yellow-300" },
@@ -24,6 +68,8 @@ export function FamilyWall() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [viewingNote, setViewingNote] = useState<(typeof notes)[number] | null>(null);
+    const closeViewer = useCallback(() => setViewingNote(null), []);
 
     // Logic to determine a "valid" current user could be added here, 
     // currently defaults to selection or first member.
@@ -213,7 +259,7 @@ export function FamilyWall() {
                             <select
                                 value={selectedAuthorId}
                                 onChange={(e) => setSelectedAuthorId(e.target.value)}
-                                className="text-xs bg-slate-50 border-none rounded-md py-1 pr-7 pl-2 text-slate-600 focus:ring-0 cursor-pointer"
+                                className="text-xs bg-slate-300 border-none rounded-md py-1 pr-7 pl-2 text-slate-600 focus:ring-0 cursor-pointer"
                             >
                                 {familyMembers.map(m => (
                                     <option key={m.id} value={m.id}>{m.name}</option>
@@ -258,7 +304,20 @@ export function FamilyWall() {
                     {notes.map((note) => (
                         <div
                             key={note.id}
-                            className={`relative group p-3 rounded-lg shadow-sm min-h-[100px] flex flex-col transition-all hover:scale-[1.02] hover:shadow-md ${note.color} ${note.color === 'bg-yellow-200' ? 'text-yellow-900' : 'text-slate-800'}`}
+                            // Notes with a photo open it full screen
+                            {...(note.imageUrl && {
+                                role: "button",
+                                tabIndex: 0,
+                                "aria-label": "Ver foto",
+                                onClick: () => setViewingNote(note),
+                                onKeyDown: (e: React.KeyboardEvent) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        setViewingNote(note);
+                                    }
+                                },
+                            })}
+                            className={`relative group p-3 rounded-lg shadow-sm min-h-[100px] flex flex-col transition-all hover:scale-[1.02] hover:shadow-md ${note.imageUrl ? 'cursor-zoom-in' : ''} ${note.color} ${note.color === 'bg-yellow-200' ? 'text-yellow-900' : 'text-slate-800'}`}
                             style={{ transform: `rotate(${note.rotation}deg)` }}
                         >
                             {/* Pin Effect */}
@@ -311,6 +370,10 @@ export function FamilyWall() {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {viewingNote?.imageUrl && (
+                <PhotoViewer imageUrl={viewingNote.imageUrl} caption={viewingNote.content} onClose={closeViewer} />
             )}
         </div>
     );

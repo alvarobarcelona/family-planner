@@ -164,7 +164,7 @@ function ShoppingListScreenContent() {
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 placeholder="¿Qué necesitas?"
-                                className="w-full bg-slate-50 border-none font-size: small; rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                className="w-full bg-slate-300 focus:bg-white border-none font-size: small; rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                             />
                             <div className="flex items-center bg-slate-50 rounded-xl px-1 shrink-0">
                                 <button

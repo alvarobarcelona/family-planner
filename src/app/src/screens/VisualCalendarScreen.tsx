@@ -235,6 +235,7 @@ export function VisualCalendarScreen() {
                             currentDate={currentDate}
                             tasks={filteredTasks}
                             onTaskClick={handleTaskClick}
+                            onAddClick={(dateStr) => navigate(`/new?date=${dateStr}`)}
                             toggleTaskCompletion={toggleTaskCompletion}
                             animatingTaskId={animatingTaskId}
                             setAnimatingTaskId={setAnimatingTaskId}
@@ -280,10 +281,11 @@ export function VisualCalendarScreen() {
     );
 }
 
-function WeekView({ currentDate, tasks, onTaskClick, toggleTaskCompletion, animatingTaskId, setAnimatingTaskId }: {
+function WeekView({ currentDate, tasks, onTaskClick, onAddClick, toggleTaskCompletion, animatingTaskId, setAnimatingTaskId }: {
     currentDate: Date,
     tasks: any[],
     onTaskClick: (id: string) => void,
+    onAddClick: (dateStr: string) => void,
     toggleTaskCompletion: (id: string) => void,
     animatingTaskId: string | null,
     setAnimatingTaskId: (id: string | null) => void
@@ -320,7 +322,7 @@ function WeekView({ currentDate, tasks, onTaskClick, toggleTaskCompletion, anima
                         const dayTasks = tasks.filter(t => isTaskOnDate(t, dateStr)).sort((a, b) => (a.timeLabel || "").localeCompare(b.timeLabel || ""));
 
                         return (
-                            <div key={dateStr} className="flex flex-col gap-1 min-h-[80px] border-r last:border-r-0 border-gray-100 px-0.5 pt-1 bg-slate-50/50 rounded-lg">
+                            <div key={dateStr} className="flex flex-col gap-1 min-h-[80px] border-r last:border-r-0 border-gray-100 px-0.5 pt-1 pb-1 bg-slate-50/50 rounded-lg">
                                 {dayTasks.map(t => (
                                     <div
                                         key={t.id}
@@ -333,6 +335,14 @@ function WeekView({ currentDate, tasks, onTaskClick, toggleTaskCompletion, anima
                                         {t.title}
                                     </div>
                                 ))}
+                                <button
+                                    type="button"
+                                    onClick={() => onAddClick(dateStr)}
+                                    aria-label={`Nueva tarea el ${d.toLocaleDateString("es-ES", { weekday: 'long', day: 'numeric' })}`}
+                                    className="mt-auto w-full py-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 active:bg-indigo-100 text-sm font-semibold leading-none transition-colors"
+                                >
+                                    +
+                                </button>
                             </div>
                         );
                     })}

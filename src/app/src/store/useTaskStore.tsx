@@ -138,10 +138,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     () => localStorage.getItem("current_member_color")
   );
 
-  // Function to load tasks - defined with useCallback to be exposed
-  const load = useCallback(async () => {
-    // Carga desde API
-    setIsLoading(true);
+  // showSpinner=false refreshes in the background, keeping the current list on screen.
+  // Only the initial load and profile switches (different visible tasks) show the spinner.
+  const load = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setIsLoading(true);
     setError(null);
     try {
       const [loadedTasks, loadedMembers] = await Promise.all([
@@ -160,9 +160,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshTasks = useCallback(() => load(false), [load]);
+
   // Carga inicial
   useEffect(() => {
-    load();
+    load(true);
   }, [load]);
 
   const addTask = async (input: CreateTaskInput): Promise<Task[]> => {
@@ -307,7 +309,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         updateTask,
         toggleTaskCompletion,
         isLoading,
-        refreshTasks: load, // Expose load as refreshTasks
+        refreshTasks,
         createdBy: members, // Reusing members as createdBy list for now
         // Member profile
         currentMemberId,
@@ -319,7 +321,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           setCurrentMemberName(data.memberName);
           setCurrentMemberColor(data.memberColor);
           // Reload tasks with the new member-scoped token
-          await load();
+          await load(true);
         },
         clearMember: () => {
           clearMemberApi();
@@ -327,7 +329,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           setCurrentMemberName(null);
           setCurrentMemberColor(null);
           // Reload tasks without member token (only public tasks)
-          load();
+          load(true);
         },
       }}
     >

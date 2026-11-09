@@ -1,775 +1,210 @@
-import { FormEvent, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import { useModal } from "../context/ModalContext";
-import {
-  useTaskStore,
-  type Priority,
-  type Recurrence,
-} from "../store/useTaskStore";
+import { useTaskStore, type Task } from "../store/useTaskStore";
 import { getSeriesCount } from "../api/tasksApi";
+import { useGoBack } from "../hooks/useGoBack";
+import {
+  emptyTaskFormValues,
+  formValuesToInput,
+  hasAdvancedValues,
+  type TaskFormValues,
+} from "../components/taskFormValues";
+import { TaskForm } from "../components/TaskForm";
 
-const weekdays = [
-  { value: 1, label: "L" },
-  { value: 2, label: "M" },
-  { value: 3, label: "X" },
-  { value: 4, label: "J" },
-  { value: 5, label: "V" },
-  { value: 6, label: "S" },
-  { value: 7, label: "D" },
-];
+function taskToFormValues(task: Task, allTasks: Task[]): TaskFormValues {
+  let date = task.date;
+  let endDate = task.endDate || "";
 
-const notificationOptions = [
-  { value: -1, label: "Sin notificación" },
-  { value: 0, label: "En el momento del evento" },
-  { value: 10, label: "10 minutos antes" },
-  { value: 30, label: "30 minutos antes" },
-  { value: 60, label: "1 hora antes" },
-  { value: 120, label: "2 horas antes" },
-  { value: 1440, label: "1 día antes" },
-  { value: 2880, label: "2 días antes" },
-  { value: 10080, label: "1 semana antes" },
-];
+  // Date-range series: recurrence=NONE with a seriesId. Each day is its own
+  // task row with no endDate, so we reconstruct the range from the series.
+  if (task.seriesId && (!task.recurrence || task.recurrence === "NONE") && !task.endDate) {
+    const sortedDates = allTasks
+      .filter((t) => t.seriesId === task.seriesId)
+      .map((t) => t.date)
+      .sort();
+    date = sortedDates[0];
+    const lastDate = sortedDates[sortedDates.length - 1];
+    endDate = lastDate !== date ? lastDate : "";
+  }
 
-const colorOptions = [
-  { value: undefined, label: "Por defecto" },
-  { value: "#ef4444", label: "Rojo" },
-  { value: "#f97316", label: "Naranja" },
-  { value: "#f59e0b", label: "Ámbar" },
-  { value: "#22c55e", label: "Verde" },
-  { value: "#14b8a6", label: "Turquesa" },
-  { value: "#3b82f6", label: "Azul" },
-  { value: "#6366f1", label: "Índigo" },
-  { value: "#a855f7", label: "Violeta" },
-  { value: "#ec4899", label: "Rosa" },
-  { value: "#64748b", label: "Gris" },
-];
+  const isWeekly = task.recurrence === "WEEKLY" || task.recurrence === "CUSTOM_WEEKLY";
+
+  return {
+    ...emptyTaskFormValues(),
+    title: task.title,
+    description: task.description || "",
+    date,
+    endDate,
+    time: task.timeLabel || "",
+    endTime: task.endTime || "",
+    assigneeId: task.assignees[0]?.id || "",
+    createdBy: task.createdBy || "",
+    priority: task.priority,
+    notificationTime: task.notificationTime ?? -1,
+    recurrence: task.recurrence || "NONE",
+    customDays: isWeekly ? task.daysOfWeek || [] : [],
+    recurrenceInterval: task.recurrenceInterval || 1,
+    recurrenceEndCondition: task.recurrenceEndDate ? "DATE" : task.recurrenceCount ? "COUNT" : "NEVER",
+    recurrenceEndDate: task.recurrenceEndDate ? task.recurrenceEndDate.slice(0, 10) : "",
+    recurrenceCount: task.recurrenceCount,
+    color: task.color,
+    isPrivate: task.isPrivate ?? false,
+  };
+}
 
 export function EditTaskScreen() {
   const { taskId } = useParams<{ taskId: string }>();
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   const { confirm } = useModal();
-  const { tasks, updateTask, removeTask, familyMembers, currentMemberId, currentMemberName } = useTaskStore();
-
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [time, setTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [assigneeId, setAssigneeId] = useState("");
-  const [priority, setPriority] = useState<Priority>("MEDIUM");
-  const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
-  const [description, setDescription] = useState("");
-  const [notificationTime, setNotificationTime] = useState<number>(-1);
-  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>("");
-  const [storedCreatedAt, setStoredCreatedAt] = useState<string | undefined>();
+  const { tasks, isLoading, updateTask, removeTask, currentMemberId } = useTaskStore();
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [seriesCount, setSeriesCount] = useState<number | null>(null);
 
-  const [customDays, setCustomDays] = useState<number[]>([]);
-  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
-  const [recurrenceEndCondition, setRecurrenceEndCondition] = useState<'NEVER' | 'DATE' | 'COUNT'>('NEVER');
-  const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
-  const [recurrenceCount, setRecurrenceCount] = useState<number | undefined>(undefined);
-  const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
-  const [isPrivate, setIsPrivate] = useState(false);
+  const task = tasks.find((t) => t.id === taskId);
 
-  const toggleCustomDay = (value: number) => {
-    setCustomDays((prev) =>
-      prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value]
-    );
-  };
+  // Built once per task: background refreshes of `tasks` must not overwrite
+  // what the user is typing (the form also only reads initialValues on mount).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initialValues = useMemo(() => (task ? taskToFormValues(task, tasks) : null), [task?.id]);
 
+  const seriesId = task?.seriesId;
   useEffect(() => {
-    if (taskId && tasks.length > 0) {
-      const task = tasks.find((t) => t.id === taskId);
-      if (task) {
-        setTitle(task.title);
-        setTime(task.timeLabel || "");
-        setEndTime(task.endTime || "");
-        setAssigneeId(task.assignees[0]?.id || "");
-        setPriority(task.priority);
-        setRecurrence(task.recurrence || "NONE");
-        setDescription(task.description || "");
-        setNotificationTime(task.notificationTime ?? -1);
-        setSelectedColor(task.color);
-        setSelectedCreatedBy(task.createdBy || "");
-        setStoredCreatedAt(task.createdAt);
-        setIsPrivate(task.isPrivate ?? false);
+    if (!seriesId) return;
+    getSeriesCount(seriesId)
+      .then(setSeriesCount)
+      .catch((err) => console.error("Error fetching series count:", err));
+  }, [seriesId]);
 
-        // Detect date-range series: recurrence=NONE with a seriesId
-        // Each day is its own task row with no endDate, so we reconstruct the range
-        if (task.seriesId && (!task.recurrence || task.recurrence === "NONE") && !task.endDate) {
-          const seriesTasks = tasks.filter((t) => t.seriesId === task.seriesId);
-          const sortedDates = seriesTasks.map((t) => t.date).sort();
-          const firstDate = sortedDates[0];
-          const lastDate = sortedDates[sortedDates.length - 1];
-          setDate(firstDate);
-          // Only set endDate if the series actually spans more than 1 day
-          setEndDate(lastDate !== firstDate ? lastDate : "");
-        } else {
-          // Normal task or recurring task: use its own date/endDate
-          setDate(task.date);
-          setEndDate(task.endDate || "");
-        }
+  if (!initialValues) {
+    if (isLoading) return <div className="p-8 text-center text-slate-500 animate-pulse">Cargando...</div>;
+    return (
+      <div className="p-8 text-center text-red-500">
+        <p className="font-semibold">Tarea no encontrada</p>
+        <button onClick={goBack} className="mt-4 text-slate-500 underline text-sm">
+          Volver
+        </button>
+      </div>
+    );
+  }
 
-        setRecurrenceInterval(task.recurrenceInterval || 1);
-        if (task.recurrenceEndDate) {
-          setRecurrenceEndCondition('DATE');
-          setRecurrenceEndDate(task.recurrenceEndDate.slice(0, 10));
-        } else if (task.recurrenceCount) {
-          setRecurrenceEndCondition('COUNT');
-          setRecurrenceCount(task.recurrenceCount);
-        } else {
-          setRecurrenceEndCondition('NEVER');
-        }
+  const toInput = (values: TaskFormValues) => ({
+    ...formValuesToInput(values),
+    createdAt: task?.createdAt,
+  });
 
-        if (task.recurrence === "CUSTOM_WEEKLY" || task.recurrence === "WEEKLY") {
-          setCustomDays(task.daysOfWeek || []);
-        }
-
-        if (task.seriesId) {
-          getSeriesCount(task.seriesId)
-            .then(count => setSeriesCount(count))
-            .catch(err => console.error("Error fetching series count:", err));
-        }
-
-        setIsLoading(false);
-      } else {
-        setError("Tarea no encontrada");
-        setIsLoading(false);
-      }
-    } else if (tasks.length > 0) {
-      setError("Tarea no encontrada");
-      setIsLoading(false);
-    }
-  }, [taskId, tasks]);
-
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  /** Runs a save/delete action with the shared submitting/error handling. */
+  const run = async (action: () => Promise<void>, errorMessage: string) => {
     setError(null);
-
-    if (!title.trim()) {
-      setError("El título es obligatorio");
-      return;
-    }
-    if (!assigneeId) {
-      setError("Por favor, selecciona a quién asignar la tarea");
-      return;
-    }
     setIsSubmitting(true);
-
     try {
-      await updateTask(taskId!, {
-        title,
-        date,
-        endDate: endDate || undefined,
-        time: time || undefined,
-        endTime: endTime || undefined,
-        assigneeId,
-        priority,
-        recurrence,
-        description: description || undefined,
-        daysOfWeek: recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY' ? customDays : undefined,
-        notificationTime: notificationTime >= 0 ? notificationTime : undefined,
-        color: selectedColor,
-        createdBy: selectedCreatedBy,
-        createdAt: storedCreatedAt,
-        recurrenceInterval,
-        recurrenceEndDate: recurrenceEndCondition === 'DATE' ? recurrenceEndDate : undefined,
-        recurrenceCount: recurrenceEndCondition === 'COUNT' ? recurrenceCount : undefined,
-        isPrivate,
-      });
-
-      navigate(-1);
+      await action();
+      goBack();
     } catch (err) {
       console.error(err);
-      setError("No se ha podido actualizar la tarea");
-    } finally {
+      setError(errorMessage);
       setIsSubmitting(false);
     }
   };
 
-  if (isLoading) return <div className="p-8 text-center text-slate-500 animate-pulse">Cargando...</div>;
-  if (error && !title) return (
-    <div className="p-8 text-center text-red-500">
-      <p className="font-semibold">{error}</p>
-      <button onClick={() => navigate(-1)} className="mt-4 text-slate-500 underline text-sm">Volver</button>
-    </div>
-  );
+  const handleSubmit = (values: TaskFormValues) =>
+    run(() => updateTask(taskId!, toInput(values)), "No se ha podido actualizar la tarea");
+
+  const deleteSingle = async () => {
+    if (await confirm("¿Borrar solo este evento?", { confirmText: "Borrar evento" })) {
+      await run(() => removeTask(taskId!, false), "Error al borrar evento");
+    }
+  };
+
+  const deleteSeries = async () => {
+    const message =
+      seriesCount !== null
+        ? `¿Borrar TODA la serie? Se eliminarán ${seriesCount} eventos de tu calendario.`
+        : "¿Borrar TODA la serie?";
+    if (await confirm(message, { confirmText: "Borrar Serie", confirmVariant: "danger", title: "Borrar Serie Completa" })) {
+      await run(() => removeTask(taskId!, true), "Error al borrar serie");
+    }
+  };
+
+  const saveSeries = async (values: TaskFormValues) => {
+    const ok = await confirm(
+      "¿Actualizar toda la serie? Se aplicarán estos cambios a todos los eventos futuros y pasados de esta serie.",
+      { confirmText: "Actualizar Serie", title: "Cambio Global" }
+    );
+    if (ok) await run(() => updateTask(taskId!, toInput(values), true), "Error al actualizar serie");
+  };
 
   return (
     <div className="max-w-xl mx-auto p-4 pb-24 space-y-6">
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Editar tarea</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Modifica los detalles de este evento
-        </p>
+        <p className="text-sm text-slate-500 mt-1">Modifica los detalles de este evento</p>
       </header>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-x-4 gap-y-5">
-
-        {/* Title */}
-        <div className="col-span-2 space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700" htmlFor="title">
-            Título
-          </label>
-          <input
-            id="title"
-            type="text"
-            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-            placeholder="Ej: Pediatra Leo, Reunión guardería..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </div>
-
-        {/* Description */}
-        <div className="col-span-2 space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700" htmlFor="description">
-            Notas
-          </label>
-          <textarea
-            id="description"
-            className="w-full min-h-[100px] rounded-xl border-slate-200 bg-slate-200 px-3 py-3 text-base focus:border-slate-900 focus:bg-white focus:ring-0 transition-all resize-y"
-            placeholder="Detalles adicionales..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        {/* Date and Time Row */}
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide" htmlFor="date">
-            Fecha
-          </label>
-          <input
-            id="date"
-            type="date"
-            className="w-full rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
-
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide" htmlFor="time">
-            Hora <span className="text-slate-400 font-normal">(opcional)</span>
-          </label>
-          <div className="flex gap-2 items-center">
-            <input
-              id="time"
-              type="time"
-              className="w-full rounded-xl border-slate-200 bg-slate-200 px-2 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-            <span className="text-slate-400 font-bold">-</span>
-            <input
-              id="endTime"
-              type="time"
-              className="w-full rounded-xl border-slate-200 bg-slate-200 px-2 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              disabled={!time}
-            />
-          </div>
-          <div className="flex gap-2 mt-2">
-            <button type="button" onClick={() => setTime("09:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Mañana (09:00)</button>
-            <button type="button" onClick={() => setTime("14:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Mediodía (14:00)</button>
-            <button type="button" onClick={() => setTime("17:00")} className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">Tarde (17:00)</button>
-          </div>
-        </div>
-
-        {/* End Date */}
-        <div className="col-span-2 space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700" htmlFor="endDate">
-            Fecha fin (Opcional, para eventos de varios días)
-          </label>
-          <div className="flex gap-2 items-center">
-            <input
-              id="endDate"
-              type="date"
-              className="flex-1 rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              min={date}
-            />
-          </div>
-        </div>
-
-        {/* Priority */}
-        <div className="col-span-2 space-y-2">
-          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Prioridad</label>
-          <div className="flex gap-2">
-            {(['LOW', 'MEDIUM', 'HIGH'] as Priority[]).map((p) => {
-              let colors = "bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200";
-              let label = "";
-              if (priority === p) {
-                if (p === 'LOW') colors = "bg-green-100 text-green-700 border-green-300 ring-2 ring-green-100/50";
-                if (p === 'MEDIUM') colors = "bg-amber-100 text-amber-700 border-amber-300 ring-2 ring-amber-100/50";
-                if (p === 'HIGH') colors = "bg-red-100 text-red-700 border-red-300 ring-2 ring-red-100/50";
-              }
-              if (p === 'LOW') label = "🟢 Baja";
-              if (p === 'MEDIUM') label = "🟡 Media";
-              if (p === 'HIGH') label = "🔴 Alta";
-
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPriority(p)}
-                  className={`flex-1 py-2 px-3 rounded-xl border text-sm font-semibold transition-all ${colors}`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Notification */}
-        <div className="col-span-2 space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700" htmlFor="notification">
-            Recordatorio
-          </label>
-          <div className="relative">
-            <select
-              id="notification"
-              className="w-full appearance-none rounded-xl border-slate-200 bg-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:bg-white focus:ring-0 transition-all disabled:opacity-50"
-              value={notificationTime}
-              onChange={(e) => setNotificationTime(Number(e.target.value))}
-              disabled={!time}
-            >
-              {notificationOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {/* Custom simple chevron */}
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-          {!time && (
-            <p className="text-xs text-amber-500 flex items-center gap-1">
-              ⚠️ Selecciona una hora para activar recordatorios
-            </p>
-          )}
-        </div>
-
-        <div className="col-span-2 h-px bg-slate-100 my-1" />
-
-        {/* Assignee Row */}
-        <div className="col-span-2 space-y-2">
-          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Asignado a</label>
-          <div className="flex flex-wrap gap-2">
-            {familyMembers.map((m) => {
-              const isSelected = assigneeId === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setAssigneeId(m.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
-                    isSelected ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-105' : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-                  }`}
-                >
-                  <div 
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white font-bold"
-                    style={{ backgroundColor: m.color || '#94a3b8' }}
-                  >
-                    {m.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-sm font-medium">{m.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Recurrence (Advanced) */}
-        <div className="col-span-2 space-y-3 bg-slate-200 p-4 rounded-xl border border-slate-100">
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700" htmlFor="recurrence">
-              Repetición
-            </label>
-            <div className="relative">
-              <select
-                id="recurrence"
-                className="w-full appearance-none rounded-xl border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-slate-900 focus:ring-0 transition-all"
-                value={recurrence}
-                onChange={(e) => {
-                  const val = e.target.value as Recurrence;
-                  setRecurrence(val);
-                  if (val !== 'WEEKLY' && val !== 'CUSTOM_WEEKLY') {
-                    setCustomDays([]);
-                  }
-                }}
+      <TaskForm
+        key={taskId}
+        initialValues={initialValues}
+        submitLabel="Guardar cambios"
+        isSubmitting={isSubmitting}
+        error={error}
+        onSubmit={handleSubmit}
+        onCancel={goBack}
+        showCreatedBy={false}
+        // Only the creator can change visibility
+        showPrivateToggle={!!currentMemberId && task?.createdByMemberId === currentMemberId}
+        initiallyExpanded={hasAdvancedValues(initialValues)}
+        renderExtraActions={(values) => (
+          <>
+            <div className="col-span-2 flex justify-center mt-2">
+              <button
+                type="button"
+                onClick={deleteSingle}
+                disabled={isSubmitting}
+                className="text-sm text-red-500 font-medium hover:text-red-700 hover:underline transition-all py-1"
               >
-                <option value="NONE">No repetir</option>
-                <option value="DAILY">Diaria</option>
-                <option value="WEEKLY">Semanal</option>
-                <option value="MONTHLY">Mensual</option>
-                <option value="YEARLY">Anual</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+                Eliminar solo este evento
+              </button>
             </div>
-          </div>
 
-          {recurrence !== 'NONE' && (
-            <div className="space-y-4 animate-fadeIn">
-              {/* Interval */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-600">Cada</span>
-                <input
-                  type="number"
-                  min="1"
-                  className="w-20 rounded-xl border-slate-200 bg-white px-3 py-2 text-center text-sm focus:border-slate-900 focus:ring-0"
-                  value={recurrenceInterval}
-                  onChange={(e) => setRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))}
-                />
-                <span className="text-sm text-slate-600">
-                  {recurrence === 'DAILY' && (recurrenceInterval === 1 ? 'día' : 'días')}
-                  {recurrence === 'WEEKLY' && (recurrenceInterval === 1 ? 'semana' : 'semanas')}
-                  {recurrence === 'MONTHLY' && (recurrenceInterval === 1 ? 'mes' : 'meses')}
-                  {recurrence === 'YEARLY' && (recurrenceInterval === 1 ? 'año' : 'años')}
-                </span>
-              </div>
-
-              {/* Weekdays (Visible only for Weekly) */}
-              {(recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY') && (
-                <div className="space-y-2">
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Días de la semana</span>
-                  <div className="flex gap-2 flex-wrap">
-                    {weekdays.map((d) => {
-                      const isActive = customDays.includes(d.value);
-                      return (
-                        <button
-                          key={d.value}
-                          type="button"
-                          onClick={() => toggleCustomDay(d.value)}
-                          className={
-                            "w-9 h-9 rounded-full text-xs font-bold transition-all " +
-                            (isActive
-                              ? "bg-slate-900 text-white shadow-md scale-105"
-                              : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300")
-                          }
-                        >
-                          {d.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {customDays.length === 0 && (
-                    <p className="text-xs text-slate-400">Si no seleccionas ninguno, se usará el día de la fecha de inicio.</p>
+            {task?.seriesId && (
+              <div className="col-span-2 mt-2 space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm border-dashed">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Afectar a toda la serie</p>
+                  {seriesCount !== null && (
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1 rounded-full shadow-sm">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
+                      <span className="text-[10px] font-bold text-slate-600 uppercase">
+                        {seriesCount} {seriesCount === 1 ? "evento" : "eventos"}
+                      </span>
+                    </div>
                   )}
                 </div>
-              )}
 
-              <div className="h-px bg-slate-200" />
-
-              {/* End Condition */}
-              <div className="space-y-2">
-                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Finaliza</span>
-
-                <div className="flex flex-col gap-2">
-                  {/* NEVER */}
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="endCondition"
-                      className="text-slate-900 focus:ring-slate-900"
-                      checked={recurrenceEndCondition === 'NEVER'}
-                      onChange={() => setRecurrenceEndCondition('NEVER')}
-                    />
-                    <span className="text-sm text-slate-700">Nunca</span>
-                    <span className="text-[11px] text-slate-400 italic">
-                      {recurrence === 'DAILY' && '(máx. 30 eventos)'}
-                      {recurrence === 'WEEKLY' && customDays.length === 0 && '(máx. 12 eventos)'}
-                      {(recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY') && customDays.length > 0 && '(máx. 52 semanas)'}
-                      {recurrence === 'MONTHLY' && '(máx. 12 eventos)'}
-                      {recurrence === 'YEARLY' && '(máx. 3 eventos)'}
-                    </span>
-                  </label>
-
-                  {/* DATE */}
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2 cursor-pointer shrink-0">
-                      <input
-                        type="radio"
-                        name="endCondition"
-                        className="text-slate-900 focus:ring-slate-900"
-                        checked={recurrenceEndCondition === 'DATE'}
-                        onChange={() => setRecurrenceEndCondition('DATE')}
-                      />
-                      <span className="text-sm text-slate-700">El día</span>
-                    </label>
-                    <input
-                      type="date"
-                      className="flex-1 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-sm focus:border-slate-900 focus:ring-0 disabled:opacity-50"
-                      disabled={recurrenceEndCondition !== 'DATE'}
-                      value={recurrenceEndDate}
-                      onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                      min={date}
-                    />
-                  </div>
-
-                  {/* COUNT */}
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2 cursor-pointer shrink-0">
-                      <input
-                        type="radio"
-                        name="endCondition"
-                        className="text-slate-900 focus:ring-slate-900"
-                        checked={recurrenceEndCondition === 'COUNT'}
-                        onChange={() => setRecurrenceEndCondition('COUNT')}
-                      />
-                      <span className="text-sm text-slate-700">Después de</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      className="w-20 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-center text-sm focus:border-slate-900 focus:ring-0 disabled:opacity-50"
-                      disabled={recurrenceEndCondition !== 'COUNT'}
-                      value={recurrenceCount || ''}
-                      onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || undefined)}
-                      placeholder="#"
-                    />
-                    <span className="text-sm text-slate-600">
-                      {recurrence === 'WEEKLY' && customDays.length > 0
-                        ? (recurrenceCount === 1 ? 'semana' : 'semanas')
-                        : (recurrenceCount === 1 ? 'vez' : 'veces')
-                      }
-                    </span>
-                  </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={deleteSeries}
+                    disabled={isSubmitting}
+                    className="rounded-xl bg-red-50 border border-red-100 text-red-600 py-3 text-xs font-bold hover:bg-red-100 active:scale-95 transition-all"
+                  >
+                    Borrar Serie
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => saveSeries(values)}
+                    disabled={isSubmitting}
+                    className="rounded-xl bg-slate-700 text-white py-3 text-xs font-bold hover:bg-slate-600 shadow-md active:scale-95 transition-all"
+                  >
+                    Guardar Serie
+                  </button>
                 </div>
               </div>
-
-            </div>
-          )}
-        </div>
-
-        {/* Color */}
-        <div className="col-span-2 space-y-2">
-          <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Etiqueta de Color</span>
-          <div className="flex flex-wrap gap-3">
-            {colorOptions.map((c) => (
-              <button
-                key={c.value || "default"}
-                type="button"
-                onClick={() => setSelectedColor(c.value)}
-                className={
-                  "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all shadow-sm " +
-                  (selectedColor === c.value
-                    ? "border-slate-900 scale-110 ring-2 ring-slate-100"
-                    : "border-transparent hover:scale-105 hover:shadow-md")
-                }
-                style={{ backgroundColor: c.value || "#f1f5f9" }}
-                title={c.label}
-              >
-                {selectedColor === c.value && <span className="text-xs text-white drop-shadow-md">✓</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* Private toggle — only visible for the task creator */}
-        {currentMemberId && tasks.find(t => t.id === taskId)?.createdByMemberId === currentMemberId && (
-          <div className="col-span-2">
-            <button
-              id="toggle-private-task-edit"
-              type="button"
-              onClick={() => setIsPrivate((v) => !v)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
-                isPrivate
-                  ? "bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20"
-                  : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-lg">{isPrivate ? "🔒" : "👁️"}</span>
-                <div className="text-left">
-                  <p className="text-sm font-semibold">{isPrivate ? "Tarea privada" : "Tarea pública"}</p>
-                  <p className={`text-xs ${isPrivate ? "text-slate-300" : "text-slate-400"}`}>
-                    {isPrivate ? `Solo la verás tú (${currentMemberName})` : "Visible para toda la familia"}
-                  </p>
-                </div>
-              </div>
-              <div className={`w-10 h-6 rounded-full transition-all duration-300 relative ${
-                isPrivate ? "bg-indigo-500" : "bg-slate-300"
-              }`}>
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${
-                  isPrivate ? "left-5" : "left-1"
-                }`} />
-              </div>
-            </button>
-          </div>
+            )}
+          </>
         )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="col-span-2 p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {error}
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="col-span-2 flex gap-3 pt-6 mt-2 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-700 py-3.5 text-sm font-semibold hover:bg-slate-200 active:scale-95 transition-all"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex-[2] rounded-xl bg-slate-900 text-white py-3.5 text-sm font-semibold shadow-lg shadow-slate-900/20 hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-70 disabled:shadow-none"
-          >
-            {isSubmitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Guardando...
-              </span>
-            ) : "Guardar Cambios"}
-          </button>
-        </div>
-
-        {/* Individual Delete Link */}
-        <div className="col-span-2 flex justify-center mt-2">
-          <button
-            type="button"
-            onClick={async () => {
-              if (await confirm("¿Borrar solo este evento?", { confirmText: "Borrar evento" })) {
-                setIsSubmitting(true);
-                try {
-                  await removeTask(taskId!, false);
-                  navigate(-1);
-                } catch (err) {
-                  console.error(err);
-                  setError("Error al borrar evento");
-                  setIsSubmitting(false);
-                }
-              }
-            }}
-            disabled={isSubmitting}
-            className="text-sm text-red-500 font-medium hover:text-red-700 hover:underline transition-all py-1"
-          >
-            Eliminar solo este evento
-          </button>
-        </div>
-
-        {/* Series Options Extension */}
-        {tasks.find((t) => t.id === taskId)?.seriesId && (
-          <div className="col-span-2 mt-2 space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm border-dashed">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Afectar a toda la serie</p>
-              {seriesCount !== null && (
-                <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1 rounded-full shadow-sm">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
-                  <span className="text-[10px] font-bold text-slate-600 uppercase">{seriesCount} {seriesCount === 1 ? 'evento' : 'eventos'}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={async () => {
-                  const message = seriesCount !== null
-                    ? `¿Borrar TODA la serie? Se eliminarán ${seriesCount} eventos de tu calendario.`
-                    : "¿Borrar TODA la serie?";
-                  if (await confirm(message, {
-                    confirmText: "Borrar Serie",
-                    confirmVariant: "danger",
-                    title: "Borrar Serie Completa"
-                  })) {
-                    setIsSubmitting(true);
-                    try {
-                      await removeTask(taskId!, true);
-                      navigate(-1);
-                    } catch (err) {
-                      console.error(err);
-                      setError("Error al borrar serie");
-                      setIsSubmitting(false);
-                    }
-                  }
-                }}
-                disabled={isSubmitting}
-                className="rounded-xl bg-red-50 border border-red-100 text-red-600 py-3 text-xs font-bold hover:bg-red-100 active:scale-95 transition-all"
-              >
-                Borrar Serie
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  if (
-                    await confirm(
-                      "¿Actualizar toda la serie? Se aplicarán estos cambios a todos los eventos futuros y pasados de esta serie.",
-                      { confirmText: "Actualizar Serie", title: "Cambio Global" }
-                    )
-                  ) {
-                    setIsSubmitting(true);
-                    try {
-                      await updateTask(
-                        taskId!,
-                        {
-                          title,
-                          date,
-                          endDate: endDate || undefined,
-                          time: time || undefined,
-                          endTime: endTime || undefined,
-                          assigneeId,
-                          priority,
-                          recurrence: recurrence,
-                          description: description || undefined,
-                          daysOfWeek: recurrence === 'WEEKLY' || recurrence === 'CUSTOM_WEEKLY' ? customDays : undefined,
-                          notificationTime: notificationTime >= 0 ? notificationTime : undefined,
-                          color: selectedColor,
-                          createdBy: selectedCreatedBy,
-                          createdAt: storedCreatedAt,
-                          recurrenceInterval,
-                          recurrenceEndDate: recurrenceEndCondition === 'DATE' ? recurrenceEndDate : undefined,
-                          recurrenceCount: recurrenceEndCondition === 'COUNT' ? recurrenceCount : undefined,
-                          isPrivate,
-                        },
-                        true
-                      );
-                      navigate(-1);
-                    } catch (err) {
-                      console.error(err);
-                      setError("Error al actualizar serie");
-                      setIsSubmitting(false);
-                    }
-                  }
-                }}
-                disabled={isSubmitting}
-                className="rounded-xl bg-slate-700 text-white py-3 text-xs font-bold hover:bg-slate-600 shadow-md active:scale-95 transition-all"
-              >
-                Guardar Serie
-              </button>
-            </div>
-          </div>
-        )}
-      </form>
+      />
     </div>
   );
 }
